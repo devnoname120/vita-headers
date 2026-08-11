@@ -6,6 +6,7 @@
 #include <psp2kern/bt.h>
 #include <psp2kern/camera.h>
 #include <psp2kern/clockgen.h>
+#include <psp2kern/codec.h>
 #include <psp2kern/ctrl.h>
 #include <psp2kern/deci4p.h>
 #include <psp2kern/display.h>

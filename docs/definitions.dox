@@ -87,6 +87,9 @@
  *     \defgroup SceAudio Audio Library
  *      Ouput audio from a port, set the volume, and set the config
  *
+ *     \defgroup SceCodec Codec Hardware Driver Library
+ *      Configure the external audio codec
+ *
  *     \defgroup SceAudiodec Audio Decoding Library
  *      Decode Mp3, Aac, Atrac, and external formats
  *
