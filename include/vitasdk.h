@@ -40,6 +40,7 @@
 #include <psp2/libdbg.h>
 #include <psp2/libime.h>
 #include <psp2/libssl.h>
+#include <psp2/livearea.h>
 #include <psp2/location.h>
 #include <psp2/message_dialog.h>
 #include <psp2/motion.h>

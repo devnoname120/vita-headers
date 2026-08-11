@@ -419,6 +419,9 @@
  *     \defgroup SceBgAppUtil Background Application Utilities Library
  *      Manage a background application
  *
+ *     \defgroup SceLiveAreaUtil LiveArea Utilities Library
+ *      Update and query LiveArea contents and frames
+ *
  *     \defgroup SceNotificationUtil Notification Utilities library
  *      Send notiifications, simple and progress type
  *
