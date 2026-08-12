@@ -4,6 +4,7 @@
 #include <psp2kern/types.h>
 #include <psp2kern/appmgr.h>
 #include <psp2kern/audioin.h>
+#include <psp2kern/audioout.h>
 #include <psp2kern/bt.h>
 #include <psp2kern/camera.h>
 #include <psp2kern/clockgen.h>
