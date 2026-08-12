@@ -12,6 +12,7 @@
 #include <psp2kern/display.h>
 #include <psp2kern/fios2.h>
 #include <psp2kern/gpu_es4.h>
+#include <psp2kern/hpremote.h>
 #include <psp2kern/idstorage.h>
 #include <psp2kern/jpegenc.h>
 #include <psp2kern/lcd.h>
