@@ -7,62 +7,168 @@
 #ifndef _PSP2_AUDIOIN_H_
 #define _PSP2_AUDIOIN_H_
 
+#include <psp2common/audioin.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum SceAudioInErrorCode {
-	//! Undefined error
-	SCE_AUDIO_IN_ERROR_FATAL                = 0x80260100,
-	//! Bad value of port number
-	SCE_AUDIO_IN_ERROR_INVALID_PORT         = 0x80260101,
-	//! Invalid sample length
-	SCE_AUDIO_IN_ERROR_INVALID_SIZE         = 0x80260102,
-	//! Invalid sample frequency
-	SCE_AUDIO_IN_ERROR_INVALID_SAMPLE_FREQ  = 0x80260103,
-	//! Invalid port type
-	SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE    = 0x80260104,
-	//! Invalid pointer value
-	SCE_AUDIO_IN_ERROR_INVALID_POINTER      = 0x80260105,
-	//! Invalid port param
-	SCE_AUDIO_IN_ERROR_INVALID_PORT_PARAM   = 0x80260106,
-	//! Cannot open no ports
-	SCE_AUDIO_IN_ERROR_PORT_FULL            = 0x80260107,
-	//! Not enough memory
-	SCE_AUDIO_IN_ERROR_OUT_OF_MEMORY        = 0x80260108,
-	//! Port is not opened
-	SCE_AUDIO_IN_ERROR_NOT_OPENED           = 0x80260109,
-	//! Tried to input while busy
-	SCE_AUDIO_IN_ERROR_BUSY                 = 0x8026010A,
-	//! Invalid parameter
-	SCE_AUDIO_IN_ERROR_INVALID_PARAMETER    = 0x8026010B
-} SceAudioInErrorCode;
-
-typedef enum SceAudioInPortType {
-	SCE_AUDIO_IN_PORT_TYPE_VOICE   = 0,
-	SCE_AUDIO_IN_PORT_TYPE_RAW     = 2
-} SceAudioInPortType;
-
-typedef enum SceAudioInParam {
-	SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO  = 0,
-	SCE_AUDIO_IN_GETSTATUS_MUTE         = 1
-} SceAudioInParam;
-
-//! Open port
+/**
+ * Open an audio-input port.
+ *
+ * FW 3.60 supports at most four ports globally and one port per process.
+ * ::SCE_AUDIO_IN_PORT_TYPE_VOICE accepts 256 or 512 samples at 16000 Hz.
+ * ::SCE_AUDIO_IN_PORT_TYPE_RAW accepts 256 samples at 16000 Hz or 768 samples
+ * at 48000 Hz. ::SCE_AUDIO_IN_PORT_TYPE_CAMERA accepts 256 or 512 samples at
+ * 16000 Hz.
+ *
+ * @param[in] portType - Capture profile.
+ * @param[in] grain - Number of mono samples returned by each input call.
+ * @param[in] freq - Sample frequency in Hz.
+ * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
+ *
+ * @return A port handle on success, or a negative ::SceAudioInErrorCode value.
+ */
 int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
 
-//! Close port
+/**
+ * Open an audio-input port using the diagnostic entry point.
+ *
+ * This performs the same work as ::sceAudioInOpenPort. On FW 3.60 it also
+ * accepts ::SCE_AUDIO_IN_PORT_TYPE_DIAG without validating \a grain or \a freq.
+ *
+ * @param[in] portType - Capture profile.
+ * @param[in] grain - Number of mono samples returned by each input call.
+ * @param[in] freq - Sample frequency in Hz.
+ * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
+ *
+ * @return A port handle on success, or a negative ::SceAudioInErrorCode value.
+ */
+int sceAudioInOpenPortForDiag(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
+
+/**
+ * Release an audio-input port owned by the calling process.
+ *
+ * @param[in] port - Port handle returned by ::sceAudioInOpenPort or
+ *                   ::sceAudioInOpenPortForDiag.
+ *
+ * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ */
 int sceAudioInReleasePort(int port);
 
+/**
+ * Capture one grain of mono signed 16-bit PCM.
+ *
+ * This function blocks until the configured number of samples is available.
+ *
+ * @param[in] port - Port handle returned by ::sceAudioInOpenPort or
+ *                   ::sceAudioInOpenPortForDiag.
+ * @param[out] destPtr - Buffer for the captured samples. Its size must be at
+ *                       least <code>grain * sizeof(SceInt16)</code> bytes.
+ *
+ * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ */
 int sceAudioInInput(int port, void *destPtr);
 
-/* get status */
+/**
+ * Capture one grain and report an input-route transition.
+ *
+ * For a port with device-state reporting enabled, such as the camera profile,
+ * FW 3.60 writes 1 for the first two successful captures after the input route
+ * changes and writes 0 afterward. This value is not a persistent connection
+ * state. For other profiles FW 3.60 does not write \a inputDeviceState.
+ *
+ * @param[in] port - Port handle returned by ::sceAudioInOpenPort.
+ * @param[out] destPtr - Buffer for the captured mono signed 16-bit samples.
+ * @param[out] inputDeviceState - Receives the transient route-change state.
+ *
+ * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ */
+int sceAudioInInputWithInputDeviceState(int port, void *destPtr, int *inputDeviceState);
+
+/**
+ * Check whether the calling process owns the adopted audio-input port.
+ *
+ * FW 3.60 accepts only ::SCE_AUDIO_IN_PORT_TYPE_VOICE and
+ * ::SCE_AUDIO_IN_PORT_TYPE_RAW. The selected type is validated but does not
+ * otherwise affect the result.
+ *
+ * @param[in] portType - Port type to validate.
+ *
+ * @return 1 when the calling process owns a port and is the adopted input
+ *         process, 0 otherwise, or a negative ::SceAudioInErrorCode value.
+ */
 int sceAudioInGetAdopt(SceAudioInPortType portType);
+
+/**
+ * Query audio-input state.
+ *
+ * On Vita TV, FW 3.60 also reports the microphone as muted while the Bluetooth
+ * input backend is inactive.
+ *
+ * @param[in] select - ::SCE_AUDIO_IN_GETSTATUS_MUTE on FW 3.60.
+ *
+ * @return 1 when the system microphone is muted, 0 when it is not muted, or a
+ *         negative ::SceAudioInErrorCode value for an unsupported selector.
+ */
 int sceAudioInGetStatus(int select);
+
+/**
+ * Get the current input route.
+ *
+ * @return The current route, normally one of ::SceAudioInInputMode.
+ */
+int sceAudioInGetInput(void);
+
+/**
+ * Select the input route.
+ *
+ * @param[in] inputMode - Input route.
+ *
+ * @return 0 when the route is already selected, otherwise the result of the
+ *         FW 3.60 input-worker notification.
+ */
+int sceAudioInSelectInput(SceAudioInInputMode inputMode);
+
+/**
+ * Set the system microphone mute state.
+ *
+ * FW 3.60 ignores values other than ::SCE_AUDIO_IN_MUTE and
+ * ::SCE_AUDIO_IN_UNMUTE.
+ *
+ * @param[in] command - Mute command.
+ *
+ * @return The updated internal AudioIn flags for a recognized command. An
+ *         unrecognized command is returned unchanged.
+ */
+int sceAudioInSetMute(SceAudioInMuteCommand command);
+
+/**
+ * Set the microphone-gain value stored for a port.
+ *
+ * FW 3.60 initializes this field to 0x1060 and stores the low 16 bits of
+ * \a gain. SceAudioin does not otherwise read it, so its units and purpose are
+ * unknown.
+ *
+ * @param[in] port - Port handle owned by the calling process.
+ * @param[in] gain - Value to store.
+ *
+ * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ */
+int sceAudioInSetMicGain(int port, int gain);
+
+/**
+ * Get the microphone-gain value stored for a port.
+ *
+ * @param[in] port - Port handle owned by the calling process.
+ *
+ * @return The sign-extended 16-bit value on success, or a negative
+ *         ::SceAudioInErrorCode value.
+ */
+int sceAudioInGetMicGain(int port);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _PSP2_AUDIOIN_H_ */
-
