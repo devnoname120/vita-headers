@@ -42,6 +42,7 @@
 #include <psp2/libssl.h>
 #include <psp2/livearea.h>
 #include <psp2/location.h>
+#include <psp2/lsdb.h>
 #include <psp2/message_dialog.h>
 #include <psp2/motion.h>
 #include <psp2/motion_dev.h>
@@ -100,6 +101,7 @@
 #include <psp2/usbstorvstor.h>
 #include <psp2/videodec.h>
 #include <psp2/videoexport.h>
+#include <psp2/voice.h>
 #include <psp2/vshbridge.h>
 
 #include <psp2/np/common.h>

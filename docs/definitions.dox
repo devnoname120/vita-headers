@@ -102,6 +102,9 @@
  *     \defgroup SceAudioIn Audio In Library
  *      Open and close Audio In ports
  *
+ *     \defgroup SceVoice Voice Processing Library
+ *      Create and connect voice-chat processing ports
+ *
  *     \defgroup SceNgs Audio sound effect
  *      Library for Audio sound effect
  *
@@ -427,6 +430,9 @@
  *
  *     \defgroup SceLiveAreaUtil LiveArea Utilities Library
  *      Update and query LiveArea contents and frames
+ *
+ *     \defgroup SceLsdb Application and LiveArea Database Library
+ *      Query and update the shell application, LiveArea, event, and icon-layout databases
  *
  *     \defgroup SceNotificationUtil Notification Utilities library
  *      Send notiifications, simple and progress type
