@@ -18,8 +18,8 @@ extern "C" {
 typedef enum SceKernelBacktraceMode {
 	SCE_KERNEL_BACKTRACE_MODE_USER           = 0x00000000, //!< Unwind the user-mode stack.
 	SCE_KERNEL_BACKTRACE_MODE_KERNEL         = 0x00000001, //!< Unwind the kernel-mode stack.
-	SCE_KERNEL_BACKTRACE_MODE_DONT_EXCEED    = 0x00000002, //!< Stop when the output buffer is full.
-	SCE_KERNEL_BACKTRACE_MODE_UNK_0x00000008 = 0x00000008  //!< Accepted on FW 3.60; purpose unknown.
+	SCE_KERNEL_BACKTRACE_MODE_DONT_EXCEED    = 0x00000002, //!< Stop unwinding when the output buffer is full.
+	SCE_KERNEL_BACKTRACE_MODE_UNK_0x00000008 = 0x00000008  //!< Accepted but ignored on FW 3.60.
 } SceKernelBacktraceMode;
 VITASDK_BUILD_ASSERT_EQ(1, SceKernelBacktraceMode);
 

@@ -20,28 +20,37 @@ typedef enum SceSslErrorCode {
 	SCE_SSL_ERROR_INVALID_VALUE  = 0x804351FE
 } SceSslErrorCode;
 
+/** Built-in certificate-authority issuer groups. */
 typedef enum SceSslCertIssuer {
 	SCE_SSLCERT_ISSUER_ALL         = 0, //!< Select every issuer group.
-	SCE_SSLCERT_ISSUER_SCE         = 1,
-	SCE_SSLCERT_ISSUER_VERISIGN    = 2,
-	SCE_SSLCERT_ISSUER_GEOTRUST    = 3,
-	SCE_SSLCERT_ISSUER_THAWTE      = 4,
-	SCE_SSLCERT_ISSUER_COMODO      = 5,
-	SCE_SSLCERT_ISSUER_GLOBALSIGN  = 6,
-	SCE_SSLCERT_ISSUER_CYBERTRUST  = 7,
-	SCE_SSLCERT_ISSUER_ENTRUST     = 8,
-	SCE_SSLCERT_ISSUER_DIGICERT    = 9,
-	SCE_SSLCERT_ISSUER_GODADDY     = 10,
-	SCE_SSLCERT_ISSUER_RSA         = 11,
-	SCE_SSLCERT_ISSUER_STARTCOM    = 12,
-	SCE_SSLCERT_ISSUER_SECOM       = 13,
-	SCE_SSLCERT_ISSUER_TRUSTWAVE   = 14,
-	SCE_SSLCERT_ISSUER_AFFIRMTRUST = 15
+	SCE_SSLCERT_ISSUER_SCE         = 1,  //!< FW 3.60 supports certificate mask 0x1F.
+	SCE_SSLCERT_ISSUER_VERISIGN    = 2,  //!< FW 3.60 supports certificate mask 0x1F.
+	SCE_SSLCERT_ISSUER_GEOTRUST    = 3,  //!< FW 3.60 supports certificate mask 0x0F.
+	SCE_SSLCERT_ISSUER_THAWTE      = 4,  //!< FW 3.60 supports certificate mask 0x07.
+	SCE_SSLCERT_ISSUER_COMODO      = 5,  //!< FW 3.60 supports certificate mask 0x07.
+	SCE_SSLCERT_ISSUER_GLOBALSIGN  = 6,  //!< FW 3.60 supports certificate mask 0x03.
+	SCE_SSLCERT_ISSUER_CYBERTRUST  = 7,  //!< FW 3.60 supports certificate mask 0x07.
+	SCE_SSLCERT_ISSUER_ENTRUST     = 8,  //!< FW 3.60 supports certificate mask 0x0F.
+	SCE_SSLCERT_ISSUER_DIGICERT    = 9,  //!< FW 3.60 supports certificate mask 0x07.
+	SCE_SSLCERT_ISSUER_GODADDY     = 10, //!< FW 3.60 supports certificate mask 0x7F.
+	SCE_SSLCERT_ISSUER_RSA         = 11, //!< FW 3.60 supports certificate mask 0x03.
+	SCE_SSLCERT_ISSUER_STARTCOM    = 12, //!< FW 3.60 supports certificate mask 0x03.
+	SCE_SSLCERT_ISSUER_SECOM       = 13, //!< FW 3.60 supports certificate mask 0x07.
+	SCE_SSLCERT_ISSUER_TRUSTWAVE   = 14, //!< FW 3.60 supports certificate mask 0x01.
+	SCE_SSLCERT_ISSUER_AFFIRMTRUST = 15  //!< FW 3.60 supports certificate mask 0x07.
 } SceSslCertIssuer;
 
 typedef void SceSslCert;
 typedef void SceSslCertName;
 
+/**
+ * Certificate list node constructed inside the caller-provided output buffer.
+ *
+ * Both this node and the string referenced by
+ * ::SceSslCertificateAuthorityEntry::pemCertificate remain owned by the caller
+ * and are valid for as long as the output buffer remains valid. No separate
+ * list cleanup is required.
+ */
 typedef struct SceSslCertificateAuthorityEntry {
 	char *pemCertificate; //!< NUL-terminated PEM certificate stored in the caller's buffer.
 	struct SceSslCertificateAuthorityEntry *next; //!< Next selected certificate, or NULL.
@@ -77,28 +86,47 @@ int sceSslFreeSslCertName(SceSslCertName* certName);
 /**
  * Retrieve built-in certificate-authority certificates.
  *
- * The certificates are loaded from `vs0:/data/external/cert/CA_LIST.cer` and
- * checked against built-in SHA-1 digests.
+ * The certificates are loaded from `vs0:/data/external/cert/CA_LIST.cer`. In
+ * output mode, every loaded certificate is checked against a built-in SHA-1
+ * digest before it is returned.
  *
- * If either \p certificateList is 0 or \p buffer is NULL, the function only
+ * If either \p certificateList or \p buffer is NULL, the function only
  * computes the required storage size and ignores \p bufferSize. Output mode is
- * used only when both are supplied.
+ * used only when both are supplied. The required size includes every
+ * NUL-terminated PEM string, alignment padding, and one embedded
+ * ::SceSslCertificateAuthorityEntry per certificate.
+ *
+ * In output mode, \p certificateList receives a linked list whose nodes and
+ * PEM strings point into \p buffer. The function does not allocate output
+ * memory. Callers should first query the size, allocate one buffer of that
+ * size, and then call the function again to populate it. If output mode fails
+ * after processing has begun, the buffer and list may contain partial data and
+ * should be discarded.
  *
  * @param[in] issuerId - One of ::SceSslCertIssuer.
  * @param[in] certificateMask - Issuer-specific certificate-selection bitmask.
  *                              For a nonzero \p issuerId, -1 selects that
- *                              issuer's firmware default mask. With
+ *                              issuer's firmware default mask. On FW 3.60 the
+ *                              default is the full supported mask only for SCE,
+ *                              GeoTrust, Thawte, and GoDaddy; it is zero for
+ *                              the other issuer groups. With
  *                              ::SCE_SSLCERT_ISSUER_ALL, -1 selects every
  *                              known certificate.
- * @param[out] certificateList - Address of a ::SceSslCertificateAuthorityEntry
- *                               pointer, represented as an int.
- * @param[out] buffer - Buffer receiving PEM certificates and list entries.
- * @param[in] bufferSize - Size of \a buffer in bytes. Value of type ::SceSize.
+ * @param[out] certificateList - Receives the first list node in output mode.
+ * @param[out] buffer - Caller-owned buffer receiving PEM strings and list nodes.
+ * @param[in] bufferSize - Size of \a buffer in bytes.
  * @param[out] resultSize - Optional total storage required or used on success.
+ *                          Set to zero before validation and left zero on error.
  *
- * @return Number of selected certificates, or a negative error code.
+ * @return Number of selected certificates on success, including zero when the
+ *         mask selects none. Returns `0x80010086` for an invalid issuer or
+ *         unsupported mask, `0x8001000C` when the output buffer is too small,
+ *         ::SCE_SSL_ERROR_INVALID_VALUE when a certificate digest differs,
+ *         or another negative file/path error.
  */
-int sceSslInternalGetCertificateAuthority(int issuerId, int certificateMask, int certificateList, char *buffer, int bufferSize, size_t *resultSize);
+int sceSslInternalGetCertificateAuthority(SceSslCertIssuer issuerId, int certificateMask,
+	SceSslCertificateAuthorityEntry **certificateList, char *buffer, SceSize bufferSize,
+	SceSize *resultSize);
 
 #ifdef __cplusplus
 }

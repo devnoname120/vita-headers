@@ -19,117 +19,177 @@ extern "C" {
  * @param req_id - Scheduler request ID.
  * @param interrupt_index - Interrupt index in the range 0 through 3.
  * @param callback_arg - Value supplied to
- *                       ::ksceSblSmSchedProxyEnableCry2ArmInterrupt.
+ *                       ::ksceSblSmSchedProxyRegisterIntrHandler.
  * @param status - Scheduler status. FW 3.60 consumers clear bit 0x8 before
- *                 testing for ::SCE_SM_STATUS_RUNNING; the bit's meaning is
- *                 not known.
+ *                 testing for ::SCE_SM_STATUS_RUNNING; the bit's purpose is
+ *                 unknown.
  * @param result - Secure-module result or error code.
  *
  * The handler's return value is ignored on FW 3.60.
  */
-typedef int sceSblSmSchedProxyIntrHandler(SceSmSchedRequestId req_id, int interrupt_index, int callback_arg, int status, int result);
+typedef int SceSblSmSchedProxyIntrHandler(SceSmSchedRequestId req_id, SceUInt32 interrupt_index, int callback_arg, SceUInt32 status, int result);
+
+/** Previous VitaSDK type name retained for backwards compatibility. */
+typedef SceSblSmSchedProxyIntrHandler sceSblSmSchedProxyIntrHandler;
+
+/** Scheduler-proxy errors identified on FW 3.60. */
+typedef enum SceSblSmSchedProxyErrorCode {
+	SCE_SM_SCHED_PROXY_ERROR_RESOURCE_LIMIT             = 0x800F040C,
+	SCE_SM_SCHED_PROXY_ERROR_INVALID_ARGUMENT           = 0x800F0416,
+	SCE_SM_SCHED_PROXY_ERROR_NOT_SUPPORTED              = 0x800F0425,
+	SCE_SM_SCHED_PROXY_ERROR_NOT_INITIALIZED            = 0x800F0426,
+	SCE_SM_SCHED_PROXY_ERROR_REQUEST_ALREADY_STOPPED    = 0x800F0429, //!< Treated as already stopped by FW 3.60 consumers.
+	SCE_SM_SCHED_PROXY_ERROR_REQUEST_NOT_FOUND          = 0x800F042B,
+	SCE_SM_SCHED_PROXY_ERROR_HANDLER_ALREADY_REGISTERED = 0x800F042E
+} SceSblSmSchedProxyErrorCode;
+VITASDK_BUILD_ASSERT_EQ(4, SceSblSmSchedProxyErrorCode); // size is from FW 3.60
 
 /**
- * Secure-module lifecycle states.
+ * Secure-module scheduler lifecycle states.
  *
  * FW 3.60 SceSblAuthMgr and SceSblSsSmComm clear bit 0x8 before comparing a
- * callback status with ::SCE_SM_STATUS_RUNNING. The meaning of that bit is not
- * known.
+ * callback status with ::SCE_SM_STATUS_RUNNING. The purpose of that bit is
+ * unknown.
+ *
+ * A newly created request and a request whose suspension has completed both
+ * enter ::SCE_SM_STATUS_READY. The normal scheduling path is
+ * ::SCE_SM_STATUS_READY -> ::SCE_SM_STATUS_START_RESUME_REQUESTED ->
+ * ::SCE_SM_STATUS_RUNNING. Preemption follows ::SCE_SM_STATUS_RUNNING ->
+ * ::SCE_SM_STATUS_SUSPEND_REQUESTED -> ::SCE_SM_STATUS_SUSPENDING ->
+ * ::SCE_SM_STATUS_READY. Natural termination produces
+ * ::SCE_SM_STATUS_STOPPED, whereas an explicit force-stop or scheduler
+ * teardown produces ::SCE_SM_STATUS_FORCE_STOPPED.
  */
 typedef enum SceSmStatus {
-	SCE_SM_STATUS_SUSPENDED              = 0x1,
+	SCE_SM_STATUS_READY                  = 0x1,
 	SCE_SM_STATUS_RUNNING                = 0x2,
 	SCE_SM_STATUS_STOPPED                = 0x3,
+	SCE_SM_STATUS_FORCE_STOPPED          = 0x4,
 	SCE_SM_STATUS_START_RESUME_REQUESTED = 0x6,
 	SCE_SM_STATUS_SUSPENDING             = 0x7,
 	SCE_SM_STATUS_SUSPEND_REQUESTED      = 0xB
 } SceSmStatus;
+VITASDK_BUILD_ASSERT_EQ(1, SceSmStatus); // size is from FW 3.60
 
 /**
- * Sends a value to a secure-module scheduler mailbox through SMC 0x133.
+ * Sets bits in an ARM-to-Cry scheduler mailbox through SMC 0x133.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param mailval - Value to send.
+ * @param mail_mask - Bits to set.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedCallFunc(SceSmSchedRequestId req_id, int mailbox_id, SceUInt32 mailval);
+int ksceSblSmSchedCallFunc(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 mail_mask);
 
 /**
- * Requests an F00D status change through SMC 0x130.
+ * Forcibly stops a secure-module scheduler request through SMC 0x130.
+ *
+ * ::SCE_SM_STATUS_READY and ::SCE_SM_STATUS_SUSPENDING requests are first
+ * driven to ::SCE_SM_STATUS_READY and then enter
+ * ::SCE_SM_STATUS_FORCE_STOPPED.
+ * ::SCE_SM_STATUS_RUNNING and ::SCE_SM_STATUS_START_RESUME_REQUESTED requests
+ * issue secure control command 0x501 and transition through internal states
+ * 0xC and 0x9 before reaching ::SCE_SM_STATUS_FORCE_STOPPED.
  *
  * @param req_id - Scheduler request ID.
  *
- * @return Secure-monitor result or a negative scheduler validation error.
+ * @return 0 on success, ::SCE_SM_SCHED_PROXY_ERROR_REQUEST_ALREADY_STOPPED
+ *         when the request is not in a stoppable state, or another negative
+ *         scheduler validation error.
  */
-int ksceSblSmSchedProxyChangeF00DStatus(SceSmSchedRequestId req_id);
+int ksceSblSmSchedProxyForceStop(SceSmSchedRequestId req_id);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyChangeF00DStatus ksceSblSmSchedProxyForceStop
 
 /**
- * Disables a scheduler interrupt handler through SMC 0x139.
+ * Releases a scheduler interrupt handler through SMC 0x139.
  *
  * @param req_id - Scheduler request ID.
  * @param interrupt_index - Interrupt index in the range 0 through 3.
  *
+ * The local handler slot is cleared before the secure-monitor call and is not
+ * restored if that call fails.
+ *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyDisableCry2ArmInterrupt(SceSmSchedRequestId req_id, int interrupt_index);
+int ksceSblSmSchedProxyReleaseIntrHandler(SceSmSchedRequestId req_id, SceUInt32 interrupt_index);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyDisableCry2ArmInterrupt ksceSblSmSchedProxyReleaseIntrHandler
 
 /**
  * Registers a scheduler interrupt handler through SMC 0x138.
  *
  * @param req_id - Scheduler request ID.
  * @param interrupt_index - Interrupt index in the range 0 through 3.
- * @param cb - Required interrupt handler.
+ * @param handler - Required interrupt handler.
  * @param callback_arg - Value passed unchanged as the handler's third
  *                       argument.
  *
  * If a notification is already pending, the handler is invoked before this
- * function executes the secure-monitor command.
+ * function executes the secure-monitor command. The handler remains installed
+ * locally if the secure-monitor call fails.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyEnableCry2ArmInterrupt(SceSmSchedRequestId req_id, int interrupt_index, sceSblSmSchedProxyIntrHandler *cb, int callback_arg);
+int ksceSblSmSchedProxyRegisterIntrHandler(SceSmSchedRequestId req_id, SceUInt32 interrupt_index, SceSblSmSchedProxyIntrHandler *handler, int callback_arg);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyEnableCry2ArmInterrupt ksceSblSmSchedProxyRegisterIntrHandler
 
 /**
- * Executes an indexed F00D command through SMC 0x13C.
+ * Executes an indexed secure scheduler control command through SMC 0x13C.
  *
- * All four arguments are forwarded to the secure monitor. On FW 3.60,
- * SceSdif uses command index 3 during a host-controller reset and SceSblSsMgr
- * uses command index 4 during a system event; both pass zero for the remaining
- * arguments. Their purposes are unknown.
+ * FW 3.60 accepts command indices 0 through 4 and writes control values 0xB01
+ * through 0xF01 respectively to the secure scheduler control register. The
+ * three remaining arguments are forwarded by the non-secure proxy but ignored
+ * by the secure handler.
+ *
+ * SceSdif uses command index 3 while resetting the eMMC host controller.
+ * SceSblSsMgr uses command index 4 at the end of the 0x20F-through-0x200
+ * system-suspend event sequence. These call sites do not establish the exact
+ * hardware purposes of either command.
  *
  * @param command_index - Secure-monitor command index.
- * @param arg1 - First opaque command argument.
- * @param arg2 - Second opaque command argument.
- * @param arg3 - Third opaque command argument.
+ * @param unused1 - Ignored on FW 3.60; set to 0.
+ * @param unused2 - Ignored on FW 3.60; set to 0.
+ * @param unused3 - Ignored on FW 3.60; set to 0.
  *
- * @return Secure-monitor result.
+ * @return 0 on success, ::SCE_SM_SCHED_PROXY_ERROR_INVALID_ARGUMENT for an
+ *         index greater than 4, or ::SCE_SM_SCHED_PROXY_ERROR_NOT_INITIALIZED.
  */
-int ksceSblSmSchedProxyExecuteF00DCommand(SceUInt32 command_index, int arg1, int arg2, int arg3);
+int ksceSblSmSchedProxyExecuteSKCommand(SceUInt32 command_index, SceUInt32 unused1, SceUInt32 unused2, SceUInt32 unused3);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyExecuteF00DCommand ksceSblSmSchedProxyExecuteSKCommand
 
 /**
- * Reads the ARM-to-Cry command register through SMC 0x134.
+ * Reads an ARM-to-Cry mailbox through SMC 0x134.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param pMailval - Required output for the register value.
+ * @param pMailValue - Required output for the register value.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyGetCommandF00DRegister(SceSmSchedRequestId req_id, int mailbox_id, SceUInt32 *pMailval);
+int ksceSblSmSchedProxyReadArm2Cry(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *pMailValue);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyGetCommandF00DRegister ksceSblSmSchedProxyReadArm2Cry
 
 /**
  * Queries a secure-module request through SMC 0x12F.
  *
  * @param req_id - Scheduler request ID.
- * @param result - Required output for the secure-module result and scheduler
- *                 status. Unlike ::ksceSblSmSchedProxyWait, this function does
- *                 not release the request record.
+ * @param pResult - Required output for the secure-module result and scheduler
+ *                  status. Unlike ::ksceSblSmSchedProxyWait, this function
+ *                  does not release the request record.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyGetStatus(SceSmSchedRequestId req_id, SceSblSmCommPair *result);
+int ksceSblSmSchedProxyGetStatus(SceSmSchedRequestId req_id, SceSblSmCommPair *pResult);
 
 /**
  * Initializes the scheduler proxy.
@@ -144,31 +204,40 @@ int ksceSblSmSchedProxyInitialize(void);
  * Starts a secure-module scheduler request through SMC 0x12D.
  *
  * @param priority - Boolean priority: 0 for high priority, 1 for low priority.
- * @param sm_self_paddr - Physical address of an array of ::SceKernelPARange
- *                        entries. The pointer type is retained for source
- *                        compatibility.
- * @param num_pa_range - Number of entries in the physical-address range array.
- * @param invoke_input - Optional four-word input copied verbatim. NULL
- *                       forwards four zero words.
+ * @param pa_ranges_paddr - Physical address of an array of
+ *                          ::SceKernelPARange entries. It is required when
+ *                          `(pCtx->self_type & 0xF000) == 0` and must be 0
+ *                          when that value is 0x1000.
+ * @param pa_range_count - Number of entries in the physical-address range
+ *                         array. It must be 0 when
+ *                         `(pCtx->self_type & 0xF000) == 0x1000`.
+ * @param invoke_input - Optional four-word, secure-module-defined startup
+ *                       payload copied verbatim. NULL forwards four zero
+ *                       words; the scheduler does not interpret the words.
  * @param pCtx - Required launch context. FW 3.60 reads only self_type,
  *               media_type, and the program authority ID and capability from
  *               spawner_self_auth_info.
  * @param pReqId - Required scheduler request-ID output.
  *
+ * Values of `pCtx->self_type & 0xF000` other than 0 or 0x1000 are rejected.
+ * A request ID is assigned before the shared-buffer and secure-monitor work;
+ * callers may therefore observe an assigned ID even when a later step fails.
+ * The proxy can track at most 64 concurrent request records.
+ *
  * @return Secure-monitor result or a negative scheduler/kernel error.
  */
-int ksceSblSmSchedProxyInvoke(SceBool priority, void *sm_self_paddr, SceUInt32 num_pa_range, SceSmInvokeDataBlockInput *invoke_input, SceSblSmCommContext130 *pCtx, SceSmSchedRequestId *pReqId);
+int ksceSblSmSchedProxyInvoke(SceBool priority, SceUIntPtr pa_ranges_paddr, SceSize pa_range_count, const SceSmInvokeDataBlockInput *invoke_input, const SceSblSmCommContext130 *pCtx, SceSmSchedRequestId *pReqId);
 
 /**
  * Reads a Cry-to-ARM mailbox through SMC 0x137.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param pMailval - Required output for the mailbox value.
+ * @param pMailValue - Required output for the mailbox value.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyReadCry2Arm(SceSmSchedRequestId req_id, int mailbox_id, SceUInt32 *pMailval);
+int ksceSblSmSchedProxyReadCry2Arm(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *pMailValue);
 
 /**
  * Uninitializes the scheduler proxy.
@@ -183,35 +252,41 @@ int ksceSblSmSchedProxyUninitialize(void);
  * Waits for a secure-module request to complete through SMC 0x12E.
  *
  * @param req_id - Scheduler request ID.
- * @param result - Required output for the secure-module result and scheduler
- *                 status. The request record is released before this function
- *                 returns.
+ * @param pResult - Required output for the secure-module result and scheduler
+ *                  status. The request record is released before this function
+ *                  returns.
  *
  * @return Secure-monitor result or a negative scheduler/kernel error.
  */
-int ksceSblSmSchedProxyWait(SceSmSchedRequestId req_id, SceSblSmCommPair *result);
+int ksceSblSmSchedProxyWait(SceSmSchedRequestId req_id, SceSblSmCommPair *pResult);
 
 /**
- * Writes an ARM-to-Cry mailbox through SMC 0x135.
+ * Clears bits in an ARM-to-Cry mailbox through SMC 0x135.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param mailval - Value to write.
+ * @param mail_mask - Bits to clear.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyWriteArm2Cry(SceSmSchedRequestId req_id, int mailbox_id, SceUInt32 mailval);
+int ksceSblSmSchedProxyClearArm2Cry(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 mail_mask);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyWriteArm2Cry ksceSblSmSchedProxyClearArm2Cry
 
 /**
- * Writes a Cry-to-ARM mailbox through SMC 0x136.
+ * Clears bits in a Cry-to-ARM mailbox through SMC 0x136.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param mailval - Value to write.
+ * @param mail_mask - Bits to clear.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyWriteCry2Arm(SceSmSchedRequestId req_id, int mailbox_id, SceUInt32 mailval);
+int ksceSblSmSchedProxyClearCry2Arm(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 mail_mask);
+
+/** Previous VitaSDK name retained for backwards compatibility. */
+#define ksceSblSmSchedProxyWriteCry2Arm ksceSblSmSchedProxyClearCry2Arm
 
 /**
  * No-op export on FW 3.60.

@@ -26,13 +26,15 @@ int ksceAppMgrKillProcess(SceUID pid);
  * Attribute bits accepted in ::SceAppMgrLaunchParam::attr.
  *
  * FW 3.60 rejects bits outside 0xF02FF000. Bits 0x00002000 and
- * 0x00008000 are accepted but ignored. Bits 0x00040000 and 0x00080000
- * select Processmgr fields that are not present here; AppMgr supplies or
- * clears those fields according to the launch class. Bit 0x00200000 tells
- * Processmgr to read a nonzero unique-heap size from its 0x40-byte process
- * option. This 0x34-byte structure has no corresponding member, so AppMgr
- * leaves ::SceKernelProcessOpt2::uniqueHeapSize at zero and process creation
- * fails on FW 3.60.
+ * 0x00008000 are accepted but ignored. Bits 0x00040000 and 0x00080000 select
+ * Processmgr fields that are not present here; AppMgr supplies or clears those
+ * fields according to the launch class. Bit 0x00100000 is rejected when
+ * supplied by the caller, although AppMgr may set it in the Processmgr options
+ * it constructs internally. Bit 0x00200000 tells Processmgr to read a nonzero
+ * unique-heap size from its 0x40-byte process option. This 0x34-byte structure
+ * has no corresponding member, so AppMgr leaves
+ * ::SceKernelProcessOpt2::uniqueHeapSize at zero and process creation fails on
+ * FW 3.60.
  *
  * Bit 0x80000000 prevents Processmgr from invoking the process-start callbacks
  * registered through ::ksceKernelSysrootSetProcessHandler and
@@ -44,6 +46,9 @@ typedef enum SceAppMgrLaunchParamAttr {
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_BUDGET_ID                   = 0x00004000, //!< Use ::SceAppMgrLaunchParam::budgetId.
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_PARENT_PROCESS_ID           = 0x00010000, //!< Use AppMgr's parent process ID.
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_PROCESS_EXIT_SPAWN          = 0x00020000, //!< Use the process-replacement mode and exiting-process PID.
+	SCE_APPMGR_LAUNCH_PARAM_ATTR_KLICENSEE                   = 0x00040000, //!< Use the klicensee supplied internally by AppMgr.
+	SCE_APPMGR_LAUNCH_PARAM_ATTR_MAX_FILE_HANDLES            = 0x00080000, //!< Use the file-handle limit supplied internally by AppMgr.
+	SCE_APPMGR_LAUNCH_PARAM_ATTR_UNIQUE_HEAP_SIZE            = 0x00200000, //!< Select an unavailable value; process creation fails on FW 3.60.
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_INIT_PRIORITY               = 0x10000000, //!< Use ::SceAppMgrLaunchParam::initPriority.
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_STACK_SIZE                  = 0x20000000, //!< Use ::SceAppMgrLaunchParam::stackSize.
 	SCE_APPMGR_LAUNCH_PARAM_ATTR_REPORT_LOAD_PROGRESS        = 0x40000000, //!< Report executable-load progress.
@@ -83,10 +88,12 @@ typedef enum SceAppMgrProcessExitSpawnMode {
  * Field use depends on the application class selected by the separate
  * argument block passed to ::ksceAppMgrLaunchAppByPath. Game launches use the
  * CPU affinity mask, initial priority, stack size, budget ID, and process-
- * replacement mode/PID pair. Mini-application launches use only the process-
- * replacement pair. System-application launches use the initial priority,
- * stack size, and replacement mode, but force the exiting-process PID to zero,
- * so they cannot consume a prepared replacement object.
+ * replacement mode/PID pair. For mini-application launches, AppMgr supplies
+ * the other Processmgr values internally and copies only the process-
+ * replacement pair from this structure; \a attr still selects which option
+ * fields Processmgr consumes. System-application launches use the initial
+ * priority, stack size, and replacement mode, but force the exiting-process PID
+ * to zero, so they cannot consume a prepared replacement object.
  * A nonzero CPU affinity mask must use a subset of either bits 0-3 or bits
  * 16-19; the two encodings cannot be combined.
  */
@@ -144,23 +151,17 @@ VITASDK_BUILD_ASSERT_EQ(0x814, SceAppMgrLaunchAppByPathOpt); // size is from FW 
  */
 int ksceAppMgrLaunchAppByPath(const char *path, const char *args, SceSize arg_size, unsigned int type, const SceAppMgrLaunchParam *launchParam, const SceAppMgrLaunchAppByPathOpt *pathMappingOpt);
 
-typedef struct SceAppMgrAcInstResult {
-	char keystone[0x60];
-	char game_title[0x80];
-} SceAppMgrAcInstResult;
-VITASDK_BUILD_ASSERT_EQ(0xE0, SceAppMgrAcInstResult); // size is from FW 3.60
-
 typedef struct SceAppMgrDrmOpt {
-	uint32_t size;
-	char addcont_id[20];
-	char mount_point[16];
+	SceSize size; //!< Must be the size of this structure.
+	char addcontId[20]; //!< NUL-terminated additional-content ID of at most 16 characters.
+	char mountPoint[16]; //!< `addcont0:` or `addcont1:`.
 } SceAppMgrDrmOpt;
 VITASDK_BUILD_ASSERT_EQ(0x28, SceAppMgrDrmOpt); // size is from FW 3.60
 
 typedef enum SceAppMgrCloudDataMcIdLocation {
-	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_AUTO     = 0,
-	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_EXTERNAL = 1,
-	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_INTERNAL = 2
+	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_AUTO     = 0, //!< External when NVS type 5 bit 0 is set, otherwise internal.
+	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_EXTERNAL = 1, //!< `sdstor0:xmc-lp-act-mediaid`.
+	SCE_APPMGR_CLOUD_DATA_MC_ID_LOCATION_INTERNAL = 2  //!< `tm0:/clouddata/mcid.dat`.
 } SceAppMgrCloudDataMcIdLocation;
 
 typedef enum SceAppMgrDebugSetting {
@@ -174,32 +175,49 @@ typedef enum SceAppMgrDebugSetting {
 /**
  * @param[in] titleId A pointer to an exact 9-character title ID: four
  *                    uppercase letters followed by five decimal digits.
- *                    Still declared as ::SceTitleId * for backwards
- *                    compatibility.
  * @param[in] addcontId A pointer to an exact 16-character uppercase
  *                      alphanumeric additional-content ID.
  * @param[out] outputData The 0xE0-byte result.
  */
-int ksceAppMgrAcInstGetAcdirParam(SceTitleId *titleId, const char *addcontId, SceAppMgrAcInstResult *outputData);
-int ksceAppMgrAppDataMount(int mountId, char *mountPoint);
+int ksceAppMgrAcInstGetAcdirParam(const char *titleId, const char *addcontId, SceAppMgrAcInstResult *outputData);
 
 /**
- * @param[in] titleId A NUL-terminated identifier whose required syntax
- *                    depends on \a mountId. Still declared as ::SceTitleId *
- *                    for backwards compatibility.
+ * Mount application data for the calling process.
+ *
+ * FW 3.60 accepts mount IDs 100, 101, 102, 103, 105, 108, 109, 111, and 112.
+ *
+ * @param[in] mountId Application-data mount ID.
+ * @param[out] mountPoint Buffer that receives a 16-byte randomized mount point.
+ *
+ * @return 0 on success, or a negative error code.
  */
-int ksceAppMgrAppDataMountById(int mountId, SceTitleId *titleId, char *mountPoint);
+int ksceAppMgrAppDataMount(int mountId, char mountPoint[16]);
+
+/**
+ * FW 3.60 accepts mount IDs 104, 106, 107, and 110.
+ *
+ * @param[in] titleId A NUL-terminated identifier whose required syntax
+ *                    depends on \a mountId.
+ * @param[out] mountPoint Buffer that receives a 16-byte randomized mount point.
+ */
+int ksceAppMgrAppDataMountById(int mountId, const char *titleId, char mountPoint[16]);
 
 /**
  * @param[in] processId Value of type ::ScePID; 0 selects the current process.
+ *
+ * @return 0 while the process is in a content-install period, or a negative
+ *         error code otherwise.
  */
-int ksceAppMgrCheckContentInstallPeriod(int processId);
+int ksceAppMgrCheckContentInstallPeriod(ScePID processId);
 
 /**
- * @param[in] path A pointer to a NUL-terminated ux0 path. Still declared as
- *                 int * for backwards compatibility.
+ * @param[in] path A NUL-terminated `ux0:` directory path shorter than 0x124
+ *                 bytes.
+ *
+ * @return 0 when the path is a mounted PFS directory, or a negative error
+ *         code.
  */
-int ksceAppMgrCheckPfsMounted(int *path);
+int ksceAppMgrCheckPfsMounted(const char *path);
 
 /**
  * @param[in] location One of ::SceAppMgrCloudDataMcIdLocation.
@@ -207,41 +225,48 @@ int ksceAppMgrCheckPfsMounted(int *path);
 int ksceAppMgrCloudDataClearMcId(int location);
 
 /**
- * @param[in] titleId A title ID containing at most 31 safe path characters.
- *                    Still declared as ::SceTitleId * for backwards
- *                    compatibility.
+ * @param[in] titleId A NUL-terminated identifier containing at most 31
+ *                    letters, decimal digits, hyphens, or underscores.
+ * @param[out] mountPoint Buffer that receives a 16-byte randomized mount point.
  */
-int ksceAppMgrCloudDataDstCreateMount(SceTitleId *titleId, char *mountPoint);
+int ksceAppMgrCloudDataDstCreateMount(const char *titleId, char mountPoint[16]);
 
 /**
  * @param[in] mode Value 1 selects grw0 save data; values 2 and 3 select the
  *                 per-user ux0 save-data location.
  * @param[in] titleId A pointer to an exact 9-character title ID: four
  *                    uppercase letters followed by five decimal digits.
- *                    Still declared as ::SceTitleId * for backwards
- *                    compatibility.
+ * @param[out] mountPoint Buffer that receives a 16-byte randomized mount point.
  */
-int ksceAppMgrCloudDataSrcMount(int mode, SceTitleId *titleId, char *mountPoint);
+int ksceAppMgrCloudDataSrcMount(int mode, const char *titleId, char mountPoint[16]);
 
 /**
  * @param[in] setting One of ::SceAppMgrDebugSetting.
  */
 int ksceAppMgrDebugSettingNotifyUpdate(int setting);
-int ksceAppMgrDrmOpen(SceAppMgrDrmOpt *drmOpt);
+int ksceAppMgrDrmOpen(const SceAppMgrDrmOpt *drmOpt);
 
 /**
  * @param[in] path Save-data path.
- * @param[out] mountPoint A 16-byte mount-point output buffer. Still declared
- *                        as const char * for backwards compatibility.
+ * @param[out] mountPoint A 16-byte mount-point output buffer.
  */
-int ksceAppMgrFakeSaveDataCreateMount(const char *path, const char *mountPoint);
-int ksceAppMgrGameDataMount(const char *app_path, const char *patch_path, const char *rif_path, char *mount_point);
+int ksceAppMgrFakeSaveDataCreateMount(const char *path, char mountPoint[16]);
+int ksceAppMgrGameDataMount(const char *appPath, const char *patchPath, const char *rifPath, char mountPoint[16]);
+
+/**
+ * Check whether an exclusive process is running.
+ *
+ * @param[in] titleId Optional exact nine-character title ID; NULL accepts any
+ *                    qualifying exclusive process.
+ *
+ * @return 1 when found, 0 when not found, or a negative error code.
+ */
 int ksceAppMgrIsExclusiveProcessRunning(const char *titleId);
-int ksceAppMgrMmsMount(int mountId, char *mountPoint);
-int ksceAppMgrPhotoMount(sceAppMgrPhotoMountParam *opt);
-int ksceAppMgrTrophyMount(int mountId, SceUID pid, char *mountPoint);
-int ksceAppMgrUmount(const char *mount_point);
-int ksceAppMgrWorkDirMount(int mountId, char *mountPoint);
+int ksceAppMgrMmsMount(int mountId, char mountPoint[16]);
+int ksceAppMgrPhotoMount(const SceAppMgrPhotoMountParam *param);
+int ksceAppMgrTrophyMount(int mountId, ScePID processId, char mountPoint[16]);
+int ksceAppMgrUmount(const char *mountPoint);
+int ksceAppMgrWorkDirMount(int mountId, char mountPoint[16]);
 
 #ifdef __cplusplus
 }

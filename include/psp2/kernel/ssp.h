@@ -12,7 +12,12 @@
 extern "C" {
 #endif
 
-/** Raises the stack-protector failure trap and does not return. */
+/**
+ * Raises breakpoint 0x81 and does not return.
+ *
+ * This is the ::SceLibSsp alias of ::__stack_chk_fail; both exports resolve
+ * to the same FW 3.60 entry point.
+ */
 __attribute__((__noreturn__))
 void sceLibSspStackChkFail(void);
 

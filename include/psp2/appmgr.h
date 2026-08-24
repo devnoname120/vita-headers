@@ -22,6 +22,7 @@ typedef enum SceAppMgrErrorCode {
 	SCE_APPMGR_ERROR_BUSY               = 0x80802000, //!< Busy
 	SCE_APPMGR_ERROR_INTERNAL           = 0x80802001, //!< Internal error
 	SCE_APPMGR_ERROR_PARAM              = 0x80802002, //!< Invalid parameter
+	SCE_APPMGR_ERROR_NOT_FOUND          = 0x80802012, //!< Application or process not found
 	SCE_APPMGR_ERROR_STATE              = 0x80802013, //!< Invalid state
 	SCE_APPMGR_ERROR_NULL_POINTER       = 0x80802016, //!< NULL pointer
 	SCE_APPMGR_ERROR_INVALID            = 0x8080201A, //!< Invalid param
@@ -32,16 +33,24 @@ typedef enum SceAppMgrErrorCode {
 } SceAppMgrErrorCode;
 
 typedef enum SceAppMgrSystemEventType {
+	SCE_APPMGR_SYSTEMEVENT_ON_ACTIVATE           = 0x10000001,
+	SCE_APPMGR_SYSTEMEVENT_ON_DEACTIVATE         = 0x10000002,
 	SCE_APPMGR_SYSTEMEVENT_ON_RESUME             = 0x10000003,
 	SCE_APPMGR_SYSTEMEVENT_ON_STORE_PURCHASE     = 0x10000004,
 	SCE_APPMGR_SYSTEMEVENT_ON_NP_MESSAGE_ARRIVED = 0x10000005,
-	SCE_APPMGR_SYSTEMEVENT_ON_STORE_REDEMPTION   = 0x10000006
+	SCE_APPMGR_SYSTEMEVENT_ON_STORE_REDEMPTION   = 0x10000006,
+	SCE_APPMGR_SYSTEMEVENT_REQUEST_QUIT          = 0x20000001
 } SceAppMgrSystemEventType;
 
 typedef enum SceAppMgrEventType {
-	SCE_APP_EVENT_ON_ACTIVATE   = 0x10000001,
-	SCE_APP_EVENT_ON_DEACTIVATE = 0x10000002,
-	SCE_APP_EVENT_REQUEST_QUIT  = 0x20000001
+	SCE_APP_EVENT_ON_ACTIVATE                    = 0x10000001,
+	SCE_APP_EVENT_ON_DEACTIVATE                  = 0x10000002,
+	SCE_APP_EVENT_ON_RESUME                      = 0x10000003,
+	SCE_APP_EVENT_LIVEBOARD_MODE_0               = 0x10000101, //!< Queued by `sceAppMgrSendLiveBoardMode` with mode 0.
+	SCE_APP_EVENT_LIVEBOARD_MODE_1               = 0x10000102, //!< Queued by `sceAppMgrSendLiveBoardMode` with mode 1.
+	SCE_APP_EVENT_REQUEST_QUIT                   = 0x20000001,
+	SCE_APP_EVENT_PARAM_NOTIFY                   = 0x20000004,
+	SCE_APP_EVENT_RECOMMENDED_ORIENTATION_CHANGED = 0x20000010
 } SceAppMgrEventType;
 
 typedef enum SceAppMgrInfoBarVisibility {
@@ -587,15 +596,19 @@ VITASDK_BUILD_ASSERT_EQ(0x80, SceAppMgrAppInfo); // size is from FW 3.60
 SceInt32 sceAppMgrDrmOpen(const SceAppMgrDrmOpenParam *param);
 
 /**
- * Get AppInfo via syscall directly
+ * Get the started lifecycle state of an application.
  *
- * @param[in]  appName - Application name of at most 31 characters; NULL
- *                       selects the calling process.
- * @param[out] appInfo - A buffer whose FW 3.60 layout is ::SceAppMgrAppInfo.
- *                       Still declared as ::SceAppMgrAppState * for backwards
- *                       compatibility.
+ * The calling process must be a non-game program. FW 3.60 clears the complete
+ * 0x80-byte output and writes only ::SceAppMgrAppInfo::isRunning.
  *
- * @return 0 on success, < 0 on error.
+ * @param[in] appName Application name of at most 31 characters; NULL selects
+ *                    the calling process.
+ * @param[out] appInfo Output buffer whose FW 3.60 layout is
+ *                     ::SceAppMgrAppInfo. Still declared as
+ *                     ::SceAppMgrAppState * for backwards compatibility.
+ *
+ * @return 0 on success, ::SCE_APPMGR_ERROR_NOT_FOUND when no matching process
+ *         context exists, or another negative error code.
  */
 SceInt32 sceAppMgrGetAppInfo(const char *appName, SceAppMgrAppState *appInfo);
 
@@ -621,6 +634,19 @@ typedef enum SceAppMgrApplicationType {
 	SCE_APPMGR_APPLICATION_TYPE_SYSTEM_APPLICATION = 2
 } SceAppMgrApplicationType;
 
+/** String fields accepted by ::_sceAppMgrAppParamGetString. */
+typedef enum SceAppMgrAppParamId {
+	SCE_APPMGR_APP_PARAM_CONTENT_ID               = 6,   //!< Content ID; requires at least 0x30 output bytes.
+	SCE_APPMGR_APP_PARAM_NP_COMMUNICATION_ID      = 7,   //!< NP communication ID; requires at least 0xD output bytes.
+	SCE_APPMGR_APP_PARAM_CATEGORY                 = 8,   //!< Application category; requires at least 4 output bytes.
+	SCE_APPMGR_APP_PARAM_TITLE                    = 9,   //!< Localized title; requires at least 0x80 output bytes.
+	SCE_APPMGR_APP_PARAM_SHORT_TITLE              = 10,  //!< Localized short title; requires at least 0x34 output bytes.
+	SCE_APPMGR_APP_PARAM_TITLE_ID                 = 12,  //!< Title ID; requires at least 10 output bytes.
+	SCE_APPMGR_APP_PARAM_APP_PATH                 = 14,  //!< Executable path; requires system permission and at least 0x124 output bytes.
+	SCE_APPMGR_APP_PARAM_CONTENT_ID_OVERRIDE      = 100, //!< Process-local override, falling back to ::SCE_APPMGR_APP_PARAM_CONTENT_ID.
+	SCE_APPMGR_APP_PARAM_TITLE_OVERRIDE           = 101  //!< Process-local override, falling back to ::SCE_APPMGR_APP_PARAM_TITLE.
+} SceAppMgrAppParamId;
+
 /**
  * Launch-request flags observed on FW 3.60.
  */
@@ -631,6 +657,13 @@ typedef enum SceAppMgrLaunchFlag {
 	SCE_APPMGR_LAUNCH_FLAG_ALLOW_EMPTY_TARGET = 0x00100000  //!< Permit an empty launch target.
 } SceAppMgrLaunchFlag;
 
+/** Values written to ::SceAppMgrAppStatus::processLaunchType on FW 3.60. */
+typedef enum SceAppMgrProcessLaunchType {
+	SCE_APPMGR_PROCESS_LAUNCH_TYPE_NORMAL      = 0, //!< Normal title or URI launch.
+	SCE_APPMGR_PROCESS_LAUNCH_TYPE_PATH4       = 1, //!< Launch through `sceAppMgrLaunchAppByPath4`; represented as `NPXS10998` by SceShell.
+	SCE_APPMGR_PROCESS_LAUNCH_TYPE_KERNEL_PATH = 2  //!< Launch through ::ksceAppMgrLaunchAppByPath; represented as `NPXS10999` by SceShell.
+} SceAppMgrProcessLaunchType;
+
 /**
  * Application status returned by the raw status exports.
  *
@@ -638,28 +671,27 @@ typedef enum SceAppMgrLaunchFlag {
  * size-prefixed.
  */
 typedef struct SceAppMgrAppStatus {
-	SceUInt32 parentProcessId; //!< Value of type ::ScePID.
+	ScePID parentProcessId; //!< Process that submitted the launch request, or -1.
 	SceUInt32 launchFlags; //!< Bitwise OR of ::SceAppMgrLaunchFlag values.
 	SceUInt32 appProtectionModeOnMemoryShortage;
 	char appName[32];
 	SceUInt32 hasLaunchParam; //!< Non-zero when launch parameters are available.
 	SceUID appId;
-	SceUID processId;
-	SceUInt32 isActive; //!< Non-zero when the process-context state has low nibble 2.
-	SceUInt32 isRunning; //!< Non-zero after AppMgr starts the process and before it enters shutdown.
+	ScePID processId;
+	SceBool isActive; //!< Non-zero while AppMgr considers the application activated.
+	SceBool isRunning; //!< Non-zero after AppMgr starts the process and before it enters shutdown.
 	SceBool networkDisconnectionWarningDialogEnabled;
 	SceUID parentAppId;
 	SceUInt8 infoBarVisibility; //!< One of ::SceAppMgrInfoBarVisibility.
 	SceUInt8 infoBarColor; //!< One of ::SceAppMgrInfoBarColor.
 	SceUInt8 infoBarTransparency; //!< One of ::SceAppMgrInfoBarTransparency.
 	SceUInt8 reserved4B; //!< High byte of the packed info-bar state.
-	SceUInt32 reserved4C; //!< Copied from the process context; its purpose is unknown.
+	SceUInt32 reserved4C; //!< Internal launch-request value; its purpose is unknown.
 	char bgmProxyAppName[32];
-	SceUInt8 processLaunchType; //!< FW 3.60 writes 0, 1, or 2; value 2 identifies a direct path launch.
-	                            //!< The purposes of 0 and 1 are unknown.
+	SceUInt8 processLaunchType; //!< One of ::SceAppMgrProcessLaunchType.
 	SceUInt8 applicationType; //!< One of ::SceAppMgrApplicationType.
 	SceUInt8 reserved72[2]; //!< Set to 0 on FW 3.60.
-	SceUInt32 appFlags;
+	SceUInt32 appFlags; //!< Internal process flags copied from AppMgr's process context.
 	SceUInt32 recommendedScreenOrientation; //!< A value from 1 through 4.
 	SceBool recommendedScreenOrientationActivated;
 } SceAppMgrAppStatus;
@@ -672,7 +704,7 @@ VITASDK_BUILD_ASSERT_EQ(0x80, SceAppMgrAppStatus); // size is from FW 3.60
  * 0xC-byte layout therefore remains supported when \c size is 0xC.
  */
 typedef struct SceAppMgrBootParam {
-	SceUInt size; //!< Number of bytes requested from the raw export; maximum value is 0x2C.
+	SceSize size; //!< Number of bytes requested from the public wrapper; maximum value is 0x2C.
 	SceUInt reserved04[2]; //!< Set to 0 on FW 3.60.
 	SceUInt reserved0C[8]; //!< Preserved from the caller on FW 3.60.
 } SceAppMgrBootParam;
@@ -681,74 +713,89 @@ VITASDK_BUILD_ASSERT_EQ(0x2C, SceAppMgrBootParam); // size is from FW 3.60
 #define SCE_APP_MGR_MAX_EVENT_PARM_LENGTH (56)
 
 typedef struct SceAppMgrEvent {
-	int event; //!< One of ::SceAppMgrEventType.
-	SceUID appId; //!< Application ID. Added when required by the event
-	char param[SCE_APP_MGR_MAX_EVENT_PARM_LENGTH]; //!< Parameters to pass with the event
+	int event; //!< One of ::SceAppMgrEventType or ::SceAppMgrSystemEventType.
+	SceUID appId; //!< Application ID; FW 3.60 writes -1 for received events.
+	char param[SCE_APP_MGR_MAX_EVENT_PARM_LENGTH]; //!< Event parameters; set to 0 on FW 3.60.
 } SceAppMgrEvent;
-VITASDK_BUILD_ASSERT_EQ(0x40, SceAppMgrEvent);
+VITASDK_BUILD_ASSERT_EQ(0x40, SceAppMgrEvent); // size is from FW 3.60
 
 typedef struct SceAppMgrLaunchAppByUri2Param {
 	SceSize size; //!< Ignored on FW 3.60.
 	SceUInt32 flags; //!< Bitwise OR of ::SceAppMgrLaunchFlag values; FW 3.60 forces
 	                 //!< ::SCE_APPMGR_LAUNCH_FLAG_ALLOW_EMPTY_TARGET.
 	SceUInt32 reserved08; //!< Ignored on FW 3.60.
-	SceUInt32 appLaunchCallbackId; //!< Value of type ::SceUID for the application-launch callback, or -1.
-	SceUInt32 getParamCallbackId; //!< Value of type ::SceUID for the get-parameter callback, or -1.
-	SceUInt32 parentAppId; //!< Value of type ::SceInt32 containing the parent application ID, or -1;
+	SceUID appLaunchCallbackId; //!< Callback notified with the launched process ID, or -1.
+	SceUID getParamCallbackId; //!< Callback notified when the target consumes its launch parameters, or -1.
+	SceInt32 parentAppId; //!< Parent application ID, or -1;
 	                       //!< used when \a flags includes ::SCE_APPMGR_LAUNCH_FLAG_EXIT_TO.
 	SceUInt32 launchMode; //!< Application mode from 0 through 4; values 2 through 4 are ::SceAppMgrApplicationMode values.
-	SceUInt32 reserved1C; //!< Stored in the target process context on FW 3.60.
+	SceUInt32 reserved1C; //!< Stored in the target process context on FW 3.60; its purpose is unknown.
 	SceUInt8 reserved[0x20]; //!< Must be zero on FW 3.60.
 } SceAppMgrLaunchAppByUri2Param;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceAppMgrLaunchAppByUri2Param); // size is from FW 3.60
 
 typedef struct SceAppMgrNetworkDisconnectionWarningDialogStateOptParam {
-	SceUInt8 reserved[0x80]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt8 reserved[0x80]; //!< Not accepted by the FW 3.60 provider; pass NULL.
 } SceAppMgrNetworkDisconnectionWarningDialogStateOptParam;
 VITASDK_BUILD_ASSERT_EQ(0x80, SceAppMgrNetworkDisconnectionWarningDialogStateOptParam); // size is from FW 3.60
 
 typedef struct SceAppMgrCheckRifGDOpt {
-	uint32_t reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrCheckRifGDOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrCheckRifGDOpt); // size is from FW 3.60
 
+/** Game-data RIF information returned by ::_sceAppMgrCheckRifGD. */
+typedef struct SceAppMgrCheckRifGDResult {
+	char contentId[0x30]; //!< RIF content ID.
+	SceUInt32 licenseVersion; //!< RIF license version.
+	SceUInt32 drmType; //!< RIF DRM type.
+	SceUInt32 flags; //!< Derived license flags returned by ::ksceNpDrmGetRifInfo.
+	SceUInt32 skuFlags; //!< RIF SKU flags.
+	SceUInt64 accountId; //!< License account ID.
+	SceUInt64 rifData98; //!< Raw 8-byte RIF field.
+	SceInt64 licenseStartTime; //!< Effective license start time.
+	SceInt64 licenseExpirationTime; //!< Effective license expiration time.
+	SceUInt8 key[0x10]; //!< Decrypted Vita license key.
+} SceAppMgrCheckRifGDResult;
+VITASDK_BUILD_ASSERT_EQ(0x70, SceAppMgrCheckRifGDResult); // size is from FW 3.60
+
 typedef struct SceAppMgrGameDataMountOpt {
-	char *mount_point; //!< Receives a 16-byte mount point of the form "gpXXXXXXXXXXXd:".
-	uint32_t reserved[5]; //!< Copied from user memory but actually unused on FW 3.60.
+	char *mountPoint; //!< Receives a 16-byte mount point of the form "gpXXXXXXXXXXXd:".
+	SceUInt32 reserved[5]; //!< Ignored on FW 3.60.
 } SceAppMgrGameDataMountOpt;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceAppMgrGameDataMountOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrGetAppInfoOpt {
-	SceUInt32 reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrGetAppInfoOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetAppInfoOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrGetAppParamOpt {
-	SceSize appParamSize; //!< Copied from user memory but actually unused on FW 3.60.
-	SceUInt32 reserved0; //!< Copied from user memory but actually unused on FW 3.60.
+	SceSize appParamSize; //!< FW 0.990 application-parameter size; ignored on FW 3.60.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceAppMgrGetAppParamOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetAppParamOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGetBootParamOpt {
-	SceSize bootParamSize;
-	SceUInt reserved; //!< Copied from user memory but actually unused on FW 3.60.
+	SceSize bootParamSize; //!< Number of leading bytes to copy to and from the boot-parameter buffer.
+	SceUInt reserved; //!< Ignored on FW 3.60.
 } SceAppMgrGetBootParamOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetBootParamOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGetIdByNameOpt {
-	SceSize appNameSize; //!< Copied from user memory but actually unused on FW 3.60.
-	SceUInt32 reserved0; //!< Copied from user memory but actually unused on FW 3.60.
+	SceSize appNameSize; //!< FW 0.990 application-name size; ignored on FW 3.60.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceAppMgrGetIdByNameOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetIdByNameOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGetNameByIdOpt {
-	SceSize appNameSize; //!< Copied from user memory but actually unused on FW 3.60.
-	SceUInt32 reserved0; //!< Copied from user memory but actually unused on FW 3.60.
+	SceSize appNameSize; //!< FW 0.990 application-name size; ignored on FW 3.60.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceAppMgrGetNameByIdOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetNameByIdOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGetSaveDataInfoForSpecialExportOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrGetSaveDataInfoForSpecialExportOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetSaveDataInfoForSpecialExportOpt); // size is from FW 3.60
 
@@ -759,19 +806,24 @@ typedef enum SceAppMgrSaveDataStorageType {
 	SCE_APPMGR_SAVE_DATA_STORAGE_USER        = 4
 } SceAppMgrSaveDataStorageType;
 
+typedef enum SceAppMgrUserDirPartition {
+	SCE_APPMGR_USER_DIR_PARTITION_UR0 = 1,
+	SCE_APPMGR_USER_DIR_PARTITION_UX0 = 2
+} SceAppMgrUserDirPartition;
+
 typedef struct SceAppMgrGetSaveDataInfoResult {
-	int storageType; //!< One of ::SceAppMgrSaveDataStorageType.
-	int isMounted; //!< Non-zero when the save data is mounted.
-	int hasBrokenData; //!< Set for specific PFS validation failures or when sdslot.dat is absent.
-	int accountId[2]; //!< Low and high words of the param.sfo ACCOUNT_ID value.
-	int saveDataParam44; //!< Value at offset 0x44 of the param.sfo PARAMS entry.
-	int allocatedSizeKB;
+	SceUInt32 storageType; //!< One of ::SceAppMgrSaveDataStorageType.
+	SceBool isMounted; //!< Non-zero when the save data is mounted.
+	SceBool hasBrokenData; //!< Set for specific PFS validation failures or when sdslot.dat is absent.
+	SceUInt32 accountId[2]; //!< Low and high words of the param.sfo ACCOUNT_ID value.
+	SceUInt32 saveDataParam44; //!< Value copied from the `param.sfo` `PARAMS` entry.
+	SceUInt32 allocatedSizeKB;
 } SceAppMgrGetSaveDataInfoResult;
 VITASDK_BUILD_ASSERT_EQ(0x1C, SceAppMgrGetSaveDataInfoResult); // size is from FW 3.60
 
 typedef struct SceAppMgrGetSaveDataInfoOpt {
-	SceAppMgrGetSaveDataInfoResult *res; //!< Receives a 0x1C-byte result.
-	int reserved[3]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceAppMgrGetSaveDataInfoResult *result; //!< Receives a 0x1C-byte result.
+	SceUInt32 reserved[3]; //!< Ignored on FW 3.60.
 } SceAppMgrGetSaveDataInfoOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceAppMgrGetSaveDataInfoOpt); // size is from FW 3.60
 
@@ -783,90 +835,90 @@ typedef struct SceAppMgrGetStatusByIdOpt {
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetStatusByIdOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGetUserDirPathOpt {
-	SceSize path_maxlen; //!< FW 0.990: must be <= 1024. Ignored on FW 3.60.
-	SceUInt32 reserved1; //!< Ignored on FW 3.60.
+	SceSize pathMaxLength; //!< FW 0.990: must be at most 1024. Ignored on FW 3.60.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceAppMgrGetUserDirPathOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrGetUserDirPathOpt); // size is from FW 0.990
 
 typedef struct SceAppMgrGenericMountContext {
-	SceTitleId titleId;
-	char passCode[32];
-	char mountDrive[16];
+	SceTitleId titleId; //!< Title or additional-content identifier used to construct the source path.
+	char passCode[32]; //!< Passcode used to verify the mounted PFS keystone.
+	char mountDrive[16]; //!< Optional explicit source drive or randomized mount-drive identifier.
 } SceAppMgrGenericMountContext;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceAppMgrGenericMountContext); // size is from FW 3.60
 
-typedef struct sceAppMgrAppDataMountByIdOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrAppDataMountByIdOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrAppDataMountByIdOpt); // size is from FW 3.60
+typedef struct SceAppMgrAppDataMountByIdOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrAppDataMountByIdOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrAppDataMountByIdOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrAppParamGetString_opt {
-	SceSize size; //!< Copied from user memory but actually unused on FW 3.60.
-	int32_t reserved[3]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrAppParamGetString_opt;
-VITASDK_BUILD_ASSERT_EQ(0x10, sceAppMgrAppParamGetString_opt); // size is from FW 3.60
+typedef struct SceAppMgrAppParamGetStringOpt {
+	SceSize stringSize; //!< Output-buffer capacity; the maximum value is 0x400.
+	SceUInt32 reserved[3]; //!< Ignored on FW 3.60.
+} SceAppMgrAppParamGetStringOpt;
+VITASDK_BUILD_ASSERT_EQ(0x10, SceAppMgrAppParamGetStringOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrGetStatusByNameOpt {
-	SceSize appNameSize; //!< FW 0.990 application-name size; copied but ignored on FW 3.60.
-	SceSize appStatusSize; //!< FW 0.990 application-status size; copied but ignored on FW 3.60.
-	SceUInt32 reserved[2]; //!< FW 0.990 reserved words; not copied on FW 3.60.
+	SceSize appNameSize; //!< FW 0.990 application-name size; ignored on FW 3.60.
+	SceSize appStatusSize; //!< FW 0.990 application-status size; ignored on FW 3.60.
+	SceUInt32 reserved[2]; //!< FW 0.990 reserved words; not read on FW 3.60.
 } SceAppMgrGetStatusByNameOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceAppMgrGetStatusByNameOpt); // size is from FW 0.990
 
-typedef struct sceAppMgrLoadSaveDataSystemFileOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrLoadSaveDataSystemFileOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrLoadSaveDataSystemFileOpt); // size is from FW 3.60
+typedef struct SceAppMgrLoadSaveDataSystemFileOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrLoadSaveDataSystemFileOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrLoadSaveDataSystemFileOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrLoopBackMountOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrLoopBackMountOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrLoopBackMountOpt); // size is from FW 3.60
+typedef struct SceAppMgrLoopBackMountOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrLoopBackMountOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrLoopBackMountOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrPhotoMountOpt {
-	int size; //!< Number of bytes to copy from ::sceAppMgrPhotoMountParam; maximum value is 0x84.
-	int reserved0; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrPhotoMountOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrPhotoMountOpt); // size is from FW 3.60
+typedef struct SceAppMgrPhotoMountOpt {
+	SceSize paramSize; //!< Number of bytes to copy from ::SceAppMgrPhotoMountParam; maximum value is 0x84.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
+} SceAppMgrPhotoMountOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrPhotoMountOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrThemeDataMountOpt {
-	char *mount_point; //!< Receives a 16-byte mount point of the form "tmXXXXXXXXXXXX:".
-	int reserved[5]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrThemeDataMountOpt;
-VITASDK_BUILD_ASSERT_EQ(0x18, sceAppMgrThemeDataMountOpt); // size is from FW 3.60
+typedef struct SceAppMgrThemeDataMountOpt {
+	char *mountPoint; //!< Receives a 16-byte mount point of the form "tmXXXXXXXXXXXX:".
+	SceUInt32 reserved[5]; //!< Ignored on FW 3.60.
+} SceAppMgrThemeDataMountOpt;
+VITASDK_BUILD_ASSERT_EQ(0x18, SceAppMgrThemeDataMountOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrTrophyMountByIdOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrTrophyMountByIdOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrTrophyMountByIdOpt); // size is from FW 3.60
+typedef struct SceAppMgrTrophyMountByIdOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrTrophyMountByIdOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrTrophyMountByIdOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrUpdateSaveDataParamOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrUpdateSaveDataParamOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrUpdateSaveDataParamOpt); // size is from FW 3.60
+typedef struct SceAppMgrUpdateSaveDataParamOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrUpdateSaveDataParamOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrUpdateSaveDataParamOpt); // size is from FW 3.60
 
-typedef struct sceAppMgrWorkDirMountByIdOpt {
-	int reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrWorkDirMountByIdOpt;
-VITASDK_BUILD_ASSERT_EQ(0x8, sceAppMgrWorkDirMountByIdOpt); // size is from FW 3.60
+typedef struct SceAppMgrWorkDirMountByIdOpt {
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+} SceAppMgrWorkDirMountByIdOpt;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrWorkDirMountByIdOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrConvertVs0UserDrivePathOpt {
-	SceUInt32 reserved[4]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[4]; //!< Ignored on FW 3.60.
 } SceAppMgrConvertVs0UserDrivePathOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceAppMgrConvertVs0UserDrivePathOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrDeclareShellProcess2Opt {
-	SceUInt32 reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrDeclareShellProcess2Opt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrDeclareShellProcess2Opt); // size is from FW 3.60
 
 typedef struct SceAppMgrGetRawPathOpt {
-	SceUInt32 reserved[4]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[4]; //!< Ignored on FW 3.60.
 } SceAppMgrGetRawPathOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceAppMgrGetRawPathOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrLaunchAppByUri2Opt {
-	SceUInt32 reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrLaunchAppByUri2Opt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrLaunchAppByUri2Opt); // size is from FW 3.60
 
@@ -874,145 +926,294 @@ typedef SceAppMgrLaunchAppByUri2Param SceAppMgrLaunchVideoStreamingAppOpt;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceAppMgrLaunchVideoStreamingAppOpt); // size is from FW 3.60
 
 typedef struct SceAppMgrLoadExecOpt {
-	SceUInt32 reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceAppMgrLoadExecOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceAppMgrLoadExecOpt); // size is from FW 3.60
 
+/**
+ * Get the calling application's pending-event and overlay state.
+ *
+ * @param[out] appState Receives the 0x80-byte application state.
+ * @param[in] sizeofSceAppMgrAppState Must be the size of ::SceAppMgrAppState.
+ * @param[in] buildVersion Maximum supported build version; FW 3.60 accepts
+ *                         values through 0x03600011.
+ *
+ * @return 0 on success, or a negative error code.
+ */
 int __sceAppMgrGetAppState(SceAppMgrAppState *appState, SceUInt32 sizeofSceAppMgrAppState, SceUInt32 buildVersion);
-int _sceAppMgrAddContAddMount(SceAppMgrGenericMountContext *data, int force_mount_ux);
-int _sceAppMgrAddContMount(SceUID pid, SceAppMgrGenericMountContext *mctx);
-int _sceAppMgrAppDataMount(int mountId, char *mountPoint);
+
+/** Mount additional content after validating its PFS keystone and passcode. */
+int _sceAppMgrAddContAddMount(const SceAppMgrGenericMountContext *mountContext, int forceMountUx);
+
+/** Mount additional content for \a processId. */
+int _sceAppMgrAddContMount(ScePID processId, const SceAppMgrGenericMountContext *mountContext);
 
 /**
- * @param[in] titleId A NUL-terminated identifier of at most 63 characters;
- *                    its required syntax depends on \a mountId.
+ * Mount application data and return a randomized mount point.
+ *
+ * FW 3.60 accepts mount IDs 100, 101, 102, 103, 105, 108, 109, 111, and 112.
  */
-int _sceAppMgrAppDataMountById(int mountId, const char *titleId, char *mountPoint, sceAppMgrAppDataMountByIdOpt *opt);
-int _sceAppMgrAppParamGetString(int pid, int param, char *string, sceAppMgrAppParamGetString_opt *opt);
-int _sceAppMgrCheckRifGD(const char *path, void *dest, SceAppMgrCheckRifGDOpt *opt);
+int _sceAppMgrAppDataMount(int mountId, char mountPoint[16]);
+
+/**
+ * Mount application data identified by a title or content ID.
+ *
+ * FW 3.60 accepts mount IDs 104, 106, 107, and 110. Mount ID 104 requires an
+ * identifier with the exact form `ABCD12345_67`; IDs 106 and 107 select the
+ * `RO` and `RW` directories below `ux0:psm/<titleId>`.
+ */
+int _sceAppMgrAppDataMountById(int mountId, const char *titleId, char mountPoint[16], const SceAppMgrAppDataMountByIdOpt *opt);
+
+/**
+ * Read a string parameter from a process's `param.sfo` metadata.
+ *
+ * The public wrapper stores its output-buffer length in \a opt. FW 3.60 caps
+ * that length at 0x400 and validates the minimum required by \a paramId.
+ * A zero \a processId selects the calling process. Game and non-game callers
+ * cannot use a nonzero ID to inspect another process. Reading
+ * ::SCE_APPMGR_APP_PARAM_APP_PATH additionally requires system permission.
+ */
+int _sceAppMgrAppParamGetString(ScePID processId, SceAppMgrAppParamId paramId, char *string, const SceAppMgrAppParamGetStringOpt *opt);
+
+/** Validate a game-data RIF and return its parsed license information. */
+int _sceAppMgrCheckRifGD(const char *path, SceAppMgrCheckRifGDResult *result, const SceAppMgrCheckRifGDOpt *opt);
+
+/** Unmount the calling process's content mounts for an installation period. */
 int _sceAppMgrContentInstallPeriodStart(void);
+
+/** End an installation period and remount the calling process's content. */
 int _sceAppMgrContentInstallPeriodStop(void);
 
 /**
- * @param[out] converted_path Output buffer for a path of at most 0x124 bytes,
- *                            including the terminating NUL.
- * @param[in] converted_path_size Output-buffer capacity. FW 3.60 requires a
- *                                value greater than 0x3F and caps it at 0x124.
+ * @param[out] convertedPath Output buffer for a path of at most 0x124 bytes,
+ *                           including the terminating NUL.
+ * @param[in] convertedPathSize Output-buffer capacity. FW 3.60 requires a
+ *                              value greater than 0x3F and caps it at 0x124.
  */
-int _sceAppMgrConvertVs0UserDrivePath(const char *path, char *converted_path, SceSize converted_path_size, SceAppMgrConvertVs0UserDrivePathOpt *opt);
+int _sceAppMgrConvertVs0UserDrivePath(const char *path, char *convertedPath, SceSize convertedPathSize, const SceAppMgrConvertVs0UserDrivePathOpt *opt);
 
 /**
- * @param[in] opt A pointer to a ::SceAppMgrDeclareShellProcess2Opt
- *                structure. Still declared as void * for backwards
- *                compatibility.
+ * @param[in] opt Required option block; ignored on FW 3.60.
  */
-int _sceAppMgrDeclareShellProcess2(const char *appName, void *opt);
-int _sceAppMgrForceUmount(int id);
-int _sceAppMgrGameDataMount(char *app_path, char *patch_path, char *rif_file_path, SceAppMgrGameDataMountOpt *opt);
+int _sceAppMgrDeclareShellProcess2(const char *appName, const SceAppMgrDeclareShellProcess2Opt *opt);
+
+/**
+ * Force-unmount active USB mass-storage image mounts.
+ *
+ * On FW 3.60 \a mountId must be 600 and the caller must have UDCD permission.
+ */
+int _sceAppMgrForceUmount(int mountId);
+int _sceAppMgrGameDataMount(const char *appPath, const char *patchPath, const char *rifPath, const SceAppMgrGameDataMountOpt *opt);
 
 /**
  * @param[in] appName Application name of at most 31 characters; NULL selects
  *                    the calling process.
  */
-int _sceAppMgrGetAppInfo(const char *appName, SceAppMgrAppInfo *appInfo, SceAppMgrGetAppInfoOpt *opt);
+int _sceAppMgrGetAppInfo(const char *appName, SceAppMgrAppInfo *appInfo, const SceAppMgrGetAppInfoOpt *opt);
+
+/** Get the 0x80-byte global AppMgr state. */
 int _sceAppMgrGetAppMgrState(SceAppMgrAppMgrState *appMgrState);
-int _sceAppMgrGetAppParam(SceAppMgrAppParam *appParam, SceAppMgrGetAppParamOpt *opt);
-int _sceAppMgrGetBootParam(SceUInt32 selector, SceAppMgrBootParam *bootParam, SceAppMgrGetBootParamOpt *opt);
+
+/** Get the calling application's queued launch parameter. */
+int _sceAppMgrGetAppParam(SceAppMgrAppParam *appParam, const SceAppMgrGetAppParamOpt *opt);
+
+/**
+ * Get a size-prefixed boot-parameter record.
+ *
+ * FW 3.60 ignores \a selector. The number of bytes copied is
+ * ::SceAppMgrGetBootParamOpt::bootParamSize; values above 0x2C are rejected.
+ */
+int _sceAppMgrGetBootParam(SceUInt32 selector, SceAppMgrBootParam *bootParam, const SceAppMgrGetBootParamOpt *opt);
 
 /**
  * @param[out] processId A pointer to a value of type ::ScePID.
  * @param[out] bgmState A pointer to a value of type ::SceUInt32.
  */
-int _sceAppMgrGetCurrentBgmState(void **processId, void **bgmState);
-int _sceAppMgrGetIdByName(SceUID *processId, const char *appName, SceAppMgrGetIdByNameOpt *opt);
-int _sceAppMgrGetNameById(SceUID processId, char *appName, SceAppMgrGetNameByIdOpt *opt);
+int _sceAppMgrGetCurrentBgmState(ScePID *processId, SceUInt32 *bgmState);
+
+/** Resolve an application name to a process ID. */
+int _sceAppMgrGetIdByName(ScePID *processId, const char *appName, const SceAppMgrGetIdByNameOpt *opt);
+
+/** Resolve a process ID to its application name. */
+int _sceAppMgrGetNameById(ScePID processId, char appName[32], const SceAppMgrGetNameByIdOpt *opt);
 
 /**
- * @param[out] resolved_path Output buffer for a path of at most 0x124 bytes,
- *                           including the terminating NUL.
- * @param[in] resolved_path_size Output-buffer capacity passed to the FIOS
- *                               overlay resolver, capped at 0x124 on FW 3.60.
- * @param[in] opt A ::SceAppMgrGetRawPathOpt structure. Still declared as
- *                char[16] for backwards compatibility.
+ * @param[out] resolvedPath Output buffer for a path of at most 0x124 bytes,
+ *                          including the terminating NUL.
+ * @param[in] resolvedPathSize Output-buffer capacity passed to the FIOS
+ *                              overlay resolver, capped at 0x124 on FW 3.60.
+ * @param[in] opt Required option block; ignored on FW 3.60.
  */
-int _sceAppMgrGetRawPath(char *path, char *resolved_path, int resolved_path_size, char opt[16]);
-int _sceAppMgrGetRawPathOfApp0ByAppIdForShell(int appId, char resolved_path[292]);
-int _sceAppMgrGetSaveDataInfo(char *path, SceTitleId *titleid, int force_mount_ux, SceAppMgrGetSaveDataInfoOpt *opt);
+int _sceAppMgrGetRawPath(const char *path, char *resolvedPath, SceSize resolvedPathSize, const SceAppMgrGetRawPathOpt *opt);
+int _sceAppMgrGetRawPathOfApp0ByAppIdForShell(int appId, char resolvedPath[292]);
 
 /**
- * @param[out] accountId A pointer to a ::SceUInt64 ACCOUNT_ID value. Still
- *                       declared as char * for backwards compatibility.
+ * Get savedata information for a title.
+ *
+ * @param[in] path Savedata path to inspect.
+ * @param[in] titleId Exact nine-character title ID.
+ * @param[in] forceMountUx Nonzero to force the `ux0:` savedata lookup path.
+ * @param[in] opt Required options containing the result buffer.
  */
-int _sceAppMgrGetSaveDataInfoForSpecialExport(char *path, char *accountId, SceAppMgrGetSaveDataInfoForSpecialExportOpt *opt);
+int _sceAppMgrGetSaveDataInfo(const char *path, const char *titleId, int forceMountUx, const SceAppMgrGetSaveDataInfoOpt *opt);
+
+/**
+ * @param[out] accountId Receives the 64-bit `ACCOUNT_ID` value.
+ */
+int _sceAppMgrGetSaveDataInfoForSpecialExport(const char *path, SceUInt64 *accountId, const SceAppMgrGetSaveDataInfoForSpecialExportOpt *opt);
+
+/** Get the 0x80-byte application status for an application ID. */
 int _sceAppMgrGetStatusByAppId(int appId, SceAppMgrAppStatus *appStatus);
-int _sceAppMgrGetStatusById(SceUID processId, SceAppMgrAppStatus *appStatus);
-int _sceAppMgrGetStatusByName(const char *appName, SceAppMgrAppStatus *appStatus, SceAppMgrGetStatusByNameOpt *opt);
+
+/** Get the 0x80-byte application status for a process ID. */
+int _sceAppMgrGetStatusById(ScePID processId, SceAppMgrAppStatus *appStatus);
+
+/** Get the 0x80-byte application status for an application name. */
+int _sceAppMgrGetStatusByName(const char *appName, SceAppMgrAppStatus *appStatus, const SceAppMgrGetStatusByNameOpt *opt);
 
 /**
- * @param[out] pSDPR A pointer to a value of type ::SceUInt64.
+ * @param[in] location Must be 1 on FW 3.60.
+ * @param[out] sdpr Receives the 64-bit SDPR value.
  */
-int _sceAppMgrGetSystemDataFilePlayReady(SceUInt32 location, void *pSDPR);
-int _sceAppMgrGetUserDirPath(int partition_id, char *userDirPath, SceSize path_maxlen, SceAppMgrGetUserDirPathOpt *opt);
+int _sceAppMgrGetSystemDataFilePlayReady(SceUInt32 location, SceUInt64 *sdpr);
+
+/**
+ * Get a per-user directory path for a storage partition.
+ *
+ * Partition ::SCE_APPMGR_USER_DIR_PARTITION_UR0 returns `ur0:user/<NN>`.
+ * ::SCE_APPMGR_USER_DIR_PARTITION_UX0 first requires the corresponding
+ * `ur0:` directory to exist, then returns `ux0:user/<NN>`.
+ *
+ * FW 3.60 requires \a userDirPathSize to be at least 32 and writes at most 32
+ * bytes. The separate option block is ignored.
+ */
+int _sceAppMgrGetUserDirPath(SceAppMgrUserDirPartition partition, char *userDirPath, SceSize userDirPathSize, const SceAppMgrGetUserDirPathOpt *opt);
+
+/** Get the 16-byte randomized drive ID for the vs0 user-data mount. */
 int _sceAppMgrGetVs0UserDataDrive(ScePfsRndDriveId *rnd_drive_id);
+
+/** Get the 16-byte randomized drive ID for the vs0 user-module mount. */
 int _sceAppMgrGetVs0UserModuleDrive(ScePfsRndDriveId *rnd_drive_id);
-int _sceAppMgrLaunchAppByUri2(const char *uri, SceAppMgrLaunchAppByUri2Param *pParam, SceAppMgrLaunchAppByUri2Opt *opt);
 
 /**
- * @param[in] opt A pointer to a ::SceAppMgrLaunchVideoStreamingAppOpt
- *                structure. Still declared as void * for backwards
- *                compatibility.
+ * Launch an application URI.
+ *
+ * FW 3.60 accepts a URI of at most 0x822 characters. \a param is optional;
+ * when present, it supplies a 0x40-byte launch descriptor. \a opt is required
+ * and ignored on FW 3.60.
  */
-int _sceAppMgrLaunchVideoStreamingApp(char *buf, size_t buf_size, void *opt);
-int _sceAppMgrLoadExec(const char *appPath, char *const argv[], const SceAppMgrLoadExecOptParam *optParam, SceAppMgrLoadExecOpt *opt);
+int _sceAppMgrLaunchAppByUri2(const char *uri, const SceAppMgrLaunchAppByUri2Param *param, const SceAppMgrLaunchAppByUri2Opt *opt);
 
 /**
- * @param[out] paramSfoBuffer Address of the output buffer, retained as int for
- *                            backwards compatibility.
+ * @param[in] extraData Optional launch data of at most 0x1800 bytes.
+ * @param[in] extraDataSize Size of \a extraData; the maximum value is 0x1800.
+ * @param[in] param Optional launch descriptor for `NPXS10085`.
+ */
+int _sceAppMgrLaunchVideoStreamingApp(const void *extraData, SceSize extraDataSize, const SceAppMgrLaunchVideoStreamingAppOpt *param);
+
+/**
+ * Replace the current game process with another executable.
+ *
+ * On FW 3.60 \a optParam must be NULL. \a opt is a required raw option block
+ * whose contents are ignored.
+ */
+int _sceAppMgrLoadExec(const char *appPath, char *const argv[], const SceAppMgrLoadExecOptParam *optParam, const SceAppMgrLoadExecOpt *opt);
+
+/**
+ * @param[out] paramSfoBuffer Output buffer for the save-data `param.sfo` file.
  * @param[in] bufferSize Maximum number of bytes to write.
  */
-int _sceAppMgrLoadSaveDataSystemFile(char *path, int paramSfoBuffer, int bufferSize, sceAppMgrLoadSaveDataSystemFileOpt *opt);
-int _sceAppMgrLoopBackMount(int mountId, char *part_name, char *mountPoint, sceAppMgrLoopBackMountOpt *opt);
-int _sceAppMgrMmsMount(int mountId, char *mountPoint);
-int _sceAppMgrPhotoMount(sceAppMgrPhotoMountParam *param, sceAppMgrPhotoMountOpt *opt);
-int _sceAppMgrPspSaveDataRootMount(char *mountPoint);
+int _sceAppMgrLoadSaveDataSystemFile(const char *path, void *paramSfoBuffer, SceSize bufferSize, const SceAppMgrLoadSaveDataSystemFileOpt *opt);
+
+/**
+ * Mount a USB mass-storage image and return its randomized mount point.
+ *
+ * FW 3.60 requires \a mountId to be 600 and \a partitionName to contain
+ * exactly 32 uppercase hexadecimal characters. The backing path is
+ * `ux0:umass/<partitionName>.img`.
+ */
+int _sceAppMgrLoopBackMount(int mountId, const char *partitionName, char mountPoint[16], const SceAppMgrLoopBackMountOpt *opt);
+
+/** Mount one of the PSP emulator MMS locations selected by IDs 400 through 402. */
+int _sceAppMgrMmsMount(int mountId, char mountPoint[16]);
+
+/** Mount photo application data. */
+int _sceAppMgrPhotoMount(const SceAppMgrPhotoMountParam *param, const SceAppMgrPhotoMountOpt *opt);
+
+/** Mount the PSP emulator savedata root. */
+int _sceAppMgrPspSaveDataRootMount(char mountPoint[16]);
+
+/** Receive and consume one pending application event. */
 int _sceAppMgrReceiveEvent(SceAppMgrEvent *appEvent);
+
+/** Get the number of pending application events. */
 int _sceAppMgrReceiveEventNum(int *eventNum);
+
+/**
+ * Receive and consume one pending system event for the calling application.
+ *
+ * FW 3.60 may return activate, deactivate, resume, quit, store-purchase,
+ * NP-message-arrival, or store-redemption events from
+ * ::SceAppMgrSystemEventType.
+ */
 int _sceAppMgrReceiveSystemEvent(SceAppMgrSystemEvent *systemEvent);
-int _sceAppMgrSaveDataAddMount(SceAppMgrGenericMountContext *opt);
+
+/** Mount savedata after validating its PFS keystone and passcode. */
+int _sceAppMgrSaveDataAddMount(const SceAppMgrGenericMountContext *mountContext);
+
+/**
+ * Enable or disable network-disconnection warning dialogs.
+ *
+ * FW 3.60 requires \a optParam to be NULL.
+ */
 int _sceAppMgrSetNetworkDisconnectionWarningDialogState(SceBool enable, const SceAppMgrNetworkDisconnectionWarningDialogStateOptParam *optParam);
 
 /**
- * @param[in] pSDPR A pointer to a value of type ::SceUInt64.
- * @param[in] data Data to store when location is 1.
- * @param[in] dataSize Size of data; the maximum value is 0x4000.
+ * @param[in] sdpr Required 64-bit SDPR value when \a location is 1.
+ * @param[in] data Required data buffer when \a location is 2.
+ * @param[in] dataSize Size of \a data; the maximum value is 0x4000.
  */
-int _sceAppMgrSetSystemDataFilePlayReady(SceUInt32 location, void *pSDPR, const void *data, SceSize dataSize);
+int _sceAppMgrSetSystemDataFilePlayReady(SceUInt32 location, const SceUInt64 *sdpr, const void *data, SceSize dataSize);
 
 /**
  * @param[in] contentId A NUL-terminated content ID of at most 26 characters.
- *                      Still declared as ::SceTitleId * for backwards
- *                      compatibility.
  */
-int _sceAppMgrThemeDataMount(SceTitleId *contentId, const char *theme_path, const char *rif_file_path, sceAppMgrThemeDataMountOpt *opt);
-int _sceAppMgrTrophyMount(int mountId, SceUID pid, char *mountPoint);
+int _sceAppMgrThemeDataMount(const char *contentId, const char *themePath, const char *rifPath, const SceAppMgrThemeDataMountOpt *opt);
+
+/** Mount trophy data for \a processId using mount ID 300 or 302. */
+int _sceAppMgrTrophyMount(int mountId, ScePID processId, char mountPoint[16]);
 
 /**
- * @param[in] titleId A NUL-terminated identifier of at most 63 characters;
- *                    its required syntax depends on \a mountId. Still declared
- *                    as ::SceTitleId * for backwards compatibility.
+ * Mount trophy data for another title.
+ *
+ * FW 3.60 accepts mount ID 303 for the normal trophy path and 304 for its
+ * `_BK` backup. \a titleId must have the exact form `ABCD12345_67`.
  */
-int _sceAppMgrTrophyMountById(int mountId, SceTitleId *titleId, char *mountPoint, sceAppMgrTrophyMountByIdOpt *opt);
-int _sceAppMgrUmount(const char *mount_point);
-int _sceAppMgrUpdateSaveDataParam(char *path, sceAppMgrUpdateSaveDataParamOpt *opt);
-int _sceAppMgrWorkDirMount(int mountId, char *mountPoint);
+int _sceAppMgrTrophyMountById(int mountId, const char *titleId, char mountPoint[16], const SceAppMgrTrophyMountByIdOpt *opt);
+
+/** Unmount a 16-byte randomized mount point belonging to the calling process. */
+int _sceAppMgrUmount(const char *mountPoint);
+
+/** Update savedata `param.sfo` metadata at \a path. */
+int _sceAppMgrUpdateSaveDataParam(const char *path, const SceAppMgrUpdateSaveDataParamOpt *opt);
 
 /**
- * @param[in] titleId A NUL-terminated identifier of at most 63 characters;
- *                    its required syntax depends on \a mountId. Still declared
- *                    as ::SceAppMgrGenericMountContext * for backwards
- *                    compatibility.
+ * Mount a working-directory location selected by \a mountId.
+ *
+ * FW 3.60 accepts mount IDs 200, 201, 202, 203, 204, and 206.
  */
-int _sceAppMgrWorkDirMountById(int mountId, SceAppMgrGenericMountContext *titleId, char *mount_point, sceAppMgrWorkDirMountByIdOpt *opt);
+int _sceAppMgrWorkDirMount(int mountId, char mountPoint[16]);
+
+/**
+ * Mount another title's working directory.
+ *
+ * Mount ID 205 selects `ux0:cache/<titleId>` and requires an exact
+ * nine-character title ID. Mount ID 207 selects
+ * `ux0:temp/app_work/<titleId>/rec`.
+ */
+int _sceAppMgrWorkDirMountById(int mountId, const char *titleId, char mountPoint[16], const SceAppMgrWorkDirMountByIdOpt *opt);
+
+/** Activate an application. This export is restricted to SceShell. */
 int sceAppMgrActivateApp(int appId);
 
 #ifdef __cplusplus

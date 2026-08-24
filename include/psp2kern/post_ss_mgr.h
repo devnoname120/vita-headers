@@ -15,10 +15,10 @@ extern "C" {
 #endif
 
 typedef struct SceSblSealedKey {
-	char magic[8];                  //!< "pfsSKKey".
-	SceUInt8 major_version;         //!< Must be 2.
-	SceUInt8 minor_version;         //!< Must be 0.
-	SceUInt8 padding[6];            //!< Must be zero.
+	char magic[8];                  //!< Magic value that needs to be set to "pfsSKKey".
+	SceUInt8 major_version;         //!< Set to 2 when generated; legacy values 0 and 1 are also accepted.
+	SceUInt8 minor_version;         //!< Must be 0 for the supported versions.
+	SceUInt8 reserved[6];           //!< Set to 0 by ::ksceSblPostSsMgrEncryptSealedkey.
 	SceUInt8 iv[0x10];
 	SceUInt8 encrypted_key[0x10];
 	SceUInt8 hmac[0x20];
@@ -26,27 +26,27 @@ typedef struct SceSblSealedKey {
 VITASDK_BUILD_ASSERT_EQ(0x50, SceSblSealedKey); // size is from FW 3.60
 
 typedef struct SceSblKeystone {
-	char magic[8];                  //!< "keystone".
+	char magic[8];                  //!< Magic value that needs to be set to "keystone".
 	SceUInt16 type;                 //!< Must be 2.
 	SceUInt16 version;              //!< Supported values are 0 and 1.
-	SceUInt8 padding[0x14];         //!< Must be zero.
+	SceUInt8 reserved[0x14];        //!< Included in the keystone HMAC.
 	SceUInt8 passcode_digest[0x20];
 	SceUInt8 keystone_digest[0x20];
 } SceSblKeystone;
 VITASDK_BUILD_ASSERT_EQ(0x60, SceSblKeystone); // size is from FW 3.60
 
 typedef struct SceSblDebugKeystone {
-	char magic[8];                  //!< "keystone".
+	char magic[8];                  //!< Magic value that needs to be set to "keystone".
 	SceUInt16 type;                 //!< Must be 1.
-	SceUInt16 version;              //!< Must be 0.
-	SceUInt8 padding[4];            //!< Must be zero.
+	SceUInt16 version;              //!< Set to 0 when encrypted and ignored when decrypted.
+	SceUInt8 reserved[4];           //!< Set to 0 when encrypted and ignored when decrypted.
 	SceUInt8 iv[0x10];
 	SceUInt8 encrypted_secret[0x20];
 } SceSblDebugKeystone;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceSblDebugKeystone); // size is from FW 3.60
 
 typedef struct SceSblCloudDataKeyRing {
-	char magic[8];                  //!< "CloudBU".
+	char magic[8];                  //!< Magic value "CloudBU" followed by a NUL byte.
 	SceUInt32 version;              //!< Supported values are 0 and 1.
 	SceUInt8 opaque_header_data[4]; //!< Copied unchanged; not interpreted by the
 	                               //!< FW 3.60 provider or known importer.
@@ -79,7 +79,7 @@ typedef struct SceSblRsaDataParam {
 VITASDK_BUILD_ASSERT_EQ(8, SceSblRsaDataParam);
 
 typedef struct SceSblRsaPublicKeyParam {
-	const void *n;        //!< Pointer to the 0x100-byte RSA modulus.
+	const void *n;        //!< Pointer to the RSA modulus.
 	const void *k;        //!< Pointer to the RSA exponent.
 } SceSblRsaPublicKeyParam;
 VITASDK_BUILD_ASSERT_EQ(8, SceSblRsaPublicKeyParam);
@@ -94,13 +94,25 @@ typedef struct SceSblRsaPrivateKeyParam {
 } SceSblRsaPrivateKeyParam;
 VITASDK_BUILD_ASSERT_EQ(0x24, SceSblRsaPrivateKeyParam);
 
+/** Hash algorithms accepted by the RSA PKCS #1 v1.5 helpers. */
+typedef enum SceSblRsaHashType {
+	SCE_SBL_RSA_HASH_TYPE_MD2    = 0x2,
+	SCE_SBL_RSA_HASH_TYPE_MD5    = 0x4,
+	SCE_SBL_RSA_HASH_TYPE_SHA1   = 0x5,
+	SCE_SBL_RSA_HASH_TYPE_SHA256 = 0xB,
+	SCE_SBL_RSA_HASH_TYPE_SHA384 = 0xC,
+	SCE_SBL_RSA_HASH_TYPE_SHA512 = 0xD,
+	SCE_SBL_RSA_HASH_TYPE_SHA224 = 0xE
+} SceSblRsaHashType;
+
 /**
  * Create an RSA-2048 signature.
  *
  * @param[out] rsa_signature - Receives a 0x100-byte signature.
  * @param[in] hash - Hash to sign.
  * @param[in] private_key - RSA private key.
- * @param[in] type - Signature type: 2, 4, 5, 0xB, 0xC, 0xD, or 0xE.
+ * @param[in] type - One of ::SceSblRsaHashType. The argument remains declared
+ *                   as an integer for backwards compatibility.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -112,7 +124,8 @@ int ksceSblRSA2048CreateSignature(SceSblRsaDataParam *rsa_signature, SceSblRsaDa
  * @param[in] rsa_signature - 0x100-byte signature.
  * @param[in] hash - Hash to verify.
  * @param[in] public_key - RSA modulus and exponent.
- * @param[in] type - Signature type: 2, 4, 5, 0xB, 0xC, 0xD, or 0xE.
+ * @param[in] type - One of ::SceSblRsaHashType. The argument remains declared
+ *                   as an integer for backwards compatibility.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -138,6 +151,8 @@ int ksceSblCoredumpKeyStoreFinalize(void);
  * @param[in] key_id - Key ID from 1 through 3.
  * @param[in] key_size - Must be 0x20.
  * @param[out] key - Receives the key.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
 int ksceSblCoredumpGetHmacKey(SceUInt32 key_id, SceSize key_size, void *key);
 
@@ -147,6 +162,8 @@ int ksceSblCoredumpGetHmacKey(SceUInt32 key_id, SceSize key_size, void *key);
  * @param[in] key_id - Key ID from 1 through 4, 0x10000001, or 0x10000002.
  * @param[in] key_size - Must be 0x10.
  * @param[out] key - Receives the key.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
 int ksceSblCoredumpGetAesKey(SceUInt32 key_id, SceSize key_size, void *key);
 
@@ -180,7 +197,11 @@ int ksceSblPostSsMgrDecryptSealedkey(const SceSblSealedKey *sealed_key, SceUInt8
 int ksceSblPostSsMgrDebugEncryptKeystone(const SceUInt8 *secret, SceSblDebugKeystone *keystone);
 
 /**
- * Authenticate and decrypt a debug keystone.
+ * Validate the header and decrypt a debug keystone.
+ *
+ * Unlike ::ksceSblPostSsMgrVerifyKeystone, this operation does not
+ * authenticate the encrypted payload and does not inspect the version or
+ * reserved fields.
  *
  * @param[in] keystone - Debug keystone to decrypt.
  * @param[out] secret - Receives exactly 0x20 bytes.
@@ -234,34 +255,52 @@ int ksceSblSsMgrCloudDataGetEncDecCryptHandle(SceSblCloudDataKeyRing *key_ring);
  * @param[in] mode - Must be 1.
  * @param[in] index - Handle index, 0 or 1.
  * @param[out] handle - Receives the modulus and exponent.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
 int ksceSblSsMgrCloudDataGetSignCryptHandle(SceUInt32 mode, SceUInt32 index, SceSblCloudDataSignCryptHandle *handle);
 
 /**
  * Securely clear the cloud-data encryption and signing key rings.
  *
- * @return SCE_OK.
+ * @return SCE_OK on success, < 0 on error.
  */
 int ksceSblSsMgrCloudDataStop(void);
 
 /**
  * Load an authenticated firmware image.
  *
+ * Call ::ksceSblFwLoaderLock first and ::ksceSblFwLoaderUnlock afterward.
+ * FW 3.60 consumes the locked path state after one load attempt, so another
+ * image requires a new lock/load/unlock sequence.
+ *
  * @param[in] e_phnum - Must be 1 on FW 3.60.
  * @param[out] destination - Destination buffer.
  * @param[in] max_size - Destination capacity.
  * @param[out] loaded_size - Receives the number of bytes loaded.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
 int ksceSblFwLoaderLoad(int e_phnum, void *destination, SceSize max_size, SceSize *loaded_size);
 
 /**
  * Lock and authenticate a firmware image.
  *
- * @param[in] path - Firmware SELF path.
+ * This function acquires a module-global lock that is held until
+ * ::ksceSblFwLoaderUnlock is called.
+ *
+ * @param[in] path - NUL-terminated firmware SELF path of at most 255 bytes.
  * @param[in] reserved - Must be zero on FW 3.60.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-SceInt32 ksceSblFwLoaderLock(const char *path, int reserved);
+int ksceSblFwLoaderLock(const char *path, int reserved);
 
+/**
+ * Release the firmware-loader lock and its retained path state.
+ *
+ * @return SCE_OK on success, < 0 if no load sequence is active.
+ */
 int ksceSblFwLoaderUnlock(void);
 
 /**
@@ -285,32 +324,65 @@ int ksceSblLicMgrGetLicenseStatus(void);
  * Activate a development kit from an activation file.
  *
  * @param[in] afv_path - NUL-terminated path, at most 255 bytes excluding the
- * terminating NUL.
+ *                       terminating NUL. FW 3.60 accepts paths under
+ *                       `host0:`, `ux0:/data/activate/`, and
+ *                       `ur0:/temp/activation`.
  *
  * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrActivate(char *afv_path);
+int ksceSblLicMgrActivateDevkit(const char *afv_path);
 
 /**
- * Get the 32-bit activation expiration date.
+ * Get the cached activation expiration time or refresh it from NVS.
  *
- * @param[out] expire_date - Receives the expiration date.
- * @param[in] read_from_nvs - Nonzero refreshes the value from NVS.
+ * @param[out] expire_date - When \a read_from_nvs is zero, receives the
+ *                           cached absolute expiration time. Otherwise receives
+ *                           the refreshed number of seconds remaining.
+ * @param[in] read_from_nvs - Nonzero reads and verifies the NVS activation data.
  *
  * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrGetExpireDate(int *expire_date, SceBool read_from_nvs);
+int ksceSblLicMgrGetExpireDate(int *expire_date, SceBool read_from_nvs);
 
 /**
  * Disable SD mode through the PM secure module.
  *
  * @param[in] reserved - Must be zero on FW 3.60.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-int _ksceSblPostSsMgrExecutePmSmF00dCommand(SceUInt32 reserved);
+int ksceSblPmMgrSetSdModeOff(SceUInt32 reserved);
 
-int ksceSblPostSsMgrExecutePmSmF00dCommand(SceBool enable);
-int ksceSblPostSsMgrExecutePmSmF00dCommand8(SceUInt8 *product_mode);
-int ksceSblPostSsMgrExecutePmSmSdF00dCommand(void);
+/**
+ * Enter or leave manufacturing mode through the PM secure module.
+ *
+ * Only bit 0 of \a enable is used on FW 3.60.
+ * The boot-time cached value returned by the user getters is not updated.
+ *
+ * @param[in] enable - Nonzero to enter manufacturing mode; zero to leave it.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int ksceSblPmMgrSetProductMode(SceBool enable);
+
+/**
+ * Read the raw product-mode byte from NVS through the PM secure module.
+ *
+ * Values written by the FW 3.60 product-mode operations correspond to
+ * ::SceSblProductMode.
+ *
+ * @param[out] product_mode - Receives exactly one byte.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int ksceSblPmMgrGetProductModeFromNVS(SceUInt8 *product_mode);
+
+/**
+ * Perform the EtoI jig-authentication exchange through `pm_sm_sd.self`.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int ksceSblPmMgrAuthEtoI(void);
 
 /**
  * Set the 32-bit CP physical RTC value.
@@ -319,7 +391,7 @@ int ksceSblPostSsMgrExecutePmSmSdF00dCommand(void);
  *
  * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrSetCpRtc(int rtc);
+int ksceSblRtcMgrSetCpRtcPhysical(int rtc);
 
 /**
  * Set the CP logical RTC.
@@ -328,6 +400,8 @@ int ksceSblPostSsMgrSetCpRtc(int rtc);
  * operation.
  *
  * @note FW 3.60 does not implement this operation and returns 0x800F1025.
+ *
+ * @return 0x800F1025 on FW 3.60.
  */
 int ksceSblRtcMgrSetCpRtcLogical(int rtc);
 
@@ -352,87 +426,169 @@ int ksceSblRtcMgrGetCpRtcPhysical(int *rtc);
 /**
  * Open an SPSFO file in a mapped memory block.
  *
- * @param[in] path - SPSFO path.
- * @param[out] result - Receives the opened context.
+ * FW 3.60 accepts files up to 0x8000 bytes on `gro0:`, `ur0:`, and `ux0:`.
+ * `host0:` is accepted on non-CEX systems when QAF permits host access.
+ *
+ * @param[in] path - NUL-terminated SPSFO path of at most 255 bytes.
+ * @param[out] context - Receives the opened context.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrInitializeSpfsoCtx(const char *path, SceSblSpfsoContext *result);
+int ksceSblSpsfoMgrOpen(const char *path, SceSblSpsfoContext *context);
 
 /**
  * Close an SPSFO context and release its mapped memory block.
  *
- * @param[in,out] ctx - Opened SPSFO context.
+ * The context is not cleared after its memory block is released.
+ *
+ * @param[in,out] context - Context returned by ::ksceSblSpsfoMgrOpen.
  *
  * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrReleaseSpfsoCtx(SceSblSpfsoContext *ctx);
+int ksceSblSpsfoMgrClose(SceSblSpsfoContext *context);
 
 /**
  * Verify an opened SPSFO file.
  *
- * @param[in] ctx - Opened SPSFO context.
- * @param[out] payload - Receives the verified payload address through the
- * existing 32-bit pointer slot.
+ * The returned payload points inside the context's mapped memory and remains
+ * valid only until ::ksceSblSpsfoMgrClose is called.
+ * AuthMgr requires the mapped base to be 0x20-byte aligned and verifies the
+ * file through secure command 8 before the payload is returned.
+ *
+ * @param[in] context - Context returned by ::ksceSblSpsfoMgrOpen.
+ * @param[out] payload - Receives the verified payload address.
  * @param[out] payload_size - Receives the verified payload size in bytes.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblPostSsMgrVerifySpfsoCtx(SceSblSpfsoContext *ctx, int *payload, int *payload_size);
+int ksceSblSpsfoMgrVerify(SceSblSpsfoContext *context, void **payload, SceSize *payload_size);
 
 /**
  * Verify and persist an encrypted Utoken.
  *
- * @param[in] buf - Pointer to a ::SceUtoken buffer.
+ * @param[in] utoken - Encrypted Utoken.
  * @param[in] size - Must be at least 0x800; exactly 0x800 bytes are consumed.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblUtMgrExecuteUtokenSmCommand1(char *buf, SceSize size);
+int ksceSblUtMgrVerifyAndStoreUtoken(const SceUtoken *utoken, SceSize size);
 
 /**
  * Get the Utoken type-11 self-authorization override.
  *
+ * The output pointer must be non-NULL. FW 3.60 returns 0x800F1A02 when the
+ * initialized Utoken does not contain a valid type-11 segment. AuthMgr uses
+ * this override after SELF authentication for programs in the 0x2F0 PAID
+ * family, replacing the program authority ID, capability, attribute, and
+ * shared-secret fields together.
+ *
  * @param[out] self_auth_info - Receives a ::SceUtokenSelfAuthInfo structure.
+ *
+ * @return SCE_OK on success, < 0 on error.
  */
-int ksceSblUtMgrGetTrilithiumBuffer(SceUtokenSelfAuthInfo *self_auth_info);
+int ksceSblUtMgrGetSelfAuthInfo(SceUtokenSelfAuthInfo *self_auth_info);
 
+/** Check whether the initialized Utoken contains a COM-test PAID. */
 int ksceSblUtMgrHasComTestFlag(void);
+
+/**
+ * Check whether NP-test policy is enabled.
+ *
+ * This is enabled by Utoken flag bit 11 or by the Utoken name
+ * `UT_TRILITHIUM_FLAG` on FW 3.60.
+ */
 int ksceSblUtMgrHasNpTestFlag(void);
+
+/**
+ * Check whether Utoken flag bit 4 enables Store-mode policy.
+ *
+ * Consumers use this for Store-specific DRM/save-data policy, privileged
+ * update authorization, and the alternate advertisement-network clock.
+ */
 int ksceSblUtMgrHasStoreFlag(void);
 
-/** Check whether the PSM test Utoken flag is set. */
-int ksceSblUtMgrHasPSMTestFlag(void);
+/**
+ * Get Utoken flag bit 1.
+ *
+ * SceSblACMgr uses this as an additional permission for selected FSELF
+ * operations, including PSM-program, USB-serial, and virtual-machine policy.
+ */
+int ksceSblUtMgrHasFlag1(void);
 
-/** Get Utoken flag bit 6, which allows QAF PUP processing when set. */
+/**
+ * Get Utoken flag bit 6.
+ *
+ * SceSblUpdateMgr accepts this flag alongside QAF, COM-test, and Store
+ * authorization for update containers marked as requiring privileged update
+ * policy.
+ */
 int ksceSblUtMgrHasFlag6(void);
 
-/** Get Utoken flag bit 7. Its purpose is unknown. */
+/**
+ * Get Utoken flag bit 7.
+ *
+ * AppMgr uses this flag to permit its save-data mount flow to continue when
+ * keystone verification fails.
+ */
 int ksceSblUtMgrHasFlag7(void);
 
-/** Check whether the System Data File PlayReady Utoken flag is set. */
-int ksceSblUtMgrHasSystemDataFilePlayReadyFlag(void);
+/**
+ * Get Utoken flag bit 8.
+ *
+ * SceSblACMgr uses this as the FSELF fallback for its capability-134 policy.
+ * The broader purpose of the flag is unknown.
+ */
+int ksceSblUtMgrHasFlag8(void);
 
-/** Get Utoken flag bit 9. Its purpose is unknown. */
+/**
+ * Get Utoken flag bit 9.
+ *
+ * AppMgr requires this flag for the PAID-specific operation that mounts a
+ * special save-data path and reads its `ACCOUNT_ID`.
+ */
 int ksceSblUtMgrHasFlag9(void);
 
 /**
  * Check whether a process is allowed to use COM test mode.
  *
  * @param[in] pid - Process whose program authority ID is checked.
+ *
+ * @return 1 when the process matches the Utoken COM-test PAID, or 0 otherwise.
  */
 SceBool ksceSblUtMgrIsAllowComTest(SceUID pid);
 
 /**
  * Check whether a program authority ID is in the Utoken debug whitelist.
+ *
+ * @param[in] program_authority_id - Nonzero program authority ID to check
+ *                                   against the 32-entry whitelist.
+ *
+ * @return 1 when allowed, or 0 otherwise.
  */
 SceBool ksceSblUtMgrIsAllowProgramDebug(SceUInt64 program_authority_id);
 
+/**
+ * Overwrite and remove the persisted Utoken file.
+ *
+ * Already parsed Utoken flags remain cached on FW 3.60 until the module is
+ * reinitialized.
+ */
 int ksceSblUtMgrResetUtokenFile(void);
 
-#define ksceSblPmMgrSetSdModeOff              _ksceSblPostSsMgrExecutePmSmF00dCommand
-#define ksceSblPmMgrSetProductMode             ksceSblPostSsMgrExecutePmSmF00dCommand
-#define ksceSblPmMgrGetProductModeFromNVS      ksceSblPostSsMgrExecutePmSmF00dCommand8
-#define ksceSblPmMgrAuthEtoI                   ksceSblPostSsMgrExecutePmSmSdF00dCommand
-#define ksceSblRtcMgrSetCpRtcPhysical          ksceSblPostSsMgrSetCpRtc
-#define ksceSblSpsfoMgrOpen                    ksceSblPostSsMgrInitializeSpfsoCtx
-#define ksceSblSpsfoMgrClose                   ksceSblPostSsMgrReleaseSpfsoCtx
-#define ksceSblSpsfoMgrVerify                  ksceSblPostSsMgrVerifySpfsoCtx
-#define ksceSblUtMgrGetSelfAuthInfo            ksceSblUtMgrGetTrilithiumBuffer
+#define ksceSblPostSsMgrActivate                   ksceSblLicMgrActivateDevkit
+#define ksceSblPostSsMgrGetExpireDate              ksceSblLicMgrGetExpireDate
+#define _ksceSblPostSsMgrExecutePmSmF00dCommand    ksceSblPmMgrSetSdModeOff
+#define ksceSblPostSsMgrExecutePmSmF00dCommand     ksceSblPmMgrSetProductMode
+#define ksceSblPostSsMgrExecutePmSmF00dCommand8    ksceSblPmMgrGetProductModeFromNVS
+#define ksceSblPostSsMgrExecutePmSmSdF00dCommand   ksceSblPmMgrAuthEtoI
+#define ksceSblPostSsMgrSetCpRtc                    ksceSblRtcMgrSetCpRtcPhysical
+#define ksceSblPostSsMgrInitializeSpfsoCtx          ksceSblSpsfoMgrOpen
+#define ksceSblPostSsMgrReleaseSpfsoCtx             ksceSblSpsfoMgrClose
+#define ksceSblPostSsMgrVerifySpfsoCtx              ksceSblSpsfoMgrVerify
+#define ksceSblUtMgrExecuteUtokenSmCommand1         ksceSblUtMgrVerifyAndStoreUtoken
+#define ksceSblUtMgrGetTrilithiumBuffer             ksceSblUtMgrGetSelfAuthInfo
+#define ksceSblUtMgrHasPSMTestFlag                  ksceSblUtMgrHasFlag1
+#define ksceSblUtMgrHasSystemDataFilePlayReadyFlag  ksceSblUtMgrHasFlag8
 
 #ifdef __cplusplus
 }

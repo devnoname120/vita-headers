@@ -59,7 +59,7 @@ int sceAudioOutOpenExtPort(int len, SceAudioOutMode mode);
 int sceAudioOutReleasePort(int port);
 
 /**
- * Output one configured frame of PCM.
+ * Output one configured PCM buffer.
  *
  * The call blocks until the supplied buffer has been accepted. Passing NULL
  * waits until the port's previously queued audio has finished playing.
@@ -78,7 +78,10 @@ int sceAudioOutOutput(int port, const void *buf);
  * @param[in] ch - Bitwise OR of ::SceAudioOutChannelFlag values.
  * @param[in] vol - Read-only array containing the left- and right-channel
  *                  Q15 volume values, in that order. FW 3.60 reads both values,
- *                  including for a mono port.
+ *                  including for a mono port. Game processes may use values
+ *                  from 0 through ::SCE_AUDIO_OUT_MAX_VOL; system and other
+ *                  non-game processes may use values through 0xFFFF.
+ *                  Channel-mask bits other than left and right are ignored.
  *
  * @return 0 on success, or a negative ::SceAudioOutErrorCode value.
  */
@@ -127,6 +130,8 @@ int sceAudioOutGetConfig(int port, SceAudioOutConfigType type);
 /**
  * Set automatic level control for the calling process's BGM port.
  *
+ * Mode 1 enables the FW 3.60 dynamic normalizer; mode 0 bypasses it.
+ *
  * @param[in] mode - Automatic-level-control mode.
  *
  * @return 0 on success, or a negative error.
@@ -154,7 +159,8 @@ int sceAudioOutSetCompress(int port, SceBool enable);
 int sceAudioOutSetEffectType(SceAudioOutEffectType effectType);
 
 /**
- * Select whether newly opened BGM and voice ports are adopted automatically.
+ * Select whether newly opened BGM and voice-profile ports are adopted
+ * automatically.
  *
  * @param[in] mode - Adoption mode. Any nonzero value behaves as manual mode on
  *                   FW 3.60.
@@ -168,7 +174,8 @@ int sceAudioOutSetAdoptMode(SceAudioOutAdoptMode mode);
  *
  * @param[in] type - MAIN, BGM, or voice port selector.
  * @param[in] adopt - ::SCE_TRUE to adopt the port, or ::SCE_FALSE to release it.
- * @param[in] rampLength - Gain-transition length, clamped to 1..4096 on FW 3.60.
+ * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ *                         1..4096 on FW 3.60.
  * @param[in] waitForCompletion - When releasing adoption, wait for the
  *                                transition to finish if nonzero.
  *
@@ -180,11 +187,13 @@ int sceAudioOutSetAdopt_forUser(SceAudioOutPortType type, SceBool adopt, int ram
  * Apply a private gain ramp to selected output profiles of the calling process.
  *
  * This 0..256 gain is separate from the Q15 per-channel volume configured by
- * ::sceAudioOutSetVolume.
+ * ::sceAudioOutSetVolume. A zero mask is a no-op, and FW 3.60 ignores mask
+ * bits not defined by ::SceAudioOutPortMask.
  *
  * @param[in] portMask - Bitwise OR of ::SceAudioOutPortMask values.
  * @param[in] volume - Target gain from 0 through 256.
- * @param[in] rampLength - Gain-transition length, clamped to 1..4096 on FW 3.60.
+ * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ *                         1..4096 on FW 3.60.
  *
  * @return 0 on success, or a negative error.
  */
@@ -195,7 +204,8 @@ int sceAudioOutSetPortVolume_forUser(int portMask, SceUInt32 volume, int rampLen
  *
  * @param[in] type - MAIN, BGM, or voice port selector.
  *
- * @return The signed 16-bit target gain on success, or a negative error.
+ * @return The private target gain, normally from 0 through 256, on success; or
+ *         a negative error.
  */
 int sceAudioOutGetPortVolume_forUser(SceAudioOutPortType type);
 
@@ -212,7 +222,12 @@ int sceAudioOutGetRestSample(int port);
 /**
  * Check whether the calling process currently adopts an output profile.
  *
- * @param[in] type - MAIN, BGM, or voice port selector.
+ * FW 3.60 also accepts ::SCE_AUDIO_OUT_PORT_TYPE_VOICE_COMPRESSED for a
+ * non-game process and queries the same adoption state as the voice profile.
+ * For the MAIN selector, this function returns 1 when the process's MAIN
+ * adoption flag is set or when the process has no selected MAIN port.
+ *
+ * @param[in] type - Output profile selector.
  *
  * @return 1 when adopted, 0 otherwise, or a negative error.
  */

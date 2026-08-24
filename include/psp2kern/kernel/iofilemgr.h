@@ -114,66 +114,98 @@ int ksceIoUmount(int id, int a2, int a3, int a4);
   */
 int ksceIoGetRemoteKPLSData(SceUID pid, void *dst);
 
+typedef struct SceVfsMount SceVfsMount;
+typedef struct SceVfsMountData SceVfsMountData;
+typedef struct SceVfsVnode SceVfsVnode;
+
+/** Event bits accepted by ::ksceIoCreateMountEvent. */
+typedef enum SceIoMountEvent {
+	SCE_IO_MOUNT_EVENT_MOUNTED          = 0x001, //!< A VFS mount operation succeeded.
+	SCE_IO_MOUNT_EVENT_UNMOUNTED        = 0x002, //!< A VFS unmount operation succeeded.
+	SCE_IO_MOUNT_EVENT_MOUNT_FAILED     = 0x010, //!< A VFS mount operation failed.
+	SCE_IO_MOUNT_EVENT_UNMOUNT_FAILED   = 0x020, //!< A VFS unmount operation failed.
+	SCE_IO_MOUNT_EVENT_DEVICE_ATTACHED  = 0x100, //!< The mount's backing device was attached.
+	SCE_IO_MOUNT_EVENT_DEVICE_DETACHED  = 0x200  //!< The mount's backing device was detached.
+} SceIoMountEvent;
+
+/** Event bits accepted by ::ksceIoCreateErrorEvent. */
+typedef enum SceIoErrorEvent {
+	SCE_IO_ERROR_EVENT_OCCURRED = 0x1
+} SceIoErrorEvent;
+
+/**
+ * One entry returned by ::vfsGetMntList.
+ *
+ * Pointer fields are borrowed kernel addresses owned by SceIofilemgr. They
+ * must not be freed and can become invalid after the mount is removed.
+ */
 typedef struct SceIoMount {
-	void *mnt; //!< Pointer to the internal VFS mount.
-	int mntId; //!< VSH mount ID.
-	char assignName[0x20];
-	SceUInt32 openedEntryNum; //!< Number of open entries.
-	SceBool isPfsMount; //!< Non-zero for a PFS_GDSD_INF mount.
-	int pfsContext; //!< Pointer to the internal PFS buffer-list context.
+	SceVfsMount *mnt; //!< Internal VFS mount.
+	int vshMountId; //!< One of ::SceVshMountId, or -1 for a PFS mount.
+	char assignName[0x20]; //!< Assigned Vita device name, such as `ux0:`.
+	SceUInt32 openEntryCount; //!< Number of open entries on the mount.
+	SceBool isPfsMount; //!< Nonzero when the mount uses PFS_GDSD_INF.
+	void *implementationData; //!< Filesystem-implementation mount data.
 } SceIoMount;
 VITASDK_BUILD_ASSERT_EQ(0x34, SceIoMount); // size is from FW 3.60
 
+/**
+ * FW 3.60 snapshot returned by ::vfsGetMntInfo.
+ *
+ * Pointer fields are borrowed kernel addresses owned by SceIofilemgr. They
+ * must not be freed and can become invalid as mount state changes.
+ */
 typedef struct SceIoMountInfo {
-	void *mnt; //!< Pointer to the internal VFS mount.
-	int mntId; //!< VSH mount ID.
-	char assignName[0x20];
-	SceUInt32 openedEntryNum; //!< Number of open entries.
-	int stateFlags;
-	int devMinor;
-	int devMajor;
-	int mountCopy; //!< Same internal VFS mount pointer as mnt.
-	int mountpoint; //!< Pointer to the internal mountpoint node.
-	int poolUid; //!< Value of type ::SceUID.
-	int referenceCount;
-	int vnodeCount;
-	int vnodeListHead; //!< Pointer to the first internal VFS node.
-	int childMountListHead; //!< Pointer to the first child mount.
-	int nextSiblingMount; //!< Pointer to the next sibling mount.
-	int maxIoSize;
-	int pfsContext; //!< Pointer to the internal PFS buffer-list context.
-	int fdLock; //!< Pointer to the internal file-descriptor lock.
-	int fdLockMutex; //!< Value of type ::SceUID.
-	int fdLockCond; //!< Value of type ::SceUID.
-	int fdLockOperationState;
-	int fdLockWaiterCount;
-	int mountCc; //!< Pointer to the internal mount cache-control object.
-	int mountCcDirty;
-	int mountCcFlag;
-	int mountCcEventFlag; //!< Value of type ::SceUID.
-	int blockDevAddress; //!< Pointer to the mount's internal block-device pointer.
-	char mountData[0x400]; //!< Raw internal mount data beginning with the Unix mount path.
-	int blockDev; //!< Pointer to the internal block-device descriptor.
-	char filesystem[0x40];
-	char blockdevName[0x40]; //!< Primary block-device name.
-	char blockDeviceSecondary[0x40];
+	SceVfsMount *mnt; //!< Internal VFS mount.
+	int vshMountId; //!< One of ::SceVshMountId.
+	char assignName[0x20]; //!< Assigned Vita device name.
+	SceUInt32 openEntryCount; //!< Number of open entries on the mount.
+	SceUInt32 state; //!< Internal mount state.
+	SceUInt32 devMinor; //!< Internal device-minor value.
+	SceUInt32 devMajor; //!< Internal device-major value.
+	SceVfsMount *mountCopy; //!< Same pointer as ::SceIoMountInfo::mnt.
+	SceVfsVnode *mountpoint; //!< Vnode on which this filesystem is mounted.
+	SceUID poolUid; //!< Mount allocator UID.
+	SceUInt32 referenceCount; //!< Internal mount reference count.
+	SceUInt32 vnodeCount; //!< Number of vnodes belonging to the mount.
+	SceVfsVnode *vnodeListHead; //!< First vnode belonging to the mount.
+	SceVfsMount *mountedOnList; //!< First mount attached to this mount.
+	SceVfsMount *mountedOnListPrev; //!< Previous entry in the mounted-on list.
+	SceSize defaultIoCacheSize; //!< Default I/O-cache size.
+	void *implementationData; //!< Filesystem-implementation mount data.
+	void *fdLock; //!< Internal file-descriptor lock object.
+	SceUID fdLockMutex; //!< File-descriptor lock mutex UID.
+	SceUID fdLockCond; //!< File-descriptor lock condition-variable UID.
+	SceUInt32 fdLockOperationState; //!< File-descriptor lock operation state.
+	SceUInt32 fdLockWaiterCount; //!< Number of file-descriptor lock waiters.
+	void *mountCc; //!< Internal mount cache-control object.
+	SceUInt32 mountCcDirty; //!< Cache-control dirty value.
+	SceUInt32 mountCcFlag; //!< Value referenced by the cache-control flag pointer.
+	SceUID mountCcEventFlag; //!< Cache-control event-flag UID.
+	SceVfsMountData **mountDataAddress; //!< Address of the mount-data pointer.
+	char unixMountPath[0x400]; //!< Internal Unix mount path.
+	SceVfsMountData *mountData; //!< Mount names and VSH mount ID descriptor.
+	char filesystem[0x40]; //!< Filesystem implementation name.
+	char blockDevicePrimary[0x40]; //!< Primary block-device name.
+	char blockDeviceSecondary[0x40]; //!< Secondary block-device name.
 } SceIoMountInfo;
 VITASDK_BUILD_ASSERT_EQ(0x54C, SceIoMountInfo); // size is from FW 3.60
 
-typedef int (SceIoPathMappingFunc)(const char *path, SceUID pid, char *result_path, SceSize size);
+/** Path-mapping callback installed by ::ksceIoSetPathMappingFunction. */
+typedef int (SceIoPathMappingFunc)(const char *path, ScePID pid, char *mappedPath, SceSize mappedPathSize);
 
 typedef struct SceVfsChstatArgs {
 	const char *path;
 	const SceIoStat *stat;
-	unsigned int cbit;
-	uint32_t store_attr;
+	SceUInt32 cbit; //!< Bitwise OR of `SCE_CST_*` values.
+	SceBool allowAttributeChange; //!< Preserve the internal 0x10000 attribute-change bit.
 } SceVfsChstatArgs;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceVfsChstatArgs); // size is from FW 3.60
 
 typedef struct SceVfsChstatByFdArgs {
 	SceUID fd;
-	const SceIoStat *buf; //!< Stat buffer.
-	unsigned int cbit;
+	const SceIoStat *stat;
+	SceUInt32 cbit; //!< Bitwise OR of `SCE_CST_*` values.
 } SceVfsChstatByFdArgs;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceVfsChstatByFdArgs); // size is from FW 3.60
 
@@ -184,35 +216,35 @@ VITASDK_BUILD_ASSERT_EQ(0x4, SceVfsCloseArgs); // size is from FW 3.60
 
 typedef struct SceVfsIoctlArgs {
 	SceUID fd;
-	unsigned int cmd;
-	void *indata; //!< Input buffer.
-	int inlen; //!< Size of indata.
+	int cmd;
+	const void *indata; //!< Input buffer.
+	SceSize inlen; //!< Size of ::SceVfsIoctlArgs::indata.
 	void *outdata; //!< Output buffer.
-	int outlen; //!< Size of outdata.
+	SceSize outlen; //!< Size of ::SceVfsIoctlArgs::outdata.
 } SceVfsIoctlArgs;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVfsIoctlArgs); // size is from FW 3.60
 
 typedef struct SceVfsOpenArgs {
 	const char *filename;
-	int flag;
-	SceIoMode mode;
+	int flags; //!< Bitwise OR of ::SceIoMode values.
+	SceMode mode; //!< File access permissions.
 } SceVfsOpenArgs;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceVfsOpenArgs); // size is from FW 3.60
 
 typedef struct SceVfsPreadArgs {
-	SceUID uid; //!< File descriptor.
+	SceUID fd;
 	void *data;
 	SceSize size;
-	int padding; //!< Unused padding.
+	SceUInt32 padding; //!< Alignment padding; ignored on FW 3.60.
 	SceOff offset;
 } SceVfsPreadArgs;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVfsPreadArgs); // size is from FW 3.60
 
 typedef struct SceVfsPwriteArgs {
-	SceUID uid; //!< File descriptor.
+	SceUID fd;
 	const void *data;
 	SceSize size;
-	int padding; //!< Unused padding.
+	SceUInt32 padding; //!< Alignment padding; ignored on FW 3.60.
 	SceOff offset;
 } SceVfsPwriteArgs;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVfsPwriteArgs); // size is from FW 3.60
@@ -231,21 +263,57 @@ typedef struct SceVfsWriteArgs {
 } SceVfsWriteArgs;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceVfsWriteArgs); // size is from FW 3.60
 
-typedef struct sceIoCreateErrorEventForDriverOpt {
-	uint32_t vshMountId; //!< Mount ID written when the event is signaled.
-	uint32_t errorCode; //!< Error code written when the event is signaled.
-	uint32_t reserved1[2]; //!< Must be zero when creating the event.
-	uint32_t errorDetail; //!< Additional error value written when the event is signaled.
-	uint32_t reserved2[2]; //!< Must be zero when creating the event.
-} sceIoCreateErrorEventForDriverOpt;
-VITASDK_BUILD_ASSERT_EQ(0x1C, sceIoCreateErrorEventForDriverOpt); // size is from FW 3.60
+/**
+ * Caller-owned user-memory result block for ::ksceIoCreateErrorEvent.
+ *
+ * The reserved fields must be zero at creation. When the event is signaled,
+ * FW 3.60 writes the other fields and resets the reserved fields to zero.
+ */
+typedef struct SceIoErrorEventInfo {
+	SceUInt32 vshMountId; //!< Mount ID that produced the error.
+	int errorCode; //!< I/O error code.
+	SceUInt32 reserved1[2]; //!< Must be zero when creating the event.
+	int errorDetail; //!< Additional error value supplied by the I/O subsystem.
+	SceUInt32 reserved2[2]; //!< Must be zero when creating the event.
+} SceIoErrorEventInfo;
+VITASDK_BUILD_ASSERT_EQ(0x1C, SceIoErrorEventInfo); // size is from FW 3.60
 
-int ksceIoChstatForVshbridge(const char *name, const SceIoStat *buf, unsigned int cbit);
-int ksceIoClearErrorEvent(SceUID uid);
-SceUID ksceIoCreateErrorEvent(int vshMountId, int eventBits, sceIoCreateErrorEventForDriverOpt *opt);
-int ksceIoCreateMountEvent(int vshMountId, int eventBits);
-int ksceIoDeleteErrorEvent(SceUID uid);
-int ksceIoDeleteMountEvent(SceUID uid);
+/** VshBridge-facing chstat entry point that permits the internal attribute-change bit. */
+int ksceIoChstatForVshbridge(const char *name, const SceIoStat *stat, unsigned int cbit);
+
+/** Clear an error event's one-shot notification latch. */
+int ksceIoClearErrorEvent(SceUID eventUid);
+
+/**
+ * Create an I/O error event.
+ *
+ * @param[in] vshMountId - Nonzero mount ID identifying a registered VSH mount.
+ * @param[in] eventBits - Must be ::SCE_IO_ERROR_EVENT_OCCURRED.
+ * @param[in,out] eventInfo - Required writable user-memory block. It must remain
+ *                            valid until ::ksceIoDeleteErrorEvent is called.
+ *
+ * @return Kernel event GUID on success, or a negative error code.
+ */
+SceUID ksceIoCreateErrorEvent(int vshMountId, SceUInt32 eventBits, SceIoErrorEventInfo *eventInfo);
+
+/**
+ * Create a mount event.
+ *
+ * @param[in] vshMountId - Nonzero mount ID identifying a registered VSH mount.
+ * @param[in] eventBits - Bitwise OR of ::SceIoMountEvent values. Bits outside
+ *                        0x333 are discarded; at least one accepted bit is required.
+ *
+ * @return Kernel event GUID on success, or a negative error code.
+ */
+SceUID ksceIoCreateMountEvent(int vshMountId, SceUInt32 eventBits);
+
+/** Delete an I/O error event by kernel GUID. */
+int ksceIoDeleteErrorEvent(SceUID eventUid);
+
+/** Delete a mount event by kernel GUID. */
+int ksceIoDeleteMountEvent(SceUID eventUid);
+
+/** VshBridge-facing directory read that preserves ::SceIoStat::st_attr. */
 int ksceIoDreadForVshbridge(SceUID fd, SceIoDirent *dir);
 
 /**
@@ -258,30 +326,84 @@ int ksceIoDreadForVshbridge(SceUID fd, SceIoDirent *dir);
  * @param[in]  pid        - Process whose path mapping is used.
  * @param[in]  path       - Path to query.
  * @param[in]  ignored    - Unused ABI slot; ignored on FW 3.60.
- * @param[out] media_type - Receives a 32-bit media-type value.
+ * @param[out] mediaType - Receives a 32-bit media-type value.
  *
  * @return The non-negative media-type query result, or a negative error from
  * path remapping or temporary-buffer allocation.
  */
-int ksceIoGetMediaType(SceUID pid, const char *path, int ignored, int *media_type);
+int ksceIoGetMediaType(ScePID pid, const char *path, int ignored, SceUInt32 *mediaType);
+
+/** Return the current thread's default I/O priority using the system-priority view. */
 int ksceIoGetThreadDefaultPriorityForSystem(void);
-int ksceIoGetstatForVshbridge(const char *name, SceIoStat *buf);
+
+/** VshBridge-facing getstat entry point that preserves ::SceIoStat::st_attr. */
+int ksceIoGetstatForVshbridge(const char *name, SceIoStat *stat);
+
+/** Perform an ioctl using kernel buffers. */
 int ksceIoIoctl(SceUID fd, int cmd, const void *argp, SceSize arglen, void *bufp, SceSize buflen);
-SceUID ksceIoOpenForPid(SceUID pid, const char *filename, int flags, SceIoMode mode);
+
+/** Open a path after resolving overlays in another process's namespace. */
+SceUID ksceIoOpenForPid(ScePID pid, const char *filename, int flags, SceMode mode);
+
+/**
+ * Install or remove the process-path mapping callback.
+ *
+ * Only one callback can be installed. Passing NULL removes the current callback;
+ * attempting to replace a non-NULL callback directly fails.
+ */
 int ksceIoSetPathMappingFunction(SceIoPathMappingFunc *func);
+
+/** Synchronize a file descriptor. */
 int ksceIoSyncByFd2(SceUID fd, int flags);
-SceUID vfsAllocateFileDummy(int flags, SceBool is_dir, const char *name);
-int vfsChstat(SceVfsChstatArgs *argp);
+
+/** Allocate a dummy internal VFS file object named \a name. */
+SceUID vfsAllocateFileDummy(int flags, SceBool isDir, const char *name);
+
+/** Synchronous VFS chstat worker. */
+int vfsChstat(SceVfsChstatArgs *args);
+
+/** Synchronous VFS chstat-by-descriptor worker. */
 int vfsChstatByFd(SceVfsChstatByFdArgs *args);
-int vfsClose(SceVfsCloseArgs *argp);
-int vfsGetMntInfo(void *mnt, SceIoMountInfo *pInfo);
-int vfsGetMntList(SceIoMount *pMount, SceUInt32 nMount, SceUInt32 *pnMount);
-int vfsIoctl(SceVfsIoctlArgs *argp);
-SceUID vfsOpen(SceVfsOpenArgs *argp);
-int vfsPread(SceVfsPreadArgs *argp);
-int vfsPwrite(SceVfsPwriteArgs *argp);
-int vfsRead(SceVfsReadArgs *argp);
-int vfsWrite(SceVfsWriteArgs *argp);
+
+/** Synchronous VFS close worker. */
+int vfsClose(SceVfsCloseArgs *args);
+
+/**
+ * Snapshot one mounted filesystem.
+ *
+ * @param[in] mnt - Mount pointer previously returned by ::vfsGetMntList.
+ * @param[out] info - Receives the FW 3.60 mount snapshot.
+ *
+ * @return 0 on success, or a negative error when \a mnt is not mounted.
+ */
+int vfsGetMntInfo(SceVfsMount *mnt, SceIoMountInfo *info);
+
+/**
+ * Enumerate mounted filesystems.
+ *
+ * Passing NULL for \a mounts returns the current mount count directly. With a
+ * non-NULL array, at most \a capacity entries are written, \a count receives
+ * the number written, and the function returns 0.
+ */
+int vfsGetMntList(SceIoMount *mounts, SceSize capacity, SceSize *count);
+
+/** Synchronous VFS ioctl worker. */
+int vfsIoctl(SceVfsIoctlArgs *args);
+
+/** Synchronous VFS open worker. */
+SceUID vfsOpen(SceVfsOpenArgs *args);
+
+/** Synchronous positional-read worker. */
+SceSSize vfsPread(SceVfsPreadArgs *args);
+
+/** Synchronous positional-write worker. */
+SceSSize vfsPwrite(SceVfsPwriteArgs *args);
+
+/** Synchronous read worker. */
+SceSSize vfsRead(SceVfsReadArgs *args);
+
+/** Synchronous write worker. */
+SceSSize vfsWrite(SceVfsWriteArgs *args);
 
 #ifdef __cplusplus
 }

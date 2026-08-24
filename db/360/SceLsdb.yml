@@ -22,7 +22,6 @@ modules:
           sceLsdbClose: 0x8A288259
           sceLsdbDeleteAllThemes: 0xC5268ECB
           sceLsdbDeleteIconByTitleId: 0x1A56D1F8
-          sceLsdbDeleteIconsInPage: 0x854DB867
           sceLsdbDeleteLiveArea: 0xC87397C0
           sceLsdbDeleteLiveAreaSfEntry: 0xED2C11FC
           sceLsdbDeleteNewEvents: 0xC02E38AD
@@ -39,7 +38,6 @@ modules:
           sceLsdbGetAttribute: 0xD494B2C3
           sceLsdbGetAttributeBit15: 0x85B7A172
           sceLsdbGetAttributeBit16: 0xC80B07C3
-          sceLsdbGetAttributeBits13To14: 0x9AE94B9F
           sceLsdbGetAttributeBits34To36: 0x43153457
           sceLsdbGetBackgroundTitleId: 0x457F369E
           sceLsdbGetBootInstallDir: 0xD5747AD4
@@ -54,33 +52,36 @@ modules:
           sceLsdbGetCountry: 0x88FDC55C
           sceLsdbGetCurrentRtcTick: 0x76C1997A
           sceLsdbGetDatabaseLanguageIndex: 0x0CF73C33
-          sceLsdbGetDefaultLiveAreaTemplatePath: 0x685C21AB
           sceLsdbGetDiscId: 0x039FD1AB
           sceLsdbGetFilteredTitleIdsFromDatabase: 0xDD7D68C0
           sceLsdbGetFirstPopupNewEvent: 0xD046218A
+          sceLsdbGetFolderPageNosByTitle: 0x148D7572
           sceLsdbGetForegroundTitleId: 0x2D538EB9
           sceLsdbGetGameDataId: 0x2FFE0E3F
           sceLsdbGetIconCountInPageRange: 0xCF4B3684
-          sceLsdbGetIconId: 0x148D7572
           sceLsdbGetIconInfoById: 0x7F53B3B6
           sceLsdbGetIconInfoByTitleId: 0xDE0DA538
           sceLsdbGetIconReservedBlob: 0x41185388
           sceLsdbGetIconsInPageRange: 0xD74AC354
+          sceLsdbGetInstallDirSavedataAdd1: 0x04D6A099
           sceLsdbGetLastAppDatabaseError: 0xB0E42B67
           sceLsdbGetLastLaunchTime: 0xF8874996
           sceLsdbGetLiveAreaCompatibilityMode: 0xBE72A404
+          sceLsdbGetLiveAreaContentsPath: 0xC070E42E
           sceLsdbGetLiveAreaFrameUserData: 0xBA1D0DB8
           sceLsdbGetLiveAreaFrames: 0xB51740A6
           sceLsdbGetLiveAreaModifiedDate: 0xD22CFA8C
           sceLsdbGetLiveAreaPath: 0xD4B1C54E
           sceLsdbGetLiveAreaPccInfo: 0x4B64A790
           sceLsdbGetLiveAreaRevision: 0xF9B38E6B
-          sceLsdbGetLiveAreaTitleIds: 0xDA5DC77C
+          sceLsdbGetLiveAreaSystemVersion: 0x9AE94B9F
+          sceLsdbGetLiveAreaTitleIdNotInList: 0xDA5DC77C
           sceLsdbGetLiveAreaType: 0x9117289F
           sceLsdbGetName: 0xD02A8B85
           sceLsdbGetNewEvent: 0x07ADA030
+          sceLsdbGetNewEventActionTypeHigh: 0x121C66FC
           sceLsdbGetNewEventIconData: 0x03B27FDF
-          sceLsdbGetNewEventReferenceCount: 0xA2BD70BE
+          sceLsdbGetNewEventPopupCount: 0xA2BD70BE
           sceLsdbGetNewEvents: 0xB285FC5E
           sceLsdbGetNpCommunicationId: 0xE26FC9E8
           sceLsdbGetNpEnvironment: 0xC2B7D81B
@@ -92,10 +93,8 @@ modules:
           sceLsdbGetPhysicalContiguousMemoryBudget: 0x132FA3C6
           sceLsdbGetPic0Path: 0x1B9A8B45
           sceLsdbGetPromoteAttribute: 0x0B16523B
-          sceLsdbGetPspEmulatorTitleId: 0xC070E42E
           sceLsdbGetRecentlyUsedTitleIdsByCategoriesFromDatabase: 0xFA25AF8D
           sceLsdbGetRegion: 0x40C684B8
-          sceLsdbGetSavedataAddInstallDir: 0x04D6A099
           sceLsdbGetSelfPath: 0xD6B57313
           sceLsdbGetShellApplicationType: 0x9D27A87D
           sceLsdbGetStitle: 0x3B064DF5
@@ -123,7 +122,7 @@ modules:
           sceLsdbIconLayoutSetEntry: 0x2AB5A403
           sceLsdbIconLayoutSetWritesDisabled: 0xDEC47CBD
           sceLsdbIconLayoutShiftPages: 0xA92420DA
-          sceLsdbIconLayoutUpdateParent: 0x6E4B6EBF
+          sceLsdbIconLayoutUpdateParentByPageNo: 0x6E4B6EBF
           sceLsdbInsertApplication: 0x84D3F674
           sceLsdbInsertIcon: 0xED996867
           sceLsdbInsertIconWithParent: 0xE786531F
@@ -131,7 +130,7 @@ modules:
           sceLsdbInsertPage: 0x3387B5A3
           sceLsdbIsCategoryGda: 0x41019D89
           sceLsdbIsCurrentTimeInRange: 0x628CFBE1
-          sceLsdbIsGameCategoryOrLegacySystemVersion: 0xDA0D7B0A
+          sceLsdbIsGameCategoryOrLiveAreaSystemVersion1Or2: 0xDA0D7B0A
           sceLsdbIsGameOrEgCategory: 0x44CD0D07
           sceLsdbIsType1AndAttributeBit15Clear: 0xF4325AD0
           sceLsdbLiveAreaFrameGetItem: 0x92D3A2EA
@@ -140,6 +139,7 @@ modules:
           sceLsdbLiveAreaFrameListInit: 0xD3EF2C98
           sceLsdbLiveAreaParserEnd: 0x4B153968
           sceLsdbLiveAreaParserInit: 0x800809E3
+          sceLsdbLiveAreaParserSetDefaultTemplate: 0x685C21AB
           sceLsdbLiveAreaParserSetLocale: 0x43495B68
           sceLsdbLiveAreaSfEntryExists: 0x95EF7C51
           sceLsdbMapLanguageIndex: 0x60B535FD
@@ -180,17 +180,17 @@ modules:
           sceLsdbRegisterAppInfoObserver: 0xBF481B29
           sceLsdbReopen: 0xF3A75448
           sceLsdbReplaceApplication: 0x1AD44F35
+          sceLsdbReplaceIconsInPages: 0x854DB867
           sceLsdbReplaceLiveAreaContents: 0x6C74B301
           sceLsdbReplaceTheme: 0x01790EDE
           sceLsdbResetNewEventsAndLiveArea: 0x6AFF7E71
           sceLsdbResolveUriTitleIdFromDatabase: 0xE2838878
-          sceLsdbSelectLiveAreaUpdateEvent: 0x121C66FC
           sceLsdbSetAppInfoValueMasked: 0xC36501F7
           sceLsdbSetAppInfoValueMaskedFromDatabase: 0x7D7F6809
+          sceLsdbSetConfigInt64Masked: 0xBCFEAC86
           sceLsdbSetConfigInt64MaskedFromDatabase: 0xB332121A
+          sceLsdbSetConfigString: 0x70A430B1
           sceLsdbSetConfigStringFromDatabase: 0x19E16A56
-          sceLsdbSetConfigValue: 0x70A430B1
-          sceLsdbSetConfigValueMasked: 0xBCFEAC86
           sceLsdbSetContentRatingCallback: 0xAADCDCFC
           sceLsdbSetLiveAreaModifiedDate: 0x105428BF
           sceLsdbSetLiveAreaPath: 0x8D08C3E7
@@ -204,6 +204,6 @@ modules:
           sceLsdbUpdateLocalizedData: 0xC6678B98
           sceLsdbUpdateNewEventFlags: 0x464351D0
           sceLsdbUpdateNewEvents: 0xB3252544
-          sceLsdbUpdatePage: 0x6769DBC4
+          sceLsdbUpdatePages: 0x6769DBC4
           sceLsdbUpdateThemeLayout: 0x6F73E332
           sceLsdb_29B275BA: 0x29B275BA

@@ -13,22 +13,12 @@
 extern "C" {
 #endif
 
-typedef struct SceQafToken {
-	char magic[4];
-	SceUInt32 qaf_version;
-	char qaf_name[0x18];
-	char console_id[0x10];
-	char qa_flags[0x10];
-	char reserved[0x30]; //!< Reserved token payload.
-	char cmac[0x10];
-} SceQafToken;
-VITASDK_BUILD_ASSERT_EQ(0x80, SceQafToken); // size is from FW 3.60
-
+/** Clear header and encrypted payload stored in the first 0x80 token bytes. */
 typedef struct SceQafTokenEnc {
-	char magic[4];
-	SceUInt32 qaf_version;
-	char qaf_name[0x18];
-	char enc_data[0x60];
+	char magic[4];           //!< Token magic.
+	SceUInt32 qaf_version;   //!< QAF token version; FW 3.60 uses its second byte as the version counter.
+	char qaf_name[0x18];     //!< NUL-terminated or padded QAF profile name.
+	SceUInt8 enc_data[0x60]; //!< Encrypted token payload.
 } SceQafTokenEnc;
 VITASDK_BUILD_ASSERT_EQ(0x80, SceQafTokenEnc); // size is from FW 3.60
 
@@ -38,28 +28,117 @@ typedef struct SceQafTokenEx {
 	 * ::SceQafTokenEnc. ::sceSblQafMgrGetQafToken2 transforms this region,
 	 * but its output layout is not established.
 	 */
-	char token_data[0x80];
-	char sig[0x100];
+	SceUInt8 token_data[0x80]; //!< Encrypted token on input to ::sceSblQafMgrSetQafToken2.
+	SceUInt8 sig[0x100];       //!< 0x100-byte token signature.
 } SceQafTokenEx;
 VITASDK_BUILD_ASSERT_EQ(0x180, SceQafTokenEx); // size is from FW 3.60
 
+/**
+ * FW 3.60 stub for deleting a legacy QAF token.
+ *
+ * @return `0x80010058` on FW 3.60.
+ */
 int sceSblQafManagerDeleteQafTokenForUser(void);
-int sceSblQafManagerGetQafNameForUser(char *buffer, unsigned int max_len);
+
+/**
+ * Copy up to 0x18 bytes of the active QAF profile name to user memory.
+ *
+ * The calling process must be a system program. The provider reads and writes
+ * the selected portion of \a buffer, so it must be both readable and writable.
+ * Values larger than 0x18 are clamped to 0x18.
+ *
+ * @param[in,out] buffer - Required profile-name buffer.
+ * @param[in] maxLength - Number of bytes available in \a buffer; must be
+ *                        nonzero.
+ *
+ * @return 0 on success, < 0 on error.
+ */
+int sceSblQafManagerGetQafNameForUser(char *buffer, SceSize maxLength);
+
+/** @return 1 when QA flag byte 0xD bit 0 is set, otherwise 0. */
 int sceSblQafManagerIsAllowKernelDebugForUser(void);
-int sceSblQafManagerSetQafTokenForUser(SceQafToken qaf_token);
+
+/**
+ * Delete the stored extended QAF token and mark the NVS token slot empty.
+ *
+ * The calling process must be a system program.
+ *
+ * @return 0 on success, < 0 on error.
+ */
 int sceSblQafMgrDeleteQafToken2(void);
-int sceSblQafMgrGetQafName(char *buffer, unsigned int max_len);
-int sceSblQafMgrGetQafToken(SceQafToken *qaf_token);
+
+/**
+ * Validate the stored extended QAF token and return its active profile name.
+ *
+ * The calling process must be a system program. \a buffer must be readable
+ * and writable, and \a maxLength must be at least 0x18. Exactly 0x18 bytes
+ * are transferred.
+ *
+ * @param[in,out] buffer - Required 0x18-byte profile-name buffer.
+ * @param[in] maxLength - Buffer capacity; must be at least 0x18.
+ *
+ * @return 0 on success, < 0 on error.
+ */
+int sceSblQafMgrGetQafName(char *buffer, SceSize maxLength);
+
+/**
+ * Retrieve and transform the stored 0x180-byte extended QAF token.
+ *
+ * The calling process must be a system program. When the NVS empty flag is
+ * clear, the first 0x80 bytes and the 0x100-byte signature are read from NVS.
+ * Otherwise a zero-initialized object is used. qaf_sm command 13 then
+ * transforms the complete object before it is copied to user memory.
+ *
+ * @param[out] qaf_token - Required output token.
+ *
+ * @return 0 on success, < 0 on error.
+ */
 int sceSblQafMgrGetQafToken2(SceQafTokenEx *qaf_token);
+
+/** @return 1 when QA flag byte 0xC bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowAllDebugMenuDisplay(void);
+
+/** @return 1 when QA flag byte 0xF bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowForceUpdate(void);
+
+/** @return 1 when QA flag byte 6 bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowLimitedDebugMenuDisplay(void);
+
+/** @return 1 when QA flag byte 0xF bit 0 is set, otherwise 0. */
 int sceSblQafMgrIsAllowMinimumDebugMenuDisplay(void);
+
+/** @return 1 when QA flag byte 0xF bit 0 is set, otherwise 0. */
 int sceSblQafMgrIsAllowNonQAPup(void);
+
+/** @return 1 when QA flag byte 6 bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowNpFullTest(void);
+
+/**
+ * Check whether NP test mode is enabled.
+ *
+ * @return 1 when QA flag byte 0xF bit 0 or Sysroot's NP-test flag is set,
+ *         otherwise 0.
+ */
 int sceSblQafMgrIsAllowNpTest(void);
+
+/** @return 1 when QA flag byte 0xD bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowRemoteSysmoduleLoad(void);
+
+/** @return 1 when QA flag byte 6 bit 1 is set, otherwise 0. */
 int sceSblQafMgrIsAllowScreenShotAlways(void);
+
+/**
+ * Validate and install an extended QAF token.
+ *
+ * The calling process must be a system program. qaf_sm command 12 validates
+ * the 0x180-byte object, the secure version counter is initialized or advanced
+ * from byte 5, and the token is enabled before it is written to NVS and read
+ * back for verification.
+ *
+ * @param[in] qaf_token - Required encrypted token and signature.
+ *
+ * @return 0 on success, < 0 on error.
+ */
 int sceSblQafMgrSetQafToken2(const SceQafTokenEx *qaf_token);
 
 #ifdef __cplusplus

@@ -12,11 +12,33 @@
 extern "C" {
 #endif
 
+/**
+ * Cached motion-controller identity record.
+ *
+ * FW 3.60 always writes the complete 0x2C-byte record. The first four bytes
+ * have the same meaning in both device-information response formats. The
+ * remaining bytes come directly from the controller response; their layout
+ * varies by response format and is not interpreted by this API.
+ */
 typedef struct SceKernelMotionDeviceInfo {
-	uint16_t BarkleyFwVersion;
-	uint16_t BarkleyHwInfo;
+	SceUInt16 barkleyFirmwareVersion; //!< Barkley motion-controller firmware version.
+	SceUInt16 barkleyHardwareInfo; //!< Barkley hardware information.
+	SceUInt8 controllerInfo[0x28]; //!< Controller-specific device-information response data.
 } SceKernelMotionDeviceInfo;
+VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelMotionDeviceInfo); // size is from FW 3.60
 
+/**
+ * Get the cached motion-controller identity record.
+ *
+ * The output is copied while CPU interrupts are suspended under the MotionDev
+ * state spinlock. On error, \a pInfo is not modified.
+ *
+ * @param[out] pInfo - Receives the complete identity record; must not be NULL.
+ *
+ * @return 0 on success, 0x80360001 if \a pInfo is NULL, 0x80360004 while
+ *         MotionDev is in a state that does not expose device information, or
+ *         0x80360006 when its cached device-information record is unavailable.
+ */
 int ksceMotionDevGetDeviceInfo(SceKernelMotionDeviceInfo *pInfo);
 
 #ifdef __cplusplus

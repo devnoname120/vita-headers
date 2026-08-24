@@ -15,12 +15,16 @@ extern "C" {
 /**
  * Verify a package ECDSA-160 signature.
  *
- * @param[in] pHash - Pointer to a 0x14-byte SHA-1 digest.
- * @param[in] pSig - Pointer to a 0x28-byte ECDSA signature.
+ * Both pointers are required, consumed synchronously, and not retained.
  *
- * @return 0 if the signature is valid, < 0 on error.
+ * @param[in] pHash - Complete 0x14-byte SHA-1 digest.
+ * @param[in] pSig - Complete 0x28-byte raw ECDSA-160 signature.
+ *
+ * @return 0 when valid; 0x808A0008 for a semaphore failure; or 0x808A000C for
+ *         invalid input or a rejected signature. The worker maps lower secure
+ *         verification errors to 0x808A000C.
  */
-int ksceSblGcAuthMgrPkgVry(const char *pHash, const char *pSig);
+int ksceSblGcAuthMgrPkgVry(const SceUInt8 *pHash, const SceUInt8 *pSig);
 
 #ifdef __cplusplus
 }

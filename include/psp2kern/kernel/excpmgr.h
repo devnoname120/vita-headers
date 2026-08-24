@@ -26,13 +26,14 @@ typedef enum SceExcpKind {
 } SceExcpKind;
 
 typedef enum SceExcpHandlingCode {
-	SCE_EXCPMGR_EXCEPTION_HANDLED           = 0, //!< Exception handled.
-	SCE_EXCPMGR_EXCEPTION_NOT_HANDLED       = 1, //!< Exception not handled.
-	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_2   = 2, //!< Semantics unknown; the terminal handler follows
-	                                             //!< the normal exception-return path.
+	SCE_EXCPMGR_EXCEPTION_HANDLED           = 0, //!< Resume from the supplied exception context.
+	SCE_EXCPMGR_EXCEPTION_NOT_HANDLED       = 1, //!< Process an unhandled thread exception,
+	                                             //!< then continue the handler chain.
+	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_2   = 2, //!< Forwarded unchanged; no producer was identified
+	                                             //!< in the available FW 3.60 modules.
 	SCE_EXCPMGR_EXCEPTION_NOT_HANDLED_FATAL = 3, //!< Fatal exception; panics the kernel.
-	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_4   = 4  //!< Observed after ThreadMgr queues a debug exception;
-	                                             //!< exact semantics are unknown.
+	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_4   = 4  //!< ThreadMgr queued the exception for deferred debug processing;
+	                                             //!< the terminal handler follows the normal exception-return path.
 } SceExcpHandlingCode;
 
 typedef struct SceExcpmgrBreakpointState {
@@ -66,22 +67,39 @@ typedef struct SceExcpmgrWatchpointState {
 VITASDK_BUILD_ASSERT_EQ(0x28, SceExcpmgrWatchpointState); // size is from FW 3.60
 
 typedef struct SceExcpmgrData {
-	int nestedExceptionCount[4]; //!< Number of active exception handlers on each CPU core.
+	int nestedExceptionCount[4]; //!< Active UNDEF, PABT, or DABT exception depth on each CPU core.
 	int reserved[4]; //!< Zero-initialized BSS; ignored on FW 3.60.
-	void *ExcpStackTop[4]; //!< Lower boundary of each CPU core's 0x1000-byte exception stack.
-	void *ExcpStackBottom[4]; //!< Upper boundary used as the initial exception stack pointer on each CPU core.
-	void *kernelMmuContext; //!< Kernel MMU/process context used to install TTBR1 and CONTEXTIDR.
-	SceExcpmgrBreakpointState *breakpointState; //!< Default breakpoint-register state.
-	SceExcpmgrWatchpointState *watchpointState; //!< Default watchpoint-register state.
+	void *ExcpStackTop[4]; //!< Base address of each CPU core's 0x1000-byte exception stack.
+	void *ExcpStackBottom[4]; //!< One-past-end address used as the initial exception stack pointer on each CPU core.
+	void *kernelProcessContext; //!< A pointer to the kernel's ::SceKernelProcessContext,
+	                            //!< used to install TTBR1 and CONTEXTIDR.
+	SceExcpmgrBreakpointState *breakpointState; //!< Fallback breakpoint-register state used when TPIDRPRW is zero.
+	SceExcpmgrWatchpointState *watchpointState; //!< Fallback watchpoint-state pointer;
+	                                            //!< Excpmgr gates and locks the restore path,
+	                                            //!< while Intrmgr consumes its register fields.
 } SceExcpmgrData;
 VITASDK_BUILD_ASSERT_EQ(0x4C, SceExcpmgrData); // size is from FW 3.60
 
+/** Values stored in bits 0-2 of ::SceArmWaypoint::event. */
+typedef enum SceArmWaypointEventType {
+	SCE_ARM_WAYPOINT_EVENT_DIRECT_BRANCH   = 0,
+	SCE_ARM_WAYPOINT_EVENT_INDIRECT_BRANCH = 1,
+	SCE_ARM_WAYPOINT_EVENT_EXCEPTION       = 2,
+	SCE_ARM_WAYPOINT_EVENT_MEMORY_BARRIER  = 3,
+	SCE_ARM_WAYPOINT_EVENT_DEBUG_ENTRY     = 4,
+	SCE_ARM_WAYPOINT_EVENT_DEBUG_EXIT      = 5,
+	SCE_ARM_WAYPOINT_EVENT_UNKNOWN_6       = 6,
+	SCE_ARM_WAYPOINT_EVENT_UNKNOWN_7       = 7
+} SceArmWaypointEventType;
+
 typedef struct SceArmWaypoint {
-	SceUInt32 unknown; //!< Its purpose is unknown; ignored by Excpmgr on FW 3.60.
+	SceUInt32 rawData; //!< Printed and forwarded without interpretation on FW 3.60.
 	SceUIntPtr pc; //!< Recorded source PC.
 	SceUIntPtr targetPc; //!< Recorded target PC.
-	SceUInt32 event; //!< Bit 31 marks a valid entry; bits 0-2 select the event type;
-	                 //!< bits 8-12 encode branch and instruction state.
+	SceUInt32 event; //!< Bit 31 marks a valid entry; bits 0-2 are one of ::SceArmWaypointEventType;
+	                 //!< for exception events, bits 4-7 select the subtype; bit 8 marks a link,
+	                 //!< bit 9 selects a 32-bit instruction, bit 10 marks a taken branch,
+	                 //!< and bits 11-12 select the instruction-set state.
 } SceArmWaypoint;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceArmWaypoint); // size is from FW 3.60
 
@@ -101,7 +119,7 @@ typedef struct SceExcpmgrExceptionContext {
 	uint32_t r12;
 	uint32_t sp;
 	uint32_t lr;
-	uint32_t address_of_faulting_instruction; //!< Faulting instruction address adjusted for the exception type.
+	uint32_t address_of_faulting_instruction; //!< LR-8 for DABT, LR-4 for PABT or ARM UNDEF, and LR-2 for Thumb UNDEF.
 	SceExcpKind ExceptionKind; //!< The kind of exception the CPU encountered.
 	uint32_t SPSR;
 	uint32_t CPACR;
@@ -139,11 +157,12 @@ typedef struct SceExcpmgrExceptionContext {
 	uint32_t PMXEVTYPER5;
 	uint32_t PMXEVCNTR5;
 	uint32_t reservedD0; //!< Not populated or read on FW 3.60; contains indeterminate exception-stack data.
-	uint32_t waypointControl; //!< Bits 8-12 contain the current index in the waypoint buffer.
+	uint32_t waypointControl; //!< Bit 0 is set during initialization and after exception processing;
+	                          //!< bits 8-12 contain the current index in the waypoint ring buffer.
 	uint32_t DBGSCRext;
 	uint32_t reservedDC[9]; //!< Not populated or read on FW 3.60; contents are indeterminate exception-stack data.
 	uint64_t VFP_registers[32]; //!< Content of floating-point registers D0-D31.
-	SceArmWaypoint waypoints[32]; //!< Circular ARM waypoint trace buffer.
+	SceArmWaypoint waypoints[32]; //!< Circular ARM waypoint trace history.
 } SceExcpmgrExceptionContext;
 VITASDK_BUILD_ASSERT_EQ(0x400, SceExcpmgrExceptionContext); // size is from FW 3.60
 
@@ -157,15 +176,14 @@ VITASDK_BUILD_ASSERT_EQ(0x400, SceExcpmgrExceptionContext); // size is from FW 3
 typedef void(SceExcpmgrExceptionHandler)(SceExcpmgrExceptionContext *context, SceExcpHandlingCode code);
 
 typedef struct SceExcpmgrExceptionHandlerContext {
-	struct SceExcpmgrExceptionHandlerContext *next; //!< Next handler in the exception chain.
+	struct SceExcpmgrExceptionHandlerContext *next; //!< Tagged pointer to the next handler record;
+	                                                //!< bit 0 preserves Thumb state.
 	SceUInt32 mustBeZero; //!< Must be zero when registering during cold boot; otherwise unused on FW 3.60.
 } SceExcpmgrExceptionHandlerContext;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceExcpmgrExceptionHandlerContext); // size is from FW 3.60
 
 /**
  * Get a pointer to SceExcpmgr's internal data.
- *
- * This is only used by exception handlers.
  *
  * @return A pointer to the ::SceExcpmgrData structure.
  */

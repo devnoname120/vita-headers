@@ -12,7 +12,28 @@
 extern "C" {
 #endif
 
-int ksceCameraIsActive(SceUID pid, SceUInt32 *puiStatus);
+/** Camera-active bits returned by ::ksceCameraIsActive. */
+typedef enum SceCameraActiveStatusFlag {
+	SCE_CAMERA_ACTIVE_STATUS_FRONT = 0x1, //!< The process owns an active front-camera stream.
+	SCE_CAMERA_ACTIVE_STATUS_BACK  = 0x2  //!< The process owns an active back-camera stream.
+} SceCameraActiveStatusFlag;
+
+/**
+ * Query the cameras actively owned by a process.
+ *
+ * A status bit is set only when the target process has opened and started the
+ * corresponding camera and remains its current global owner. An invalid or
+ * nonexistent process ID and an uninitialized Camera driver are reported as
+ * inactive rather than errors.
+ *
+ * @param[in] pid - Target process ID.
+ * @param[out] pStatus - Receives a bitwise OR of
+ *                       ::SceCameraActiveStatusFlag values. Must not be NULL.
+ *
+ * @return 1 if either camera is active, 0 if neither camera is active, or
+ *         0x802E0000 (::SCE_CAMERA_ERROR_PARAM) if \a pStatus is NULL.
+ */
+int ksceCameraIsActive(ScePID pid, SceUInt32 *pStatus);
 
 #ifdef __cplusplus
 }

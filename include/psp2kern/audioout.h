@@ -21,9 +21,9 @@ typedef enum SceAudioOutMonitorPath {
 
 /** Output modes selected for a mixed-output monitor path. */
 typedef enum SceAudioOutMonitorPathMode {
-	SCE_AUDIO_OUT_MONITOR_PATH_MODE_LOCAL_I2S        = 0, //!< Route to the selected local I2S output.
-	SCE_AUDIO_OUT_MONITOR_PATH_MODE_ALTERNATE_OUTPUT = 1, //!< Route to the alternate hardware output.
-	SCE_AUDIO_OUT_MONITOR_PATH_MODE_READBACK         = 2  //!< Route mixed PCM to RAM through ::ksceAudioOutMonitorRead.
+	SCE_AUDIO_OUT_MONITOR_PATH_MODE_LOCAL_I2S = 0, //!< Route to the selected local I2S output.
+	SCE_AUDIO_OUT_MONITOR_PATH_MODE_HDMI      = 1, //!< Route to the HDMI audio output.
+	SCE_AUDIO_OUT_MONITOR_PATH_MODE_READBACK  = 2  //!< Route mixed PCM to RAM through ::ksceAudioOutMonitorRead.
 } SceAudioOutMonitorPathMode;
 
 /** Channel modes accepted by ::ksceAudioOutMonitorSetChannelMode. */
@@ -40,7 +40,8 @@ typedef enum SceAudioOutSrcMix2Input0SourceMode {
 } SceAudioOutSrcMix2Input0SourceMode;
 
 /**
- * Callback invoked after an audio-output port is opened or released.
+ * Callback invoked after a voice or compressed-voice output port is opened or
+ * released. MAIN and BGM ports do not invoke these callbacks on FW 3.60.
  *
  * @param[in] processId - Owner PID for an opened port, or former owner PID for
  *                        a released port.
@@ -75,6 +76,8 @@ int ksceAudioOutSetMasterGain(SceUInt32 gain);
 /**
  * Set automatic level control for the current process's BGM port.
  *
+ * Mode 1 enables the FW 3.60 dynamic normalizer; mode 0 bypasses it.
+ *
  * @param[in] mode - Automatic-level-control mode.
  *
  * @return 0 on success, or a negative error.
@@ -84,20 +87,24 @@ int ksceAudioOutSetAlcMode(SceAudioOutAlcMode mode);
 /**
  * Configure one SrcMix block's input and output sample rates.
  *
- * A positive input rate may be any ::SceAudioOutSampleRate value. Setting an
- * input rate to a value <= 0 disables that input. FW 3.60 accepts
- * positive output rates 8000, 11050, 12000, 16000, 22050, 24000, 32000, 44100,
- * and 48000 Hz; setting the output rate to a value <= 0 disables output. The
- * 11050 value is the literal tested on FW 3.60, not 11025. FW 3.60 does not
- * validate @p srcMixIndex; callers must use 0 through 2.
+ * A positive input rate may be any ::SceAudioOutSampleRate value. For each rate
+ * argument, a negative value preserves the existing configuration and zero
+ * disables that input or output. FW 3.60 accepts positive output rates 8000,
+ * 12000, 16000, 22050, 24000, 32000, 44100, and 48000 Hz. An initial command
+ * encoder recognizes the literal value 11050, but the downstream rate
+ * validator rejects it; neither 11050 nor 11025 is a usable output rate.
+ * FW 3.60 does not validate @p srcMixIndex; callers must use 0 through 2.
  *
  * @param[in] srcMixIndex - SrcMix block index from 0 through 2.
- * @param[in] input0Rate - Input-0 ::SceAudioOutSampleRate value; set it to a
- *                         value <= 0 to disable the input.
- * @param[in] input1Rate - Input-1 ::SceAudioOutSampleRate value; set it to a
- *                         value <= 0 to disable the input.
- * @param[in] outputRate - Output rate listed above; set it to a value <= 0 to
- *                         disable output.
+ * @param[in] input0Rate - Input-0 ::SceAudioOutSampleRate value, zero to
+ *                         disable the input, or a negative value to preserve
+ *                         its existing configuration.
+ * @param[in] input1Rate - Input-1 ::SceAudioOutSampleRate value, zero to
+ *                         disable the input, or a negative value to preserve
+ *                         its existing configuration.
+ * @param[in] outputRate - Output rate listed above, zero to disable output, or
+ *                         a negative value to preserve its existing
+ *                         configuration.
  *
  * @return 0 on success, or a negative error.
  */
@@ -109,7 +116,8 @@ int ksceAudioSrcMixSetSampleRates(SceUInt32 srcMixIndex, int input0Rate, int inp
  * @param[in] processId - Process whose output state is changed.
  * @param[in] type - MAIN, BGM, or voice port selector.
  * @param[in] adopt - ::SCE_TRUE to adopt the port, or ::SCE_FALSE to release it.
- * @param[in] rampLength - Gain-transition length, clamped to 1..4096 on FW 3.60.
+ * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ *                         1..4096 on FW 3.60.
  * @param[in] waitForCompletion - When releasing adoption, wait for the
  *                                transition to finish if nonzero.
  *
@@ -120,12 +128,14 @@ int ksceAudioOutSetAdoptForPid(ScePID processId, SceAudioOutPortType type, SceBo
 /**
  * Capture the I2S0 transmit FIFO into RAM.
  *
- * The result is interleaved stereo signed 16-bit PCM. The call blocks until the
- * requested transfer completes. Passing NULL waits for an already queued
- * transfer instead of starting another one.
+ * The result is interleaved stereo signed 16-bit PCM. Non-NULL calls form a
+ * two-entry pipeline and may return while the supplied destination is still
+ * being filled. A destination becomes reusable after the next non-NULL call
+ * returns, or after a call with a NULL destination drains the pipeline.
  *
  * @param[out] dest - 128-byte-aligned destination, or NULL.
- * @param[in] frameCount - At least 64 frames and a multiple of 32.
+ * @param[in] frameCount - At least 64 frames and a multiple of 32. FW 3.60
+ *                         validates this argument even when @p dest is NULL.
  *
  * @return 0 on success, or a negative error.
  */
@@ -133,11 +143,14 @@ int ksceAudioI2s0CaptureTx(SceInt16 *dest, SceSize frameCount);
 
 /**
  * Apply a private gain ramp to selected output profiles of a process.
+ * A zero mask is a no-op, and FW 3.60 ignores mask bits not defined by
+ * ::SceAudioOutPortMask.
  *
  * @param[in] processId - Process whose output state is changed.
  * @param[in] portMask - Bitwise OR of ::SceAudioOutPortMask values.
  * @param[in] volume - Target gain from 0 through 256.
- * @param[in] rampLength - Gain-transition length, clamped to 1..4096 on FW 3.60.
+ * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ *                         1..4096 on FW 3.60.
  *
  * @return 0 on success, or a negative error.
  */
@@ -149,7 +162,9 @@ int ksceAudioOutSetPortVolumeForPid(ScePID processId, int portMask, SceUInt32 vo
  * ::SCE_AUDIO_OUT_SRCMIX2_INPUT0_SOURCE_PCM must be selected first. The input
  * is interleaved stereo signed 16-bit PCM.
  *
- * @param[in] src - Source PCM buffer.
+ * @param[in] src - Source PCM buffer. The caller must keep it readable until
+ *                  the queued DMA transfer has consumed it; this API does not
+ *                  provide a completion callback.
  * @param[in] frameCount - More than 4 frames and a multiple of 4.
  *
  * @return 0 on success, or a negative error.
@@ -157,9 +172,12 @@ int ksceAudioOutSetPortVolumeForPid(ScePID processId, int portMask, SceUInt32 vo
 int ksceAudioSrcMix2SubmitInput0Pcm(const SceInt16 *src, SceSize frameCount);
 
 /**
- * Capture SrcMix2's main output into RAM.
+ * Queue capture of SrcMix2's main output into RAM.
  *
- * Passing NULL waits until all already queued captures complete.
+ * Non-NULL calls form a two-entry pipeline and may return while the supplied
+ * destination is still being filled. A destination becomes reusable after the
+ * next non-NULL call returns. Passing NULL waits until all already queued
+ * captures complete.
  *
  * @param[out] dest - 16-byte-aligned destination for interleaved stereo signed
  *                    16-bit PCM, or NULL to drain queued captures.
@@ -188,7 +206,8 @@ int ksceAudioSrcMix2SetInputI2sIndex(SceUInt32 i2sIndex);
  * 120 frames. Only one destination can be pending per path.
  *
  * @param[in] path - Mixed-output path.
- * @param[out] dest - Destination for signed 16-bit PCM.
+ * @param[out] dest - Destination for signed 16-bit PCM. The caller must keep
+ *                    the buffer writable until the queued readback completes.
  * @param[in] frameCount - More than 4 frames and a multiple of 4; exactly 120
  *                         when conversion is enabled.
  *
@@ -199,6 +218,10 @@ int ksceAudioOutMonitorRead(SceAudioOutMonitorPath path, SceInt16 *dest, SceSize
 
 /**
  * Select the source used by SrcMix2 input 0.
+ *
+ * FW 3.60 does not validate this value. Values other than 0 and 2 use the
+ * dummy-page source, but only value 2 permits
+ * ::ksceAudioSrcMix2SubmitInput0Pcm.
  *
  * @param[in] sourceMode - Input source.
  *
@@ -229,7 +252,9 @@ int ksceAudioOutSetI2sOutputIndex(int i2sIndex);
  *
  * FW 3.60's provider accidentally admits path value 2 in this setter, but that
  * value indexes beyond the two intended monitor contexts and is rejected by
- * ::ksceAudioOutMonitorRead. It must not be used.
+ * ::ksceAudioOutMonitorRead. It must not be used. The provider does not
+ * validate @p mode; values outside ::SceAudioOutMonitorPathMode are stored but
+ * do not select a usable output path.
  *
  * @param[in] path - Primary or secondary mixed-output path.
  * @param[in] mode - Output mode for the path.
@@ -244,12 +269,14 @@ int ksceAudioOutMonitorSetPathMode(SceAudioOutMonitorPath path, SceAudioOutMonit
  * @param[in] processId - Process whose output state is queried.
  * @param[in] type - MAIN, BGM, or voice port selector.
  *
- * @return The signed 16-bit target gain on success, or a negative error.
+ * @return The private target gain, normally from 0 through 256, on success; or
+ *         a negative error.
  */
 int ksceAudioOutGetPortVolumeForPid(ScePID processId, SceAudioOutPortType type);
 
 /**
- * Select whether newly opened BGM and voice ports are adopted automatically.
+ * Select whether newly opened BGM and voice-profile ports are adopted
+ * automatically.
  *
  * @param[in] mode - Adoption mode. Any nonzero value behaves as manual mode on
  *                   FW 3.60.
@@ -262,7 +289,8 @@ int ksceAudioOutSetAdoptMode(SceAudioOutAdoptMode mode);
  * Register or clear the output-port release callback.
  *
  * @param[in] callback - Callback invoked with the former owner PID after a
- *                       port is released, or NULL to clear it.
+ *                       voice or compressed-voice port is released, or NULL to
+ *                       clear it.
  *
  * @return 0.
  */
@@ -271,8 +299,8 @@ int ksceAudioOutSetPortReleaseCallback(SceAudioOutPortCallback callback);
 /**
  * Register or clear the output-port open callback.
  *
- * @param[in] callback - Callback invoked with the owner PID after a port opens,
- *                       or NULL to clear it.
+ * @param[in] callback - Callback invoked with the owner PID after a voice or
+ *                       compressed-voice port opens, or NULL to clear it.
  *
  * @return 0.
  */

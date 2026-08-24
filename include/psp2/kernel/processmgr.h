@@ -56,7 +56,7 @@ int sceKernelPowerUnlock(SceKernelPowerTickType type);
 /**
  * Get the process time of the current process.
  *
- * @param[out] type - Pointer to a ::SceKernelSysClock structure which will receive the process time.
+ * @param[out] pSysClock - Pointer to a ::SceKernelSysClock value which will receive the process time.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -91,25 +91,93 @@ SceKernelTime sceKernelLibcTime(SceKernelTime *tloc);
 int sceKernelLibcGettimeofday(SceKernelTimeval *tv, SceKernelTimezone *tz);
 
 typedef struct SceLibkernelAddresses {
-	SceSize size; //!< Size of this structure
-	int (*sceKernelExitThread)(int exitStatus);
-	int (*sceKernelExitDeleteThread)(int exitStatus);
-	int (*sceKernelExitCallback)(void);
-	void *coredumpHandler; //!< A pointer to a function with signature `int (SceSize args, void *argp)`.
-	int *pProcessTime; //!< Points to the ::SceKernelSysClock process-time base.
-	int *pPMUSERENR; //!< Points to the cached ::SceUInt32 PMUSERENR value.
+	SceSize size; //!< Must be 0x1C on FW 3.60.
+	int (*sceKernelExitThread)(int exitStatus); //!< Exit-thread trampoline.
+	int (*sceKernelExitDeleteThread)(int exitStatus); //!< Exit-and-delete-thread trampoline.
+	int (*_sceKernelExitCallback)(void); //!< Exit-callback trampoline.
+	SceKernelThreadEntry coredumpHandler; //!< User coredump-thread entry point.
+	SceKernelSysClock *pProcessTime; //!< LibKernel process-time base initialized during registration.
+	SceUInt32 *pPMUSERENR; //!< LibKernel PMUSERENR cache updated by Processmgr.
 } SceLibkernelAddresses;
 VITASDK_BUILD_ASSERT_EQ(0x1C, SceLibkernelAddresses); // size is from FW 3.60
 
-int _sceKernelExitProcessForUser(int status);
-int _sceKernelRegisterLibkernelAddresses(SceLibkernelAddresses *pAddresses);
-int sceKernelGetProcessTimeCore(SceUInt64 *pTime);
-int sceKernelGetProcessTimeLowCore(void);
-SceUInt64 sceKernelGetProcessTimeWideCore(void);
-int sceKernelIsCDialogAvailable(void);
+/**
+ * Terminates the calling process through the raw user export.
+ *
+ * @param[in] exitStatus Process exit status.
+ *
+ * @return This function does not return.
+ */
+__attribute__((__noreturn__))
+int _sceKernelExitProcessForUser(SceInt32 exitStatus);
+
+/**
+ * Registers LibKernel's process-exit trampolines and cached-value addresses.
+ *
+ * FW 3.60 copies exactly 0x1C bytes and requires
+ * ::SceLibkernelAddresses::size to equal 0x1C. A registered non-NULL address
+ * is not replaced by a later call. The six addresses are retained in the
+ * process object and must remain valid for the process lifetime.
+ *
+ * FW 3.60 does not propagate a failure while initializing the user
+ * `pProcessTime` destination; that failure also prevents `pPMUSERENR` from
+ * being installed by the same call.
+ *
+ * @param[in] pAddresses Required registration block.
+ *
+ * @return 0 on success, or < 0 on error.
+ */
+int _sceKernelRegisterLibkernelAddresses(const SceLibkernelAddresses *pAddresses);
+
+/**
+ * Gets the calling process's elapsed time in microseconds.
+ *
+ * @param[out] pTime Required output using ::SceKernelSysClock semantics.
+ *
+ * @return 0 on success, or < 0 on error.
+ */
+int sceKernelGetProcessTimeCore(SceKernelSysClock *pTime);
+
+/** @return The wrapping low 32 bits of the calling process's elapsed time in microseconds. */
+SceUInt32 sceKernelGetProcessTimeLowCore(void);
+
+/** @return The calling process's elapsed time in microseconds. */
+SceKernelSysClock sceKernelGetProcessTimeWideCore(void);
+
+/**
+ * Tests whether the current process budget reserves common-dialog memory.
+ *
+ * @return 1 when available, 0 when unavailable, or < 0 on error.
+ */
+SceBool sceKernelIsCDialogAvailable(void);
+
+/** @return 1 when the calling process uses the built-in full-game budget descriptor, otherwise 0. */
 SceBool sceKernelIsGameBudget(void);
-SceInt32 sceKernelRegisterProcessTerminationCallback(SceUID pid, SceUID cbId);
-SceInt32 sceKernelUnregisterProcessTerminationCallback(SceUID pid, SceUID cbId);
+
+/**
+ * Registers a callback to be notified when a process object is destroyed.
+ *
+ * The callback receives the target process ID as its notification argument.
+ * The callback must remain valid until it is unregistered or the target
+ * process is destroyed. Registering the same pair again creates another
+ * registration; each unregister call removes one matching registration.
+ *
+ * @param[in] pid Nonzero target process ID.
+ * @param[in] callbackId Nonzero callback PUID owned by the calling process.
+ *
+ * @return 0 on success, or < 0 on error.
+ */
+SceInt32 sceKernelRegisterProcessTerminationCallback(ScePID pid, SceUID callbackId);
+
+/**
+ * Unregisters one matching process-termination callback registration.
+ *
+ * @param[in] pid Nonzero target process ID.
+ * @param[in] callbackId Nonzero previously registered callback PUID.
+ *
+ * @return 0 on success, or < 0 on error.
+ */
+SceInt32 sceKernelUnregisterProcessTerminationCallback(ScePID pid, SceUID callbackId);
 
 #ifdef __cplusplus
 }

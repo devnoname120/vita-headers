@@ -15,12 +15,17 @@ extern "C" {
 /**
  * Set the CP activation key from the activation data managed by the service.
  *
+ * This operation is restricted to system programs.
+ *
  * @return SCE_OK on success, < 0 on error.
  */
 int sceSblRtcMgrSetCpActivationKey(void);
 
 /**
  * Set the 32-bit CP physical RTC value and corresponding key.
+ *
+ * This operation is restricted to system programs and requires manufacturing
+ * mode. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
  *
  * @param[in] rtc - New physical RTC value.
  *
@@ -31,6 +36,9 @@ int sceSblRtcMgrSetCpRtcPhysicalAndKey(int rtc);
 /**
  * Get the CP serial identifier.
  *
+ * This operation is restricted to system programs and requires manufacturing
+ * mode.
+ *
  * @param[out] serial_id - Receives exactly 0x80 bytes.
  *
  * @return SCE_OK on success, < 0 on error.
@@ -39,6 +47,9 @@ int sceSblRtcMgrGetCpSerialId(void *serial_id);
 
 /**
  * Set the 32-bit CP physical RTC value.
+ *
+ * This operation is restricted to system programs and requires manufacturing
+ * mode. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
  *
  * @param[in] rtc - New physical RTC value.
  *
@@ -49,6 +60,9 @@ int sceSblRtcMgrSetCpRtcPhysicalForUser(int rtc);
 /**
  * Get the 32-bit CP physical RTC value.
  *
+ * This operation is restricted to system programs and requires manufacturing
+ * mode.
+ *
  * @param[out] rtc - Receives the physical RTC value.
  *
  * @return SCE_OK on success, < 0 on error.
@@ -57,6 +71,10 @@ int sceSblRtcMgrGetCpRtcPhysicalForUser(int *rtc);
 
 /**
  * Set the 32-bit CP logical RTC value.
+ *
+ * This operation is restricted to system programs. Interpreted as an unsigned
+ * 32-bit value, FW 3.60 accepts values from 946652400 through 4102412399 for
+ * validation, but does not perform the set operation.
  *
  * @param[in] rtc - New logical RTC value.
  *
@@ -67,6 +85,8 @@ int sceSblRtcMgrSetCpRtcLogical(int rtc);
 
 /**
  * Get the 32-bit CP logical RTC value.
+ *
+ * This operation is restricted to system programs.
  *
  * @param[out] rtc - Receives the logical RTC value.
  *

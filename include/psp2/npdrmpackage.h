@@ -1,6 +1,14 @@
 /**
  * \usergroup{SceNpDrmPackage}
  * \usage{psp2/npdrmpackage.h,SceNpDrm_stub}
+ *
+ * On FW 3.60, every function in this library except
+ * ::sceNpDrmPackageIsGameExist is restricted to system programs with auth ID
+ * 0x2800000000000001, 0x280000000000002D, 0x280000000000002E, or
+ * 0x2800000000000039.
+ *
+ * The started and finished notification functions synchronously copy at most
+ * 0x40 bytes from their message pointer and do not retain the pointer.
  */
 
 
@@ -20,11 +28,16 @@ typedef struct SceNpDrmPackageCheckOpt {
 } SceNpDrmPackageCheckOpt;
 VITASDK_BUILD_ASSERT_EQ(0x20, SceNpDrmPackageCheckOpt); // size is from FW 3.60
 
-/** Options for ::_sceNpDrmPackageDecrypt */
-typedef struct SceNpDrmPackageDecryptOpt {
+/**
+ * Options for ::_sceNpDrmPackageDecrypt.
+ *
+ * The previous ::_sceNpDrmPackageDecrypt_opt type name is retained for
+ * backwards compatibility.
+ */
+typedef struct _sceNpDrmPackageDecrypt {
 	SceOff offset; //!< Offset in the encrypted data.
-	unsigned int identifier; //!< Identifier passed to ::_sceNpDrmPackageCheck without the 0x100 flag.
-} SceNpDrmPackageDecryptOpt;
+	SceUInt32 identifier; //!< Context identifier passed to ::_sceNpDrmPackageCheck without the 0x100 flag.
+} SceNpDrmPackageDecryptOpt, _sceNpDrmPackageDecrypt_opt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceNpDrmPackageDecryptOpt); // size is from FW 3.60
 
 typedef struct SceNpDrmPackageStartedOpt {
@@ -43,167 +56,212 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceNpDrmPackageFinishedOpt); // size is from FW 3.6
 /**
  * Read the header of the PKG and initialize the context
  *
- * @param buffer - The buffer containing the header of PKG.
- * @param size - The size of buffer. The minimum confirmed value is 0x8000.
- * @param opt - A 32-bit user pointer to a ::SceNpDrmPackageCheckOpt structure,
- *              or 0. The structure contents are ignored on FW 3.60. Any nonzero
- *              pointer requests package-context teardown.
- * @param identifier - A value whose low byte is in the range [0, 6). The 0x100
- *                     flag creates or uses the package context. The 0x200 flag
- *                     also requests teardown and requires a nonzero opt.
+ * The caller must be one of the system programs accepted by FW 3.60.
  *
- * @return 0 on success, != 0 on error
+ * @param[in] buffer - Buffer containing the PKG header
+ * @param[in] size - Buffer size. A normal check requires at least 0x8000 bytes.
+ * @param[in] opt - A 32-bit user pointer to a ::SceNpDrmPackageCheckOpt
+ *                  structure, or 0. The pointer type remains an integer for
+ *                  backwards compatibility. The structure contents are ignored
+ *                  on FW 3.60. Any nonzero pointer requests context teardown.
+ * @param[in] identifier - Value whose low byte selects one of six contexts. Bit
+ *                         0x100 creates or uses the context. Bit 0x200 also
+ *                         requests teardown and requires a nonzero \a opt.
+ *
+ * @return 0 on success, < 0 on error
  */
 int _sceNpDrmPackageCheck(const void *buffer, SceSize size, int opt, unsigned int identifier);
 
 /**
  * Decrypt a PKG
  *
- * @param buffer - The buffer containing the content of the PKG.
- * @param size - The size of the buffer. The minimum confirmed value is 0x20.
- * @param opt - The options.
+ * The caller must be one of the system programs accepted by FW 3.60.
  *
- * @return 0 on success, != 0 on error
+ * @param[in,out] buffer - PKG data to decrypt in place
+ * @param[in] size - Size of the buffer
+ * @param[in] opt - Required input-only offset and context identifier. Still
+ *                  declared as non-const for backwards compatibility.
+ *
+ * @return 0 on success, < 0 on error
  */
 int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, SceNpDrmPackageDecryptOpt * __restrict__ opt);
 
 /**
  * Update a package hash-transform context
  *
- * @param buffer - A 32-bit user pointer to the input data
- * @param size - Size of the input data
- * @param opt - A pointer to a ::SceSblDmac5HashTransformContext structure
- * @param identifier - Package identifier and flags. The 0x10000 flag copies the
- *                     0x20-byte DMAC5 hash output into opt's state. The
- *                     0x40000000 flag selects DMAC5 command 3 instead of command
- *                     0x13.
+ * The caller must be one of the system programs accepted by FW 3.60.
  *
- * @return 0 on success, != 0 on error
+ * @param[in] buffer - Input data
+ * @param[in] size - Size of the input data; must be nonzero
+ * @param[in,out] context - Required hash context. Its complete 0x28-byte value
+ *                          is copied in and out.
+ * @param[in] identifier - Package identifier and flags. Bit 0x10000 copies the
+ *                         0x20-byte DMAC5 hash output into \a context->state. Bit
+ *                         0x40000000 selects DMAC5 command 3 instead of command
+ *                         0x13.
+ *
+ * @return 0 on success, < 0 on error
  */
-int _sceNpDrmPackageTransform(int buffer, int size, void *opt, int identifier);
+int _sceNpDrmPackageTransform(const void *buffer, SceSize size, SceSblDmac5HashTransformContext *context, SceUInt32 identifier);
 
 /**
  * Notify that package installation has started
  *
- * @param identifier - Package operation identifier
- * @param forwarded_value - Forwarded unchanged to the system callback; 0 in
- *                          observed FW 3.60 callers
- * @param message - A 32-bit user pointer to the status message
- * @param opt - A pointer to a ::SceNpDrmPackageStartedOpt structure
+ * @param[in] identifier - Package operation identifier. The FW 3.60 installer
+ *                         sets bit 0x80000000 for a started notification.
+ * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
+ *                              unchanged to the system callback and set to 0
+ *                              by observed FW 3.60 callers.
+ * @param[in] message - Optional status data
+ * @param[in] opt - Required message-size options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmPackageInstallStarted(int identifier, int forwarded_value, int message, void *opt);
+int _sceNpDrmPackageInstallStarted(int identifier, int forwarded_value, const void *message, const SceNpDrmPackageStartedOpt *opt);
 
 /**
  * Notify that package installation has finished
  *
- * @param result_code - Operation result
- * @param message - A 32-bit user pointer to the status message
- * @param message_size - Size of the status message
- * @param opt - A pointer to a ::SceNpDrmPackageFinishedOpt structure
+ * @param[in] result_code - Operation result
+ * @param[in] message - Optional status data
+ * @param[in] message_size - Size of the status data
+ * @param[in] opt - Required message-copy options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmPackageInstallFinished(int result_code, int message, int message_size, void *opt);
+int _sceNpDrmPackageInstallFinished(int result_code, const void *message, SceSize message_size, const SceNpDrmPackageFinishedOpt *opt);
 
 /**
  * Notify that package uninstallation has started
  *
- * @param identifier - Package operation identifier
- * @param forwarded_value - Forwarded unchanged to the system callback; 0 in
- *                          observed FW 3.60 callers
- * @param message - A 32-bit user pointer to the status message
- * @param opt - A pointer to a ::SceNpDrmPackageStartedOpt structure
+ * @param[in] identifier - Package operation identifier. The FW 3.60 installer
+ *                         sets bit 0x80000000 for a started notification.
+ * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
+ *                              unchanged to the system callback and set to 0
+ *                              by observed FW 3.60 callers.
+ * @param[in] message - Optional status data
+ * @param[in] opt - Required message-size options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmPackageUninstallStarted(int identifier, int forwarded_value, int message, void *opt);
+int _sceNpDrmPackageUninstallStarted(int identifier, int forwarded_value, const void *message, const SceNpDrmPackageStartedOpt *opt);
 
 /**
  * Notify that package uninstallation has finished
  *
- * @param result_code - Operation result
- * @param message - A 32-bit user pointer to the status message
- * @param message_size - Size of the status message
- * @param opt - A pointer to a ::SceNpDrmPackageFinishedOpt structure
+ * @param[in] result_code - Operation result
+ * @param[in] message - Optional status data
+ * @param[in] message_size - Size of the status data
+ * @param[in] opt - Required message-copy options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmPackageUninstallFinished(int result_code, int message, int message_size, void *opt);
+int _sceNpDrmPackageUninstallFinished(int result_code, const void *message, SceSize message_size, const SceNpDrmPackageFinishedOpt *opt);
 
 /**
  * Notify that save-data formatting has started
  *
- * @param identifier - Save-data operation identifier
- * @param forwarded_value - Forwarded unchanged to the system callback; 0 in
- *                          observed FW 3.60 callers
- * @param message - A 32-bit user pointer to the status message
- * @param opt - A pointer to a ::SceNpDrmPackageStartedOpt structure
+ * @param[in] identifier - Save-data operation identifier. The FW 3.60 installer
+ *                         sets bit 0x80000000 for a started notification.
+ * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
+ *                              unchanged to the system callback and set to 0
+ *                              by observed FW 3.60 callers.
+ * @param[in] message - Optional status data
+ * @param[in] opt - Required message-size options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmSaveDataFormatStarted(int identifier, int forwarded_value, int message, void *opt);
+int _sceNpDrmSaveDataFormatStarted(int identifier, int forwarded_value, const void *message, const SceNpDrmPackageStartedOpt *opt);
 
 /**
  * Notify that save-data formatting has finished
  *
- * @param result_code - Operation result
- * @param message - A 32-bit user pointer to the status message
- * @param message_size - Size of the status message
- * @param opt - A pointer to a ::SceNpDrmPackageFinishedOpt structure
+ * @param[in] result_code - Operation result
+ * @param[in] message - Optional status data
+ * @param[in] message_size - Size of the status data
+ * @param[in] opt - Required message-copy options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmSaveDataFormatFinished(int result_code, int message, int message_size, void *opt);
+int _sceNpDrmSaveDataFormatFinished(int result_code, const void *message, SceSize message_size, const SceNpDrmPackageFinishedOpt *opt);
 
 /**
  * Notify that save-data installation has started
  *
- * @param identifier - Save-data operation identifier
- * @param forwarded_value - Forwarded unchanged to the system callback; 0 in
- *                          observed FW 3.60 callers
- * @param message - A 32-bit user pointer to the status message
- * @param opt - A pointer to a ::SceNpDrmPackageStartedOpt structure
+ * @param[in] identifier - Save-data operation identifier. The FW 3.60 installer
+ *                         sets bit 0x80000000 for a started notification.
+ * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
+ *                              unchanged to the system callback and set to 0
+ *                              by observed FW 3.60 callers.
+ * @param[in] message - Optional status data
+ * @param[in] opt - Required message-size options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmSaveDataInstallStarted(int identifier, int forwarded_value, int message, void *opt);
+int _sceNpDrmSaveDataInstallStarted(int identifier, int forwarded_value, const void *message, const SceNpDrmPackageStartedOpt *opt);
 
 /**
  * Notify that save-data installation has finished
  *
- * @param result_code - Operation result
- * @param message - A 32-bit user pointer to the status message
- * @param message_size - Size of the status message
- * @param opt - A pointer to a ::SceNpDrmPackageFinishedOpt structure
+ * @param[in] result_code - Operation result
+ * @param[in] message - Optional status data
+ * @param[in] message_size - Size of the status data
+ * @param[in] opt - Required message-copy options
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int _sceNpDrmSaveDataInstallFinished(int result_code, int message, int message_size, void *opt);
+int _sceNpDrmSaveDataInstallFinished(int result_code, const void *message, SceSize message_size, const SceNpDrmPackageFinishedOpt *opt);
 
 /**
  * Report package installation progress
  *
- * @param identifier - Package operation identifier
- * @param progress - Progress percentage. The observed FW 3.60 caller accepts
- *                   values in the range [0, 100].
+ * @param[in] identifier - Package operation identifier
+ * @param[in] progress - Progress percentage. FW 3.60 does not validate
+ *                       this value; the FW 3.60 installer uses values from 0
+ *                       through 100.
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int sceNpDrmPackageInstallOngoing(int identifier, int progress);
+int sceNpDrmPackageInstallOngoing(int identifier, SceUInt32 progress);
 
 /** @return Nonzero when package game content exists, 0 otherwise */
-int sceNpDrmPackageIsGameExist(void);
+SceBool sceNpDrmPackageIsGameExist(void);
 
 /**
  * Report package uninstallation progress
  *
- * @param identifier - Package operation identifier
- * @param progress - Progress percentage. The observed FW 3.60 caller accepts
- *                   values in the range [0, 100].
+ * @param[in] identifier - Package operation identifier
+ * @param[in] progress - Progress percentage. FW 3.60 does not validate
+ *                       this value; the FW 3.60 installer uses values from 0
+ *                       through 100.
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int sceNpDrmPackageUninstallOngoing(int identifier, int progress);
+int sceNpDrmPackageUninstallOngoing(int identifier, SceUInt32 progress);
 
 /**
  * Report save-data formatting progress
  *
- * @param identifier - Save-data operation identifier
- * @param progress - Progress percentage. The observed FW 3.60 caller accepts
- *                   values in the range [0, 100].
+ * @param[in] identifier - Save-data operation identifier
+ * @param[in] progress - Progress percentage. FW 3.60 does not validate
+ *                       this value; the FW 3.60 installer uses values from 0
+ *                       through 100.
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int sceNpDrmSaveDataFormatOngoing(int identifier, int progress);
+int sceNpDrmSaveDataFormatOngoing(int identifier, SceUInt32 progress);
 
 /**
  * Report save-data installation progress
  *
- * @param identifier - Save-data operation identifier
- * @param progress - Progress percentage. The observed FW 3.60 caller accepts
- *                   values in the range [0, 100].
+ * @param[in] identifier - Save-data operation identifier
+ * @param[in] progress - Progress percentage. FW 3.60 does not validate
+ *                       this value; the FW 3.60 installer uses values from 0
+ *                       through 100.
+ *
+ * @return >= 0 on success, < 0 on error
  */
-int sceNpDrmSaveDataInstallOngoing(int identifier, int progress);
+int sceNpDrmSaveDataInstallOngoing(int identifier, SceUInt32 progress);
 
 #ifdef __cplusplus
 }

@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 typedef struct ScePfsRndDriveId {
-	char drive_id[0x10];
+	char drive_id[0x10]; //!< NUL-terminated pseudo-drive identifier, such as `PD001122334455d`.
 } ScePfsRndDriveId;
 VITASDK_BUILD_ASSERT_EQ(0x10, ScePfsRndDriveId);
 

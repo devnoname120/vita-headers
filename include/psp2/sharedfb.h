@@ -44,31 +44,52 @@ SceUID sceSharedFbOpen(int index)
 };
 
 typedef struct SceSharedFbCreate {
-	SceSize AllocMemSize; //!< Size in bytes of the CDRAM allocation.
-	int reserved0; //!< Retained by the object but actually unused on FW 3.60.
-	int reserved[4]; //!< Copied from user memory but actually unused on FW 3.60.
+	SceSize allocMemSize; //!< Size in bytes of the CDRAM allocation.
+	SceUInt32 reserved0; //!< Retained by the object but otherwise ignored on FW 3.60.
+	SceUInt32 reserved[4]; //!< Ignored on FW 3.60.
 } SceSharedFbCreate;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSharedFbCreate); // size is from FW 3.60
+
+/** Rendering information supplied by PAF during a shared-framebuffer handoff. */
+typedef struct SceSharedFbRenderInfo {
+	void *frameBufferBase; //!< Base address of the selected color buffer.
+	SceUInt32 reserved04; //!< Set to 0 by PAF on FW 3.60.
+	void *depthStencilBuffer; //!< Opaque PAF depth/stencil buffer; NULL disables the depth/stencil surface.
+	SceUInt32 reserved0C[4]; //!< Set to 0 by PAF on FW 3.60.
+	SceUInt32 stride; //!< Color-buffer stride in pixels.
+	SceUInt32 width;
+	SceUInt32 height;
+	SceUInt32 pixelFormat; //!< One of ::SceGxmColorFormat.
+	SceInt32 bufferIndex; //!< One-based render-buffer index used by PAF.
+	SceUInt32 reserved30[4]; //!< Set to 0 by PAF on FW 3.60.
+} SceSharedFbRenderInfo;
+VITASDK_BUILD_ASSERT_EQ(0x40, SceSharedFbRenderInfo); // size is from FW 3.60
 
 /**
  * Creates a shared-framebuffer object.
  *
- * @param[in] index Shared-framebuffer index.
- * @param[in] createParam A 0x18-byte ::SceSharedFbCreate structure.
+ * FW 3.60 supports two simultaneously created objects. PAF creates index 1.
+ * The calling process must be a system program.
+ *
+ * @param[in] index Non-negative shared-framebuffer index.
+ * @param[in] createParam Required 0x18-byte ::SceSharedFbCreate structure.
  *
  * @return The shared-framebuffer ID on success, or a negative error code.
  */
-SceUID sceSharedFbCreate(int index, SceSharedFbCreate *createParam);
+SceUID sceSharedFbCreate(int index, const SceSharedFbCreate *createParam);
 
 /**
  * Gets the current shell render port.
  *
- * @return The shell render port on success, or a negative error code.
+ * @return 0 or 1 on success, or a negative error code.
  */
 int sceSharedFbGetShellRenderPort(void);
 
 /**
  * Performs one process handoff after ::sceSharedFbUpdateProcessBegin.
+ *
+ * Call this function exactly the number of times returned by
+ * ::sceSharedFbUpdateProcessBegin, then call ::sceSharedFbUpdateProcessEnd.
  *
  * @return 1 when the selected process is marked for rendering, 0 otherwise,
  * or a negative error code.
@@ -78,18 +99,25 @@ int sceSharedFbUpdateProcess(void);
 /**
  * Begins a shared-framebuffer update.
  *
+ * Both pointers are required on FW 3.60. The calling process must be a
+ * system program and \a sharedFbId must identify one of the two created shared
+ * framebuffers.
+ *
  * @param[in] sharedFbId Shared-framebuffer ID.
- * @param[in] renderInfo A pointer to a 0x40-byte rendering-information block.
+ * @param[in] renderInfo Rendering information copied into the shared framebuffer.
  * @param[out] updateCount A pointer to the 32-bit number of subsequent
  * ::sceSharedFbUpdateProcess calls required.
  *
  * @return 0 on success, or a negative error code.
  */
-int sceSharedFbUpdateProcessBegin(SceUID sharedFbId, void *renderInfo, void *updateCount);
+int sceSharedFbUpdateProcessBegin(SceUID sharedFbId, const SceSharedFbRenderInfo *renderInfo, SceUInt32 *updateCount);
 
 /**
  * Completes a process handoff sequence begun by
  * ::sceSharedFbUpdateProcessBegin.
+ *
+ * This function takes no arguments and must be called after the corresponding
+ * update-process loop.
  *
  * @return 0 on success, or a negative error code.
  */

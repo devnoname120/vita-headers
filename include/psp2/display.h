@@ -140,14 +140,14 @@ int sceDisplayRegisterVblankStartCallback(SceUID uid);
 int sceDisplayUnregisterVblankStartCallback(SceUID uid);
 
 typedef struct SceDisplayGetFrameBufInternalOpt {
-	SceInt32 iUpdateTimingMode; //!< One of ::SceDisplayUpdateTiming.
-	SceSize frameBufSize; //!< Set to sizeof(SceDisplayFrameBuf) for the declared output type; maximum 0x1C with a larger compatible buffer.
+	SceDisplaySetBufSync iUpdateTimingMode; //!< Framebuffer state to query.
+	SceSize frameBufSize; //!< Framebuffer structure size, or zero for a NULL pointer.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceDisplayGetFrameBufInternalOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceDisplayGetFrameBufInternalOpt); // size is from FW 3.60
 
 typedef struct SceDisplayGetFrameBufOpt {
-	SceInt32 frameBufSize; //!< Set to sizeof(SceDisplayFrameBuf) for the declared output type; a ::SceSize value with a maximum of 0x1C.
+	SceSize frameBufSize; //!< Framebuffer structure size, or zero for a NULL pointer.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceDisplayGetFrameBufOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceDisplayGetFrameBufOpt); // size is from FW 3.60
@@ -160,12 +160,12 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceDisplayGetResolutionInfoInternalOpt); // size is
 
 typedef struct SceDisplayFrameBufForCompat {
 	SceSize size; //!< Must be set to 0x1C.
-	void *base;
-	unsigned int pitch; //!< Pitch in pixels.
-	unsigned int pixelformat; //!< One of ::SceDisplayPixelFormat.
-	unsigned int width;
-	unsigned int height;
-	SceUInt32 flags; //!< Bitwise OR of ::SceDisplayFrameBufForCompatFlag values.
+	void *base; //!< Framebuffer base address; must be aligned to 0x100 bytes.
+	unsigned int pitch; //!< Pitch in pixels; must be a multiple of 64 and at least width.
+	unsigned int pixelformat; //!< FW 3.60 accepts 0x00000000 and 0x50000000.
+	unsigned int width; //!< Visible width in pixels.
+	unsigned int height; //!< Visible height in pixels.
+	SceUInt32 flags; //!< Bitwise OR of ::SceDisplayFrameBufForCompatFlag values; only bit 20 is interpreted on FW 3.60.
 } SceDisplayFrameBufForCompat;
 VITASDK_BUILD_ASSERT_EQ(0x1C, SceDisplayFrameBufForCompat); // size is from FW 3.60
 
@@ -175,24 +175,24 @@ typedef enum SceDisplayFrameBufForCompatFlag {
 VITASDK_BUILD_ASSERT_EQ(4, SceDisplayFrameBufForCompatFlag);
 
 typedef struct SceDisplaySetFrameBufForCompatOpt {
-	SceSize scaleY; //!< Vertical source-sampling step in unsigned 16.16 fixed-point format; 0x10000 selects 1:1 scaling.
-	SceDisplayFrameBuf *pFrameBuf; //!< Optional; points to a ::SceDisplayFrameBufForCompat structure.
-	SceDisplayCaptureFrameBuf *pCaptureFrameBuf; //!< Optional; NULL skips capture.
-	SceSize frameBufSize; //!< Set to sizeof(SceDisplayFrameBufForCompat).
-	SceSize captureFrameBufSize; //!< Number of bytes to copy from pCaptureFrameBuf; maximum 0x18.
-	int reserved; //!< Unused on FW 3.60.
+	SceUInt32 scaleY; //!< Vertical source-sampling step in unsigned 16.16 fixed-point format; 0x10000 selects 1:1 scaling.
+	const SceDisplayFrameBufForCompat *pFrameBuf; //!< Optional compatibility framebuffer; NULL disables scanout.
+	const SceDisplayCaptureFrameBuf *pCaptureFrameBuf; //!< Optional capture destination; ignored when pFrameBuf is NULL.
+	SceSize frameBufSize; //!< Set to sizeof(SceDisplayFrameBufForCompat), or zero for a NULL pointer.
+	SceSize captureFrameBufSize; //!< Set to sizeof(SceDisplayCaptureFrameBuf), or zero for a NULL pointer.
+	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceDisplaySetFrameBufForCompatOpt;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceDisplaySetFrameBufForCompatOpt); // size is from FW 3.60
 
 typedef struct SceDisplaySetFrameBufOpt {
-	SceSize frameBufSize; //!< Set to sizeof(SceDisplayFrameBuf) for the declared input type; maximum 0x1C with a larger compatible buffer.
+	SceSize frameBufSize; //!< Framebuffer structure size, or zero for a NULL pointer.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceDisplaySetFrameBufOpt;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceDisplaySetFrameBufOpt); // size is from FW 3.60
 
 typedef struct SceDisplaySetFrameBufInternalOpt {
-	SceInt32 iUpdateTimingMode; //!< One of ::SceDisplayUpdateTiming.
-	SceSize frameBufSize; //!< Set to sizeof(SceDisplayFrameBuf) for the declared input type; maximum 0x1C with a larger compatible buffer.
+	SceDisplaySetBufSync iUpdateTimingMode; //!< Framebuffer update timing.
+	SceSize frameBufSize; //!< Framebuffer structure size, or zero for a NULL pointer.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceDisplaySetFrameBufInternalOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceDisplaySetFrameBufInternalOpt); // size is from FW 3.60
@@ -200,21 +200,67 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceDisplaySetFrameBufInternalOpt); // size is from
 /**
  * Get the current framebuffer.
  *
- * @param[out] pFrameBuf - Framebuffer information.
- * @param[in] sync - Value of type ::SceDisplaySetBufSync.
- * @param[in] pOpt - Pointer to a ::SceDisplayGetFrameBufOpt structure.
+ * FW 3.60 accepts framebuffer descriptor sizes 0x18 and 0x1C. The declared
+ * ::SceDisplayFrameBuf receives the first 0x18 bytes. Both valid sync values
+ * return the same current state on this firmware.
  *
- * @return 0 on success, < 0 on error.
+ * @param[in,out] pFrameBuf - A 0x18 ::SceDisplayFrameBuf, or a 0x1C
+ *                            ::SceDisplayFrameBufExt cast to this pointer type.
+ * @param[in] sync - One of ::SceDisplaySetBufSync.
+ * @param[in] pOpt - Required option structure.
+ *
+ * @return 0 on success, or a negative error code.
  */
-int _sceDisplayGetFrameBuf(SceDisplayFrameBuf *pFrameBuf, SceDisplayFrameBufType sync, SceDisplayGetFrameBufOpt *pOpt);
-int _sceDisplayGetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayFrameBuf *pFrameBuf, SceDisplayGetFrameBufInternalOpt *pOpt);
-int _sceDisplayGetMaximumFrameBufResolution(SceUInt32 *width, SceUInt32 *height);
-int _sceDisplayGetResolutionInfoInternal(SceDisplayHead head, SceDisplayResolutionInfo *pInfo, SceDisplayGetResolutionInfoInternalOpt *pOpt);
+int _sceDisplayGetFrameBuf(SceDisplayFrameBuf *pFrameBuf, SceDisplaySetBufSync sync, const SceDisplayGetFrameBufOpt *pOpt);
 
 /**
- * @param[in] iUpdateTimingMode One of ::SceDisplayUpdateTiming.
+ * Get one framebuffer slot for a display head.
+ *
+ * @param[in] head - Display head.
+ * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
+ * @param[in,out] pFrameBuf - A 0x18 ::SceDisplayFrameBuf, or a 0x1C
+ *                            ::SceDisplayFrameBufExt cast to this pointer type.
+ * @param[in] pOpt - Required option structure containing the output size and
+ *                   update-timing value.
+ *
+ * @return 0 on success, or a negative error code.
  */
-int _sceDisplaySetFrameBuf(const SceDisplayFrameBuf *pFrameBuf, SceInt32 iUpdateTimingMode, SceDisplaySetFrameBufOpt *pOpt);
+int _sceDisplayGetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayFrameBuf *pFrameBuf, const SceDisplayGetFrameBufInternalOpt *pOpt);
+
+/**
+ * Get the maximum framebuffer dimensions.
+ *
+ * @param[out] width - Optional maximum-width output.
+ * @param[out] height - Optional maximum-height output.
+ *
+ * @return 0 on success, or a negative error code.
+ */
+int _sceDisplayGetMaximumFrameBufResolution(SceUInt32 *width, SceUInt32 *height);
+
+/**
+ * Get resolution, output-format, scan-mode, and refresh-rate information.
+ *
+ * @param[in] head - Display head.
+ * @param[in,out] pInfo - Resolution-information output whose size member must
+ *                        be set to sizeof(SceDisplayResolutionInfo).
+ * @param[in] pOpt - Required option structure.
+ *
+ * @return 0 on success, or a negative error code.
+ */
+int _sceDisplayGetResolutionInfoInternal(SceDisplayHead head, SceDisplayResolutionInfo *pInfo, const SceDisplayGetResolutionInfoInternalOpt *pOpt);
+
+/**
+ * Set the current process framebuffer.
+ *
+ * @param[in] pFrameBuf - A 0x18 ::SceDisplayFrameBuf, a 0x1C
+ *                        ::SceDisplayFrameBufExt cast to this pointer type, or
+ *                        NULL to disable scanout.
+ * @param[in] sync - Framebuffer update timing.
+ * @param[in] pOpt - Required option structure.
+ *
+ * @return 0 on success, or a negative error code.
+ */
+int _sceDisplaySetFrameBuf(const SceDisplayFrameBuf *pFrameBuf, SceDisplaySetBufSync sync, const SceDisplaySetFrameBufOpt *pOpt);
 
 /**
  * Set the compatibility framebuffer and its scaling parameters.
@@ -222,14 +268,28 @@ int _sceDisplaySetFrameBuf(const SceDisplayFrameBuf *pFrameBuf, SceInt32 iUpdate
  * @param[in] dstX - Destination X offset in pixels.
  * @param[in] dstY - Destination Y offset in pixels.
  * @param[in] scaleX - Horizontal source-sampling step in unsigned 16.16 fixed-point format.
- * @param[in] pOpt - Pointer to a ::SceDisplaySetFrameBufForCompatOpt structure.
+ * @param[in] pOpt - Required option structure. A capture destination must use
+ *                   pixel format 0 and an address aligned to 0x100 bytes.
  *
- * @return 0 on success, < 0 on error.
+ * @return 0 on success, or a negative error code.
  * @note This export is available only to a PSP emulator process.
  */
-int _sceDisplaySetFrameBufForCompat(int dstX, int dstY, int scaleX, SceDisplaySetFrameBufForCompatOpt *pOpt);
+int _sceDisplaySetFrameBufForCompat(int dstX, int dstY, SceUInt32 scaleX, const SceDisplaySetFrameBufForCompatOpt *pOpt);
 
-int _sceDisplaySetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayFrameBuf *pFrameBuf, SceDisplaySetFrameBufInternalOpt *pOpt);
+/**
+ * Set one framebuffer slot for a display head.
+ *
+ * @param[in] head - Display head.
+ * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
+ * @param[in] pFrameBuf - A 0x18 ::SceDisplayFrameBuf, a 0x1C
+ *                        ::SceDisplayFrameBufExt cast to this pointer type, or
+ *                        NULL to disable scanout.
+ * @param[in] pOpt - Required option structure containing the input size and
+ *                   update-timing value.
+ *
+ * @return 0 on success, or a negative error code.
+ */
+int _sceDisplaySetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayFrameBuf *pFrameBuf, const SceDisplaySetFrameBufInternalOpt *pOpt);
 
 #ifdef __cplusplus
 }

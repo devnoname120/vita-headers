@@ -352,6 +352,9 @@
  *     \defgroup SceCoredump coredump module
  *      Module for process crash handler
  *
+ *     \defgroup SceCoredumpNounlink coredump user-data library
+ *      Library used by a process coredump handler to append user data
+ *
  *     \defgroup SceError error code module
  *      Module for handling error codes & error history
  *
@@ -431,7 +434,7 @@
  *     \defgroup SceLiveAreaUtil LiveArea Utilities Library
  *      Update and query LiveArea contents and frames
  *
- *     \defgroup SceLsdb Application and LiveArea Database Library
+ *     \defgroup SceLsdb Livespace (= LiveArea) Database Library
  *      Query and update the shell application, LiveArea, event, and icon-layout databases
  *
  *     \defgroup SceNotificationUtil Notification Utilities library
@@ -457,6 +460,9 @@
  *
  *     \defgroup SceTriggerUtil Events Library
  *      Schedule a one time or daily application events
+ *
+ *     \defgroup SceDrmBridge DRM Bridge Library
+ *      System-only bridge for DRM policy and MLNPSNL authentication
  *
  *     \defgroup SceVshBridge VSH Bridge Library
  *      Model info, System, Memory card state...
@@ -548,6 +554,9 @@
  *     \defgroup SceLibJson Json Library
  *      Use the Json Library on the Vita
  *
+ *     \defgroup SceLibc C Library
+ *      Standard C library functions
+ *
  *     \defgroup ScePromoterUtil Promoter utility
  *      Install/Delete Packages
  *
@@ -556,6 +565,9 @@
  *
  *     \defgroup SceNpDrm NpDrm utility
  *      Get RIF information
+ *
+ *     \defgroup ScePsmDrm PSM DRM utility
+ *      Manage PSM activation and license data
  *
  *     \defgroup ScePaf Playstation Application Framework
  *      Standard libc for VSH

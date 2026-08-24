@@ -15,31 +15,53 @@ extern "C" {
 /**
  * Validate a libult protocol revision.
  *
- * @param[in] revision - Protocol revision. FW 3.60 requires a value greater
- * than or equal to 0x01800000 with a nonzero low 16-bit component.
+ * FW 3.60 only validates the value; it does not retain any revision state.
  *
- * @return 0 on success, or the bit pattern of a negative ::SceInt32 error
- * code.
+ * @param[in] revision - Protocol revision. It must be at least 0x01800000 and
+ * have a nonzero low 16-bit component.
+ *
+ * @return 0 on success, or ::SCE_KERNEL_ERROR_INVALID_ARGUMENT if the
+ * revision is invalid.
  */
-SceUInt32 _sceUlobjMgrRegisterLibultProtocolRevision(SceUInt32 revision);
+int _sceUlobjMgrRegisterLibultProtocolRevision(SceUInt32 revision);
 
 /**
  * Create the calling process's shared user-level object registry.
  *
- * @param[in] object_capacity - Maximum number of registry object slots.
- * FW 3.60 rejects values greater than 0x02000000.
- * @param[in] sdk_ver - SDK version. FW 3.60 accepts values through 0x03600000.
- * @param[out] p_object_table_address - Receives the 32-bit user-space address
- * of the shared object registry.
+ * Only one registry may exist per process. FW 3.60 maps the same allocation
+ * into user and kernel address spaces. The allocation contains a 16-byte
+ * header followed by one 4-byte entry for each object and is rounded up to a
+ * 0x1000-byte boundary. SceFiber requests 0x3FFC entries, producing a
+ * 0x10000-byte allocation.
  *
- * @return 0 on success, < 0 on error.
+ * @param[in] objectCapacity - Maximum number of registered objects. The valid
+ * range is 1 through 0x02000000. FW 3.60 does not reject zero, but its registry
+ * initializer underflows and writes beyond the allocation.
+ * @param[in] sdkVersion - SDK version associated with the registry. FW 3.60
+ * accepts values through 0x03600000.
+ * @param[out] ppRegistry - Receives the base of the user-space registry
+ * mapping. This pointer is required. If writing it fails, the registry is
+ * destroyed before the function returns.
+ *
+ * @warning FW 3.60 tracks 16 process registries and does not safely reject a
+ * seventeenth simultaneous registration when every slot is occupied.
+ *
+ * @return 0 on success, ::SCE_KERNEL_ERROR_UNSUP if \a sdkVersion is newer
+ * than 0x03600000, ::SCE_KERNEL_ERROR_NO_MEMORY if \a objectCapacity is
+ * greater than 0x02000000 or the mappings cannot be allocated,
+ * ::SCE_KERNEL_ERROR_ALREADY_REGISTERED if the process already owns a
+ * registry, or another negative kernel error.
  */
-int _sceUlobjMgrStartSupportingUserlevelObject(SceUInt32 object_capacity, SceUInt32 sdk_ver, SceUInt32 *p_object_table_address);
+int _sceUlobjMgrStartSupportingUserlevelObject(SceUInt32 objectCapacity, SceUInt32 sdkVersion, void **ppRegistry);
 
 /**
  * Destroy the calling process's shared user-level object registry.
  *
- * @return 0 on success, < 0 on error.
+ * Process exit and kill handlers also destroy a registry left by a terminating
+ * process.
+ *
+ * @return 0 on success, or ::SCE_KERNEL_ERROR_INVALID_PID if the calling
+ * process has no registry.
  */
 int _sceUlobjMgrStopSupportingUserlevelObject(void);
 

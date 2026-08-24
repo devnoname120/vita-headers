@@ -26,6 +26,9 @@ typedef void (*SceDebugLedHandler)(int arg0, int arg1, int arg2, int arg3);
  * the debug LED display.
  *
  * @param[in] bits - Output bitfield.
+ *
+ * @note FW 3.60 returns 0 in R0. The function remains declared \c void for
+ * backwards compatibility with the previous VitaSDK prototype.
  */
 void ksceKernelSetGPO(SceUInt32 bits);
 

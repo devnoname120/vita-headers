@@ -205,14 +205,23 @@ typedef struct ScePvfInitRec {
 } ScePvfInitRec;
 VITASDK_BUILD_ASSERT_EQ(0x1C, ScePvfInitRec);
 
+/**
+ * Font style descriptor.
+ *
+ * When used with ::scePvfFindFont or ::scePvfFindOptimumFont, a `weight`
+ * value <= 0.0f, zero-valued classification fields, and empty `fontName` or
+ * `fileName` strings disable the corresponding search criteria. A nonzero
+ * `subStyle` is compared as a complete 16-bit mask. `styleName`,
+ * `extraAttributes`, and `expireDate` are not search criteria on FW 3.60.
+ */
 typedef struct ScePvfFontStyleInfo {
 	ScePvfFloat32 weight;
-	ScePvfU16 familyCode;
-	ScePvfU16 style;
-	ScePvfU16 subStyle; //!< One of ::ScePvfSubstyle
-	ScePvfU16 languageCode;
-	ScePvfU16 regionCode;
-	ScePvfU16 countryCode;
+	ScePvfU16 familyCode; //!< One of ::ScePvfFamilyCode.
+	ScePvfU16 style; //!< One of ::ScePvfStyleCode.
+	ScePvfU16 subStyle; //!< Bitwise OR of ::ScePvfSubstyle values.
+	ScePvfU16 languageCode; //!< One of ::ScePvfLanguageCode.
+	ScePvfU16 regionCode; //!< One of ::ScePvfRegionCode.
+	ScePvfU16 countryCode; //!< One of ::ScePvfFontVendorCountryCode.
 	ScePvfU8 fontName [SCE_PVF_FONTNAME_LENGTH];
 	ScePvfU8 styleName [SCE_PVF_STYLENAME_LENGTH];
 	ScePvfU8 fileName [SCE_PVF_FONTFILENAME_LENGTH];

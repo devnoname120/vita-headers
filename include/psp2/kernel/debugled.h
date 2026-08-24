@@ -37,7 +37,7 @@ void sceDebugLedInvokeHandle1(int arg0, int arg1, int arg2, int arg3);
  *
  * @return The current GPI bitfield.
  */
-int sceKernelGetGPI(void);
+SceUInt32 sceKernelGetGPI(void);
 
 /**
  * Sets the general-purpose output bitfield.

@@ -27,23 +27,33 @@ int ksceTouchSetEnableFlag(SceUInt32 port, SceBool enable);
 /**
  * Get touch-panel device information.
  *
- * @param[in] panel One of ::SceTouchPortType.
- * @param[out] pInfo The buffer to receive the device information.
+ * The complete output is initialized to zero and then populated from the
+ * selected panel's cached metadata while CPU interrupts are suspended under
+ * the Touch state spinlock. This function does not require the panel to be
+ * actively sampling.
  *
- * @return 0 on success, < 0 on error.
+ * @param[in] panel - One of ::SceTouchPortType.
+ * @param[out] pInfo - Receives the complete 0xC-byte device-information record.
+ *
+ * @return 0 on success, or ::SCE_TOUCH_ERROR_INVALID_ARG if \a panel is not
+ *         ::SCE_TOUCH_PORT_FRONT or ::SCE_TOUCH_PORT_BACK, or if \a pInfo is
+ *         NULL.
  */
 int ksceTouchGetDeviceInfo(SceUInt32 panel, SceTouchDeviceInfo *pInfo);
 
 /**
  * Set front and back touch-emulation data.
  *
- * @param[in] pFrontData An optional read-only pointer to a front-panel ::SceTouchData structure.
- * @param[in] pBackData An optional read-only pointer to a back-panel ::SceTouchData structure.
+ * Each argument is independently optional and, when non-NULL, points to one
+ * 0x90-byte ::SceTouchData record for the corresponding panel. The FW 3.60
+ * provider is a no-op: it does not read, retain, or modify either record.
  *
- * @return 0 on FW 3.60.
- * @note Both buffers are ignored on FW 3.60.
+ * @param[in] pFrontData - Optional pointer to a front-panel ::SceTouchData.
+ * @param[in] pBackData - Optional pointer to a back-panel ::SceTouchData.
+ *
+ * @return 0 on FW 3.60, including when both pointers are NULL.
  */
-int ksceTouchSetTouchEmulationData(void *pFrontData, void *pBackData);
+int ksceTouchSetTouchEmulationData(const void *pFrontData, const void *pBackData);
 
 #ifdef __cplusplus
 }

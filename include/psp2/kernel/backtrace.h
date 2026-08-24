@@ -14,9 +14,9 @@ extern "C" {
 #endif
 
 typedef struct SceBacktraceArgs {
-	SceUInt32 *pNumReturn; //!< Optional pointer that receives the number of frames gathered.
+	SceUInt32 *pNumReturn; //!< Optional pointer that receives the number of frames written to the output buffer.
 	SceInt32 mode; //!< Bitwise OR of ::SceKernelBacktraceMode values.
-	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
+	SceUInt32 reserved[2]; //!< Copied from user memory but actually unused on FW 3.60.
 } SceBacktraceArgs;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceBacktraceArgs); // size is from FW 3.60
 
@@ -31,12 +31,13 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceBacktraceArgs); // size is from FW 3.60
  * @param[in] pArgs Required backtrace parameters.
  *
  * @return With ::SCE_KERNEL_BACKTRACE_MODE_DONT_EXCEED, 0 on success.
- * Otherwise, the call-stack depth on success. Returns < 0 on error.
+ * Otherwise, the complete call-stack depth on success, even when the output
+ * buffer is too small to contain every frame. Returns < 0 on error.
  *
  * @note On FW 3.60 this function requires development mode. Kernel-mode
  * unwinding also requires the corresponding QAF permission.
  */
-SceInt32 _sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, SceBacktraceArgs *pArgs);
+SceInt32 _sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, const SceBacktraceArgs *pArgs);
 
 #ifdef __cplusplus
 }

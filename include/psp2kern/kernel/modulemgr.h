@@ -281,8 +281,9 @@ SceUID ksceKernelLoadModule(const char *path, int flags, SceKernelLMOption *opti
  * @param[in]  modid  - target module id
  * @param[in]  args   - module start args
  * @param[in]  argp   - module start argp
- * @param[in]  flags  - unknown, set zero
- * @param[in]  option - unknown
+ * @param[in]  flags  - must be 0
+ * @param[in]  option - optional pointer to a ::SceKernelStartModuleOpt;
+ *                     still declared as ::SceKernelLMOption * for backwards compatibility
  * @param[out] status - module_start res, SCE_KERNEL_START_SUCCESS etc...
  *
  * @return 0 on success, < 0 on error.
@@ -482,7 +483,7 @@ SceUID ksceKernelGetModuleIdByPid(SceUID pid);
 /**
  * @brief Get the module path
  *
- * @param[in]  pid     - target pid
+ * @param[in]  modid   - target module ID
  * @param[out] path    - module path output
  * @param[in]  pathlen - path output max len
  *
@@ -494,7 +495,7 @@ int ksceKernelGetModulePath(SceUID modid, char *path, SceSize pathlen);
  * @brief Get library info
  *
  * @param[in]  pid   - target pid
- * @param[in]  modid - target library id
+ * @param[in]  library_id - target library ID
  * @param[out] info  - info output
  *
  * @return 0 on success, < 0 on error.
@@ -539,7 +540,8 @@ int ksceKernelUnloadProcessModules(SceUID pid);
  * Gets information about the loaded kernel module containing an address.
  *
  * @param[in] module_addr Address in any mapped module segment.
- * @param[out] info Buffer that receives a ::SceKernelModuleInfo structure.
+ * @param[out] info Zero-initialized ::SceKernelModuleInfo buffer whose
+ *                  \a size field is set to the size of that structure.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -548,16 +550,19 @@ int ksceKernelGetModuleInfoByAddr(const void *module_addr, SceKernelModuleInfo *
 /**
  * Registers an export library from a loaded kernel module.
  *
- * @param[in] libent Pointer to a 0x20-byte library export-table entry.
+ * @param[in] libent Pointer to the aligned 0x20-byte library export-table
+ *                   entry within the loaded kernel module that owns it.
  *
  * @return 0 on success, < 0 on error.
  */
 int ksceKernelRegisterLibary(const void *libent);
 
 /**
- * Unregisters an export library from a loaded kernel module.
+ * Unregisters an export library from a loaded kernel module and relinks its
+ * affected importers.
  *
- * @param[in] libent Pointer to a 0x20-byte library export-table entry.
+ * @param[in] libent Pointer to the aligned 0x20-byte library export-table
+ *                   entry within the loaded kernel module that owns it.
  *
  * @return 0 on success, < 0 on error.
  */

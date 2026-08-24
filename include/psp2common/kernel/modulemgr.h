@@ -66,30 +66,38 @@ VITASDK_BUILD_ASSERT_EQ(4, SceKernelPreloadInhibit);
 
 typedef struct SceKernelStartModuleOpt {
 	SceSize size; //!< Size of this structure.
-	SceUInt32 reserved[3]; //!< Reserved on FW 3.60.
+	SceUInt32 reserved[3]; //!< Copied from user memory but actually unused on FW 3.60; initialize to 0.
 } SceKernelStartModuleOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelStartModuleOpt); // size is from FW 3.60
 
 typedef struct SceKernelSegmentInfo {
-  SceSize size;   //!< this structure size (0x18)
-  SceUInt perms;  //!< probably rwx in low bits
-  void *vaddr;    //!< address in memory
-  SceSize memsz;  //!< size in memory
-  SceSize filesz; //!< original size of memsz
-  SceUInt res;    //!< unused
+	SceSize size;      //!< Size of this structure.
+	SceUInt perms;     //!< Access-permission byte combined with a loader metadata byte shifted left by 20 on FW 3.60.
+	void *vaddr;       //!< Segment virtual address.
+	SceSize memsz;     //!< Segment size in memory.
+	SceSize filesz;    //!< Segment size in the module file.
+	SceUInt reserved;  //!< Left unchanged by the FW 3.60 kernel APIs.
 } SceKernelSegmentInfo;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceKernelSegmentInfo);
 
+/**
+ * Information about a loaded module.
+ *
+ * The FW 3.60 kernel APIs use this fixed 0x1B8-byte layout, but do not clear
+ * the output buffer or write every reserved byte. Kernel callers should zero
+ * the complete structure and initialize \a size before calling them. The user
+ * ::sceKernelGetModuleInfo entry point performs that initialization internally.
+ */
 typedef struct SceKernelModuleInfo {
-  SceSize size;                       //!< 0x1B8 for Vita 1.x
-  SceUID modid;
-  uint16_t modattr;
-  uint8_t  modver[2];
-  char module_name[28];
-  SceUInt unk28;
-  void *start_entry;
-  void *stop_entry;
-  void *exit_entry;
+	SceSize size;                       //!< Size of this structure; left unchanged by the FW 3.60 kernel APIs.
+	SceUID modid;                       //!< Module identifier.
+	uint16_t modattr;                   //!< Module attributes.
+	uint8_t  modver[2];                 //!< Module version.
+	char module_name[28];               //!< Module name; zero-initialize the structure to guarantee termination.
+	SceUInt reserved;                   //!< Left unchanged by the FW 3.60 kernel APIs.
+	void *start_entry;                  //!< Module start entry point.
+	void *stop_entry;                   //!< Module stop entry point.
+	void *exit_entry;                   //!< Module exit entry point.
   void *exidx_top;                    //!< Start of the ARM exception index table.
   void *exidx_btm;                    //!< End of the ARM exception index table.
   void *extab_top;                    //!< Start of the ARM exception table.
@@ -97,8 +105,8 @@ typedef struct SceKernelModuleInfo {
   void *tlsInit;                      //!< TLS initialization image.
   SceSize tlsInitSize;                //!< Size of the TLS initialization image.
   SceSize tlsAreaSize;                //!< Total TLS area size.
-  char path[256];
-  SceKernelSegmentInfo segments[4];
+	char path[256];                     //!< Module path.
+	SceKernelSegmentInfo segments[4];   //!< Information for up to four mapped segments.
   SceUInt state;                      //!< One of ::SceKernelModuleState.
 } SceKernelModuleInfo;
 VITASDK_BUILD_ASSERT_EQ(0x1B8, SceKernelModuleInfo);

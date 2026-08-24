@@ -22,12 +22,19 @@ extern "C" {
  * at 48000 Hz. ::SCE_AUDIO_IN_PORT_TYPE_CAMERA accepts 256 or 512 samples at
  * 16000 Hz.
  *
+ * Successful FW 3.60 handles are in the range 0x80 through 0xFF. In addition
+ * to the named profiles above, the implementation accepts any other
+ * nonnegative selector below 0x400 whose low nibble is zero, as well as
+ * selectors 0x12 and 0x1F.
+ * Their purpose is unknown and they have no confirmed first-party uses.
+ *
  * @param[in] portType - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
  * @param[in] freq - Sample frequency in Hz.
  * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
  *
- * @return A port handle on success, or a negative ::SceAudioInErrorCode value.
+ * @return A port handle on success, or a negative error code. Most validation
+ *         failures use ::SceAudioInErrorCode.
  */
 int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
 
@@ -35,14 +42,16 @@ int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudi
  * Open an audio-input port using the diagnostic entry point.
  *
  * This performs the same work as ::sceAudioInOpenPort. On FW 3.60 it also
- * accepts ::SCE_AUDIO_IN_PORT_TYPE_DIAG without validating \a grain or \a freq.
+ * accepts ::SCE_AUDIO_IN_PORT_TYPE_DIAG without validating \a grain or \a freq;
+ * both values are nevertheless stored in the resulting port configuration.
  *
  * @param[in] portType - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
  * @param[in] freq - Sample frequency in Hz.
  * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
  *
- * @return A port handle on success, or a negative ::SceAudioInErrorCode value.
+ * @return A port handle on success, or a negative error code. Most validation
+ *         failures use ::SceAudioInErrorCode.
  */
 int sceAudioInOpenPortForDiag(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
 
@@ -52,7 +61,7 @@ int sceAudioInOpenPortForDiag(SceAudioInPortType portType, int grain, int freq, 
  * @param[in] port - Port handle returned by ::sceAudioInOpenPort or
  *                   ::sceAudioInOpenPortForDiag.
  *
- * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ * @return 0 on success, or a negative error code.
  */
 int sceAudioInReleasePort(int port);
 
@@ -66,7 +75,7 @@ int sceAudioInReleasePort(int port);
  * @param[out] destPtr - Buffer for the captured samples. Its size must be at
  *                       least <code>grain * sizeof(SceInt16)</code> bytes.
  *
- * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ * @return 0 on success, or a negative error code.
  */
 int sceAudioInInput(int port, void *destPtr);
 
@@ -79,10 +88,13 @@ int sceAudioInInput(int port, void *destPtr);
  * state. For other profiles FW 3.60 does not write \a inputDeviceState.
  *
  * @param[in] port - Port handle returned by ::sceAudioInOpenPort.
- * @param[out] destPtr - Buffer for the captured mono signed 16-bit samples.
- * @param[out] inputDeviceState - Receives the transient route-change state.
+ * @param[out] destPtr - Buffer for the captured samples. Its size must be at
+ *                       least <code>grain * sizeof(SceInt16)</code> bytes.
+ * @param[out] inputDeviceState - Receives the transient route-change state when
+ *                                reporting is enabled for the port. Otherwise
+ *                                FW 3.60 does not access this pointer.
  *
- * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ * @return 0 on success, or a negative error code.
  */
 int sceAudioInInputWithInputDeviceState(int port, void *destPtr, int *inputDeviceState);
 
@@ -109,7 +121,10 @@ int sceAudioInGetAdopt(SceAudioInPortType portType);
  * @param[in] select - ::SCE_AUDIO_IN_GETSTATUS_MUTE on FW 3.60.
  *
  * @return 1 when the system microphone is muted, 0 when it is not muted, or a
- *         negative ::SceAudioInErrorCode value for an unsupported selector.
+ *         negative error code for an unsupported selector. FW 3.60 returns
+ *         ::SCE_AUDIO_IN_ERROR_INVALID_PORT_PARAM to processes built for an
+ *         SDK older than 1.80, and ::SCE_AUDIO_IN_ERROR_INVALID_PARAMETER to
+ *         newer processes.
  */
 int sceAudioInGetStatus(int select);
 
@@ -122,6 +137,10 @@ int sceAudioInGetInput(void);
 
 /**
  * Select the input route.
+ *
+ * The request is applied asynchronously by the input worker. FW 3.60 does not
+ * reject other integer values: the worker records the requested value as the
+ * current route but performs no explicit backend selection for it.
  *
  * @param[in] inputMode - Input route.
  *
@@ -153,7 +172,8 @@ int sceAudioInSetMute(SceAudioInMuteCommand command);
  * @param[in] port - Port handle owned by the calling process.
  * @param[in] gain - Value to store.
  *
- * @return 0 on success, or a negative ::SceAudioInErrorCode value.
+ * @return 0 on success, or a negative error code. An invalid or unowned handle
+ *         returns ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
  */
 int sceAudioInSetMicGain(int port, int gain);
 
@@ -163,7 +183,8 @@ int sceAudioInSetMicGain(int port, int gain);
  * @param[in] port - Port handle owned by the calling process.
  *
  * @return The sign-extended 16-bit value on success, or a negative
- *         ::SceAudioInErrorCode value.
+ *         error code. An invalid or unowned handle returns
+ *         ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
  */
 int sceAudioInGetMicGain(int port);
 

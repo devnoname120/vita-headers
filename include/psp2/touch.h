@@ -151,11 +151,15 @@ int sceTouchDisableTouchForce(SceUInt32 port);
 /**
  * Get touch-panel device information.
  *
- * @param[in] panel One of ::SceTouchPortType.
- * @param[out] pInfo The buffer to receive the device information.
+ * This system-program-only export retrieves the cached front or back panel
+ * identity record. The output is copied only after the kernel getter succeeds.
  *
- * @return 0 on success, < 0 on error.
- * @note This function is restricted to system programs.
+ * @param[in] panel - One of ::SceTouchPortType.
+ * @param[out] pInfo - Receives the complete 0xC-byte device-information record.
+ *
+ * @return 0 on success, ::SCE_TOUCH_ERROR_INVALID_ARG for an invalid panel,
+ *         ::SCE_TOUCH_ERROR_PRIV_REQUIRED when the caller is not a system
+ *         program, or a kernel user-memory-copy error for an invalid \a pInfo.
  */
 int sceTouchGetDeviceInfo(SceUInt32 panel, SceTouchDeviceInfo *pInfo);
 
@@ -164,4 +168,3 @@ int sceTouchGetDeviceInfo(SceUInt32 panel, SceTouchDeviceInfo *pInfo);
 #endif
 
 #endif /* _PSP2_TOUCH_H_ */
-

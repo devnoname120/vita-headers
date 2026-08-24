@@ -21,11 +21,12 @@ extern "C" {
  * numBytesBuffer is 0.
  * @param[in] numBytesBuffer Size of the call-frame buffer in bytes. A non-NULL
  * buffer must have room for at least one frame.
- * @param[out] pNumReturn Optional pointer that receives the number of frames gathered.
+ * @param[out] pNumReturn Optional pointer that receives the number of frames written to the output buffer.
  * @param[in] mode Bitwise OR of ::SceKernelBacktraceMode values.
  *
  * @return With ::SCE_KERNEL_BACKTRACE_MODE_DONT_EXCEED, 0 on success.
- * Otherwise, the call-stack depth on success. Returns < 0 on error.
+ * Otherwise, the complete call-stack depth on success, even when the output
+ * buffer is too small to contain every frame. Returns < 0 on error.
  *
  * @note On FW 3.60 this function requires development mode. Kernel-mode
  * unwinding also requires the corresponding QAF permission.

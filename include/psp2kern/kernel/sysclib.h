@@ -191,11 +191,67 @@ __attribute__((__noreturn__))
 void __stack_chk_fail(void);
 
 
-SceUInt64 __aeabi_uldivmod(SceUInt32 dividend_low, SceUInt32 dividend_hi, SceUInt32 divisor_low, SceUInt32 divisor_hi);
-char *__strncat_chk2(char *dest, const char *src, SceSize destlen);
-char *__strncpy_chk2(char *dest, const char *src, size_t destlen);
-char *strncat(char *s1, const char *s2, size_t n);
-char *strncpy_s(char *dst, const char *src, size_t dstsize);
+/**
+ * ARM EABI unsigned 64-bit division helper.
+ *
+ * @param[in] dividend - Dividend.
+ * @param[in] divisor - Divisor.
+ *
+ * On FW 3.60, a zero divisor produces a zero remainder and a quotient of zero
+ * when the dividend is zero, or `UINT64_MAX` otherwise.
+ *
+ * @return The quotient. The helper also returns the remainder in R2:R3 as
+ * required by the ARM EABI.
+ */
+SceUInt64 __aeabi_uldivmod(SceUInt64 dividend, SceUInt64 divisor);
+
+/**
+ * Appends a bounded string and traps if the destination would overflow.
+ *
+ * @param[in,out] dest - NUL-terminated destination buffer.
+ * @param[in] src - Source string.
+ * @param[in] destSize - Total destination capacity.
+ *
+ * @return \p dest.
+ */
+char *__strncat_chk2(char *dest, const char *src, SceSize destSize);
+
+/**
+ * Copies a bounded string after applying the FW 3.60 checked-helper test.
+ * The implementation compares \p destSize with
+ * `strnlen(src, destSize)` and executes breakpoint 0x81 only if that bounded
+ * length is greater, a condition that the FW 3.60 ::strnlen cannot normally
+ * produce.
+ *
+ * @param[out] dest - Destination buffer.
+ * @param[in] src - Source string.
+ * @param[in] destSize - Number of bytes to copy, padding with NUL bytes when
+ * the source is shorter.
+ *
+ * @return \p dest.
+ */
+char *__strncpy_chk2(char *dest, const char *src, SceSize destSize);
+
+/**
+ * Appends at most \p count bytes from \p src and returns \p dest.
+ *
+ * When at least one byte is appended, FW 3.60 writes the trailing NUL before
+ * copying the source bytes into place.
+ */
+char *strncat(char *dest, const char *src, SceSize count);
+
+#ifndef _PSP2_LIBC_H_
+/**
+ * Copies at most \p destSize bytes from a string.
+ *
+ * A terminating NUL is written only when the source is shorter than
+ * \p destSize; unlike the C11 Annex K function with the same name, this FW
+ * 3.60 export takes three arguments and returns \p dest.
+ *
+ * @return \p dest.
+ */
+char *strncpy_s(char *dest, const char *src, SceSize destSize);
+#endif
 
 #ifdef __cplusplus
 }

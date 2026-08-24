@@ -1,0 +1,57 @@
+/**
+ * \kernelgroup{SceSblGcAuthMgrMlnpsnl}
+ * \usage{psp2common/kernel/gcauthmgr/mlnpsnl.h}
+ */
+
+#ifndef _PSP2COMMON_KERNEL_GCAUTHMGR_MLNPSNL_H_
+#define _PSP2COMMON_KERNEL_GCAUTHMGR_MLNPSNL_H_
+
+#include <vitasdk/build_utils.h>
+#include <psp2common/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * MLNPSNL phase-one request.
+ *
+ * FW 3.60 incorporates all 0x20 bytes into the protected response. Observed
+ * system callers zero the structure and set \a mode to 0, 0x10, or 0x11.
+ */
+typedef struct SceSblGcAuthMgrMlnpsnlAuth1Request {
+	SceUInt8 mode; //!< Authentication mode used by the remote protocol.
+	SceUInt8 requestData[0x1F]; //!< Remaining authenticated request data.
+} SceSblGcAuthMgrMlnpsnlAuth1Request;
+VITASDK_BUILD_ASSERT_EQ(0x20, SceSblGcAuthMgrMlnpsnlAuth1Request); // size is from FW 3.60
+
+/** MLNPSNL phase-one client packet. */
+typedef struct SceSblGcAuthMgrMlnpsnlAuth1Response {
+	SceUInt8 packetType; //!< Set to 0x20.
+	SceUInt8 phase; //!< Set to 1.
+	SceUInt8 packetSize; //!< Set to 0x80.
+	SceUInt8 reserved[0xD]; //!< Set to zero.
+	SceUInt8 protectedData[0x60]; //!< Protected phase-one authentication data.
+	SceUInt8 authenticationTag[0x10]; //!< Packet authentication tag.
+} SceSblGcAuthMgrMlnpsnlAuth1Response;
+VITASDK_BUILD_ASSERT_EQ(0x80, SceSblGcAuthMgrMlnpsnlAuth1Response); // size is from FW 3.60
+
+/**
+ * Caller-owned state linking MLNPSNL authentication phases one and two.
+ *
+ * Retain this structure unchanged until phase two completes. The provider does
+ * not retain its address after the phase-one call returns.
+ */
+typedef struct SceSblGcAuthMgrMlnpsnlSessionData {
+	SceUInt8 sessionKey[0x10]; //!< Candidate key copied to the final output only after phase-two verification.
+	SceUInt8 bindingData[0x10]; //!< Value against which the decrypted phase-two response is bound.
+	SceUInt8 phaseOnePacketSize; //!< Set to 0x80 and required in the phase-two header.
+	SceUInt8 reserved[0x1F]; //!< Set to zero.
+} SceSblGcAuthMgrMlnpsnlSessionData;
+VITASDK_BUILD_ASSERT_EQ(0x40, SceSblGcAuthMgrMlnpsnlSessionData); // size is from FW 3.60
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _PSP2COMMON_KERNEL_GCAUTHMGR_MLNPSNL_H_ */

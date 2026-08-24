@@ -17,43 +17,40 @@ extern "C" {
  *
  * @param[in] handler_arg Argument registered with
  * ::sceCoredumpRegisterCoredumpHandler.
+ *
+ * @return The return value is ignored on FW 3.60.
  */
 typedef int (*SceCoredumpHandler)(void *handler_arg);
 
 /**
  * Registers a callback that can append application-specific data to a coredump.
  *
+ * The callback runs on a dedicated user thread whose stack has the requested
+ * size. FW 3.60 waits up to three seconds for the callback. The target process
+ * is suspended while it runs, so the callback must not issue ordinary system
+ * calls; it should use ::sceCoredumpWriteUserData to contribute data.
+ *
  * @param[in] handler Pointer to a ::SceCoredumpHandler function.
  * @param[in] stack_size Stack size of the thread used to invoke the handler.
  * Must be at least 0x1000 bytes on FW 3.60.
  * @param[in] handler_arg Argument passed to the handler. When non-NULL, it must
- * point to at least 16 readable bytes on FW 3.60.
+ * point to at least 16 readable bytes on FW 3.60 and remain valid until the
+ * handler is unregistered.
  *
- * @return 0 on success, < 0 on error.
+ * @retval 0 Success.
+ * @retval 0x800A0000 Invalid handler, stack size, or handler argument, or
+ * failure to allocate the handler stack.
+ * @retval 0x800A0002 A handler is already registered for this process.
  */
-int sceCoredumpRegisterCoredumpHandler(void *handler, SceSize stack_size, void *handler_arg);
+int sceCoredumpRegisterCoredumpHandler(SceCoredumpHandler handler, SceSize stack_size, void *handler_arg);
 
 /**
  * Unregisters the current process's coredump handler.
  *
- * @return 0 on success, < 0 on error.
+ * @retval 0 Success.
+ * @retval 0x800A0001 No handler is registered for this process.
  */
 int sceCoredumpUnregisterCoredumpHandler(void);
-
-/**
- * Appends data to the current coredump's user-data section.
- *
- * This function is intended to be called from a ::SceCoredumpHandler. The
- * destination is limited to 0x4000 bytes on FW 3.60.
- *
- * @param[in] data Data to append.
- * @param[in] size Number of bytes requested.
- *
- * @return The number of bytes appended, which can be less than \p size when
- * the destination is full, or < 0 on error. The return value has
- * ::SceSSize semantics despite the published \c int type.
- */
-int sceCoredumpWriteUserData(const void *data, SceSize size);
 
 #ifdef __cplusplus
 }

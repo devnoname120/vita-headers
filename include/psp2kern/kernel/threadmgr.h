@@ -31,17 +31,19 @@ extern "C" {
  *
  * @param[in] common Value supplied to ::ksceKernelRegisterTimer.
  *
- * @return 0 to unregister the timer. Any nonzero value is interpreted as an
- * unsigned delay in microseconds and rearms it; delays smaller than 200
- * microseconds are rounded up to 200.
+ * @return 0 to release the alarm object. Any nonzero value is interpreted as
+ * an unsigned delay in microseconds and rearms it relative to the preceding
+ * deadline; delays smaller than 200 microseconds are rounded up to 200.
  */
-typedef int (*SceKernelTimerFunction)(int common);
+typedef SceInt32 (*SceKernelTimerFunction)(SceInt32 common);
 
 /**
  * Changes a thread's CPU affinity mask.
  *
  * @param[in] threadId Thread identifier, or 0 for the current thread.
- * @param[in] cpuAffinityMask New CPU affinity mask.
+ * @param[in] cpuAffinityMask New CPU affinity mask. Kernel callers may use a
+ * low four-bit mask or the corresponding bits 16-19 encoding, but may not
+ * combine both encodings. Value 0x40000000 selects the current CPU.
  *
  * @return The previous low four-bit affinity mask, or < 0 on error. The result
  * uses the low-mask encoding even when cpuAffinityMask uses the high-word
@@ -61,12 +63,12 @@ SceInt32 ksceKernelChangeThreadCpuAffinityMask(SceUID threadId, SceInt32 cpuAffi
 int ksceKernelClearEvent(SceUID eventId, SceUInt32 clearPattern);
 
 /**
- * Gets a timer's base time.
+ * Gets a timer's timebase origin.
  *
  * @param[in] timerId Timer identifier.
  *
- * @return 0 while the timer is stopped, its base time while active, or
- * UINT64_MAX on error.
+ * @return 0 while the timer is stopped, the process-time value from which the
+ * active timer is measured while it is running, or UINT64_MAX on error.
  */
 SceUInt64 ksceKernelGetTimerBaseWide(SceUID timerId);
 
@@ -80,16 +82,16 @@ SceUInt64 ksceKernelGetTimerBaseWide(SceUID timerId);
 SceUInt64 ksceKernelGetTimerTimeWide(SceUID timerId);
 
 /**
- * Registers a kernel timer callback.
+ * Creates and immediately schedules a kernel alarm callback.
  *
- * @param[in] name Timer name.
+ * @param[in] name Required alarm name.
  * @param[in] delay Initial delay in microseconds.
  * @param[in] function Callback of type ::SceKernelTimerFunction.
  * @param[in] common Value passed to the callback.
  *
- * @return Timer identifier on success, or < 0 on error.
+ * @return Alarm identifier on success, or < 0 on error.
  */
-int ksceKernelRegisterTimer(char *name, SceUInt32 delay, void *function, int common);
+SceUID ksceKernelRegisterTimer(const char *name, SceUInt32 delay, SceKernelTimerFunction function, SceInt32 common);
 
 /**
  * Starts a timer.
@@ -110,7 +112,7 @@ int ksceKernelStartTimer(SceUID timerId);
 int ksceKernelStopTimer(SceUID timerId);
 
 /**
- * Waits for an event pattern.
+ * Waits for an event pattern without dispatching thread callbacks.
  *
  * @param[in] eventId Event identifier.
  * @param[in] waitPattern Pattern to wait for.

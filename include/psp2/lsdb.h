@@ -18,17 +18,26 @@ extern "C" {
  * Errors returned by the FW 3.60 SceLsdb implementation.
  */
 typedef enum SceLsdbErrorCode {
+	SCE_LSDB_ERROR_OUT_OF_RANGE                    = 0x80101000,
 	SCE_LSDB_ERROR_INVALID_ARGUMENT                = 0x80101001,
 	SCE_LSDB_ERROR_NO_MEMORY                       = 0x80101002,
 	SCE_LSDB_ERROR_INVALID_HANDLE                  = 0x80101003,
+	SCE_LSDB_ERROR_DATABASE_CONSTRAINT             = 0x80101004,
 	SCE_LSDB_ERROR_NOT_FOUND                       = 0x80101005, //!< No matching database row or no requested change.
+	SCE_LSDB_ERROR_INVALID_FILTER                   = 0x80101007, //!< Invalid filter operator/value-type combination.
 	SCE_LSDB_ERROR_INVALID_NEW_EVENT_IDENTIFIER    = 0x80101008, //!< Neither titleId/itemId nor rowId identifies a NewEvent row.
 	SCE_LSDB_ERROR_REQUIRED_APPINFO_FIELD_MISSING  = 0x80101009, //!< A required AppInfo field, such as TITLE_ID, is missing.
+	SCE_LSDB_ERROR_PAGE_NUMBER_OUT_OF_RANGE        = 0x8010100B, //!< A nonnegative insertion page exceeds the current page count.
+	SCE_LSDB_ERROR_ICON_POSITION_OCCUPIED          = 0x8010100C, //!< An icon already occupies the page and position.
+	SCE_LSDB_ERROR_PROTECTED_APPINFO_KEY           = 0x80101011, //!< SUPPORT_URI and the foreground/background title-ID keys cannot be changed through the masked setter.
 	SCE_LSDB_ERROR_DATABASE_LANGUAGE_MISMATCH      = 0x801010F0,
 	SCE_LSDB_ERROR_DATABASE_CONFIGURATION_MISMATCH = 0x801010F1,
 	SCE_LSDB_ERROR_DATABASE_SCHEMA_TOO_NEW         = 0x801010F2,
 	SCE_LSDB_ERROR_DATABASE_VERSION_MISMATCH       = 0x801010F3,
-	SCE_LSDB_ERROR_INVALID_DATABASE_VERSION        = 0x801010F4
+	SCE_LSDB_ERROR_INVALID_DATABASE_VERSION        = 0x801010F4,
+	SCE_LSDB_ERROR_DATABASE_UNK_F5                 = 0x801010F5, //!< Its purpose is unknown.
+	SCE_LSDB_ERROR_DATABASE_UNK_FE                 = 0x801010FE, //!< Its purpose is unknown.
+	SCE_LSDB_ERROR_DATABASE_CORRUPT                = 0x801010FF
 } SceLsdbErrorCode;
 
 /** Values accepted by ::sceLsdbOpen on FW 3.60. */
@@ -73,15 +82,30 @@ typedef struct SceLsdbUtf16String {
 } SceLsdbUtf16String;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceLsdbUtf16String); // size is from FW 3.60
 
-/** App database wrapper used by the explicit-database entry points. */
+/**
+ * Ownership token used by the AppDB entry points which take an explicit first
+ * argument.
+ *
+ * On FW 3.60, ::sceLsdbAppDatabaseInit allocates only an opaque one-byte
+ * sentinel. This object does not own a separate database connection: the
+ * operations still use the process-global AppDB established by
+ * ::sceLsdbOpen. The token must nevertheless be initialized, kept alive, and
+ * released because the entry points dereference it.
+ */
 typedef struct SceLsdbAppDatabase {
-	void *handle;
+	void *token;
 } SceLsdbAppDatabase;
 VITASDK_BUILD_ASSERT_EQ(0x4, SceLsdbAppDatabase); // size is from FW 3.60
 
-/** Query context for the process-global AppDB connection. */
+/**
+ * Query and change-notification context for the process-global AppDB.
+ *
+ * ::sceLsdbQueryContextOpen allocates this internal state and registers an
+ * AppInfo observer which sets its change flag. It does not own or open a
+ * separate database connection.
+ */
 typedef struct SceLsdbQueryContext {
-	void *handle;
+	void *state;
 } SceLsdbQueryContext;
 VITASDK_BUILD_ASSERT_EQ(0x4, SceLsdbQueryContext); // size is from FW 3.60
 
@@ -199,7 +223,7 @@ typedef struct SceLsdbPageInfo {
 	SceUInt32 textureHeight;
 	SceUInt32 imageWidth;
 	SceUInt32 imageHeight;
-	SceUInt32 reserved;
+	SceUInt32 reserved01; //!< Low 24-bit theme color and bit-24 flag used by FW 3.60 themes.
 } SceLsdbPageInfo;
 VITASDK_BUILD_ASSERT_EQ(0x24, SceLsdbPageInfo); // size is from FW 3.60
 
@@ -226,9 +250,9 @@ VITASDK_BUILD_ASSERT_EQ(0xC, SceLsdbPageInfoRefArray); // size is from FW 3.60
 
 /** Information associated with an icon on a special negative page. */
 typedef struct SceLsdbSpecialPageInfo {
-	SceLsdbStringArray titleIds;
-	SceUInt32 reserved;          //!< Its purpose is unknown.
-	SceSize processedRowCount;
+	SceLsdbStringArray titleIds; //!< Type-zero icon title IDs associated with this special page by Shell.
+	SceUInt32 reserved;          //!< Not initialized or accessed on FW 3.60.
+	SceSize childCount;          //!< Number of icon rows on the special page.
 	SceInt32 pageNo;             //!< Special page number from -20000000 through -10000001.
 } SceLsdbSpecialPageInfo;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceLsdbSpecialPageInfo); // size is from FW 3.60
@@ -245,6 +269,7 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbSpecialPageInfoRef); // size is from FW 3.60
 
 /** Known values of ::SceLsdbIconInfo::type on FW 3.60. */
 typedef enum SceLsdbIconType {
+	SCE_LSDB_ICON_TYPE_APPLICATION = 0, //!< Application bubble; used by AppInfo-filtered title queries.
 	SCE_LSDB_ICON_TYPE_FOLDER = 5, //!< Folder bubble/layout category.
 	SCE_LSDB_ICON_TYPE_POWER  = 6  //!< Built-in power bubble/layout category.
 } SceLsdbIconType;
@@ -261,12 +286,13 @@ typedef enum SceLsdbIcon0Type {
  * \a type selects the icon's database/layout category. \a icon0Type is a
  * separate metadata classification for the icon0 source; it does not select
  * path storage versus BLOB storage or describe the image encoding. FW 3.60
- * also uses values below the known folder and power values, but their
- * individual meanings are unknown.
+ * also uses values 1 through 4, but their individual meanings are unknown.
  *
  * The table also contains five reserved columns which are not represented as
- * five direct structure members. `reserved01` is the stable numeric icon ID
- * used by ::sceLsdbGetIconId and also links icons to special negative pages.
+ * five direct structure members. For a folder row, `reserved01` is its
+ * associated special negative child-page number, as returned by
+ * ::sceLsdbGetFolderPageNosByTitle. It also serves as the numeric selector
+ * accepted by ::sceLsdbGetIconInfoById.
  * `reserved02` is an alternate icon path which can override \a iconPath when a
  * query requests it. No FW 3.60 reader or writer for `reserved03` or
  * `reserved04` was found. `reserved05` stores a serialized, rendered PAF icon
@@ -293,7 +319,6 @@ typedef struct SceLsdbIconInfo {
 	SceInt32 parentalLockLevel;
 	SceInt32 status; //!< Persisted icon status; its purpose and valid values are unknown.
 	SceLsdbSpecialPageInfoRef specialPage; //!< Derived special-page relationship, when present.
-	SceUInt32 reserved; //!< Its purpose is unknown.
 } SceLsdbIconInfo;
 VITASDK_BUILD_ASSERT_EQ(0x58, SceLsdbIconInfo); // size is from FW 3.60
 
@@ -317,6 +342,27 @@ typedef struct SceLsdbIconInfoRefArray {
 	SceSize capacity;
 } SceLsdbIconInfoRefArray;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceLsdbIconInfoRefArray); // size is from FW 3.60
+
+/**
+ * Reference-counted vector of ::SceLsdbIconInfoRef objects.
+ * See ::SceLsdbAppInfo for the shared-reference ownership and cleanup rules.
+ */
+typedef struct SceLsdbIconInfoRefArrayRef {
+	SceLsdbIconInfoRefArray *object;
+	void *control;
+} SceLsdbIconInfoRefArrayRef;
+VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbIconInfoRefArrayRef); // size is from FW 3.60
+
+/**
+ * PAF vector containing one ::SceLsdbIconInfoRefArrayRef for each requested
+ * AppDB page.
+ */
+typedef struct SceLsdbIconInfoRefArrayRefArray {
+	SceLsdbIconInfoRefArrayRef *data;
+	SceSize count;
+	SceSize capacity;
+} SceLsdbIconInfoRefArrayRefArray;
+VITASDK_BUILD_ASSERT_EQ(0xC, SceLsdbIconInfoRefArrayRefArray); // size is from FW 3.60
 
 /** Field-selection bits accepted by ::sceLsdbUpdateIconInfo. */
 typedef enum SceLsdbIconInfoUpdateFlag {
@@ -389,46 +435,47 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbDbBlobRef); // size is from FW 3.60
 #define SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_COUNT 20
 #define SCE_LSDB_THEME_LOCALIZED_STRING_COUNT   20
 
-/** Fields from one Shell theme page consumed by ::sceLsdbUpdateThemeLayout. */
+/** Fields parsed from one `BackgroundParam` entry in a Shell theme. */
 typedef struct SceLsdbThemePageLayout {
-	SceLsdbString themeFile; //!< Path relative to ::SceLsdbThemeLayout::themeRootPath.
-	SceLsdbString shellData; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
-	SceUInt32 backgroundColor;
-	SceUInt32 reserved01Color; //!< Low 24 bits written to ::SceLsdbPageInfo::reserved.
-	SceUInt8 reserved01Flag; //!< Nonzero to also set bit 24 of ::SceLsdbPageInfo::reserved.
+	SceLsdbString imageFilePath; //!< `m_imageFilePath`, relative to ::SceLsdbThemeLayout::themeRootPath.
+	SceLsdbString thumbnailFilePath; //!< `m_thumbnailFilePath`; used by Shell but ignored by SceLsdb.
+	SceInt32 waveType; //!< `m_waveType`, stored in ::SceLsdbPageInfo::backgroundColor.
+	SceUInt32 fontColor; //!< `m_fontColor`, stored in the low 24 bits of ::SceLsdbPageInfo::reserved01.
+	SceUInt8 fontShadow; //!< `m_fontShadow`; nonzero sets bit 24 of ::SceLsdbPageInfo::reserved01.
 	SceUInt8 padding[3];
 } SceLsdbThemePageLayout;
 VITASDK_BUILD_ASSERT_EQ(0x24, SceLsdbThemePageLayout); // size is from FW 3.60
 
-/** One system-icon path consumed by ::sceLsdbUpdateThemeLayout. */
+/** One `IconParam` entry parsed from a Shell theme. */
 typedef struct SceLsdbThemeSystemIconLayout {
-	SceLsdbString iconPath; //!< Path relative to ::SceLsdbThemeLayout::themeRootPath.
-	SceInt32 shellData[2]; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
+	SceLsdbString iconFilePath; //!< `m_iconFilePath`, relative to ::SceLsdbThemeLayout::themeRootPath.
+	SceInt32 pagePosition; //!< `m_pagePos`; used by Shell but ignored by SceLsdb.
+	SceInt32 iconPosition; //!< `m_iconPos`; used by Shell but ignored by SceLsdb.
 } SceLsdbThemeSystemIconLayout;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbThemeSystemIconLayout); // size is from FW 3.60
 
 /** Indices used by ::SceLsdbThemeLayout::systemIconLayouts on FW 3.60. */
 typedef enum SceLsdbThemeSystemIconLayoutIndex {
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10003             = 0,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10010             = 1,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10009             = 2,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10012             = 3,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10001             = 4,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10008             = 5,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10005             = 6,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10000             = 7,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10026             = 8,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10007             = 9,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10013_OR_NPXS10098 = 10,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10006             = 11,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10072             = 12,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10091             = 13,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10002_OR_NPXS10034 = 14, //!< SceLsdb maps NPXS10002; Shell maps NPXS10034.
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10014             = 15,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10094             = 16,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10004             = 17,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NPXS10015             = 18,
-	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_ICON_TYPE_6           = 19
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_BROWSER       = 0,  //!< `m_browser`; NPXS10003.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_VIDEO         = 1,  //!< `m_video`; NPXS10010.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_MUSIC         = 2,  //!< `m_music`; NPXS10009.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_PS3_LINK      = 3,  //!< `m_ps3Link`; NPXS10012.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_PARTY         = 4,  //!< `m_party`; NPXS10001.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_TROPHY        = 5,  //!< `m_trophy`; NPXS10008.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_MAP           = 6,  //!< `m_map`; NPXS10005.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_NEAR          = 7,  //!< `m_near`; NPXS10000.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_HOST_COLLABO  = 8,  //!< `m_hostCollabo`; NPXS10026.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_WELCOME_PARK  = 9,  //!< `m_welcomePark`; NPXS10007.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_PS4_LINK      = 10, //!< `m_ps4Link`; NPXS10013 or NPXS10098.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_FRIEND        = 11, //!< `m_friend`; NPXS10006.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_EMAIL         = 12, //!< `m_email`; NPXS10072.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_CALENDAR      = 13, //!< `m_calendar`; NPXS10091.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_STORE         = 14, //!< `m_store`; SceLsdb maps NPXS10002 and Shell maps NPXS10034.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_MESSAGE       = 15, //!< `m_message`; NPXS10014.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_PARENTAL      = 16, //!< `m_parental`; NPXS10094.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_CAMERA        = 17, //!< `m_camera`; NPXS10004.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_SETTINGS      = 18, //!< `m_settings`; NPXS10015.
+	SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_POWER         = 19  //!< `m_power`; the icon row whose type is 6.
 } SceLsdbThemeSystemIconLayoutIndex;
 
 /** Fields selected by ::sceLsdbUpdateThemeLayout. */
@@ -444,6 +491,28 @@ typedef struct SceLsdbLocalizedThemeStrings {
 } SceLsdbLocalizedThemeStrings;
 VITASDK_BUILD_ASSERT_EQ(0xFC, SceLsdbLocalizedThemeStrings); // size is from FW 3.60
 
+/** `StartScreenProperty` fields parsed from a Shell theme. */
+typedef struct SceLsdbThemeStartScreenLayout {
+	SceLsdbString filePath;
+	SceInt32 dateLayout;
+	SceUInt32 dateColor;
+	SceUInt32 notificationBackgroundColor;
+	SceUInt32 notificationBorderColor;
+	SceUInt32 notificationFontColor;
+} SceLsdbThemeStartScreenLayout;
+VITASDK_BUILD_ASSERT_EQ(0x20, SceLsdbThemeStartScreenLayout); // size is from FW 3.60
+
+/** `InfomationBarProperty` fields parsed from a Shell theme. */
+typedef struct SceLsdbThemeInformationBarLayout {
+	SceUInt32 barColor;
+	SceUInt32 indicatorColor;
+	SceUInt32 noticeFontColor;
+	SceUInt32 noticeGlowColor;
+	SceLsdbString noNoticeFilePath;
+	SceLsdbString newNoticeFilePath;
+} SceLsdbThemeInformationBarLayout;
+VITASDK_BUILD_ASSERT_EQ(0x28, SceLsdbThemeInformationBarLayout); // size is from FW 3.60
+
 /**
  * Shell theme-layout object consumed by ::sceLsdbUpdateThemeLayout.
  *
@@ -453,19 +522,22 @@ VITASDK_BUILD_ASSERT_EQ(0xFC, SceLsdbLocalizedThemeStrings); // size is from FW 
  */
 typedef struct SceLsdbThemeLayout {
 	SceLsdbString themeRootPath;
-	SceInt32 shellData0; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
+	SceInt32 packageFlag; //!< `package` attribute from the `theme` element; either 0 or 1.
 	SceLsdbThemePageLayout pageLayouts[SCE_LSDB_THEME_PAGE_LAYOUT_COUNT];
-	SceLsdbString shellStrings[3]; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
+	SceLsdbString backgroundMusicFilePath; //!< `m_bgmFilePath`; used by Shell but ignored by SceLsdb.
+	SceLsdbString basePageFilePath; //!< `m_basePageFilePath`; used by Shell but ignored by SceLsdb.
+	SceLsdbString currentPageFilePath; //!< `m_curPageFilePath`; used by Shell but ignored by SceLsdb.
 	SceLsdbThemeSystemIconLayout systemIconLayouts[SCE_LSDB_THEME_SYSTEM_ICON_LAYOUT_COUNT];
-	SceUInt8 shellMetadata[0x48]; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
+	SceLsdbThemeStartScreenLayout startScreen;
+	SceLsdbThemeInformationBarLayout informationBar;
 	SceUInt32 contentVersion;
 	SceLsdbLocalizedThemeStrings localizedTitles;
 	SceLsdbLocalizedThemeStrings localizedProviders;
 	SceLsdbString packageImageFilePath;
 	SceLsdbString startPreviewFilePath;
 	SceLsdbString homePreviewFilePath;
-	SceLsdbString shellString; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
-	SceUInt32 shellData1[2]; //!< Used by Shell but ignored by SceLsdb on FW 3.60.
+	SceLsdbString formatVersion; //!< `format-ver` attribute from the `theme` element.
+	SceInt32 parsedFormatVersion; //!< Numeric form of a formatVersion.
 	SceRtcTick lastModifiedTime;
 } SceLsdbThemeLayout;
 VITASDK_BUILD_ASSERT_EQ(0x5B0, SceLsdbThemeLayout); // size is from FW 3.60
@@ -482,7 +554,7 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbThemeLayoutRef); // size is from FW 3.60
 
 /** One localized row of tbl_theme. */
 typedef struct SceLsdbThemeInfo {
-	SceUInt32 reserved0; //!< Its purpose is unknown.
+	void *vtable; //!< Internal FW 3.60 Shell theme-information virtual-function table; SceLsdb leaves it untouched.
 	SceLsdbString themeId;
 	SceInt32 type; //!< Must be 100 when passed to ::sceLsdbReplaceTheme on FW 3.60.
 	SceLsdbString packageImageFilePath;
@@ -491,7 +563,7 @@ typedef struct SceLsdbThemeInfo {
 	SceLsdbUtf16String title;
 	SceLsdbUtf16String provider;
 	SceUInt32 contentVersion;
-	SceUInt32 reserved1; //!< Its purpose is unknown.
+	SceUInt32 padding;
 	SceRtcTick lastModifiedTime;
 	SceSize size;
 } __attribute__((packed, aligned(4))) SceLsdbThemeInfo;
@@ -502,23 +574,27 @@ typedef enum SceLsdbValueType {
 	SCE_LSDB_VALUE_TYPE_STRING = 1
 } SceLsdbValueType;
 
-/** Integer-or-string value stored in tbl_appinfo or tbl_config. */
+/**
+ * Integer-or-string value stored in tbl_appinfo or tbl_config.
+ *
+ * A string output owns the ::SceLsdbString object addressed by `data.string`
+ * as well as its nonempty buffer. Release the buffer according to the
+ * ::SceLsdbString rules, release the object with ::sce_paf_free, and clear the
+ * value. An integer output owns no allocation. FW 3.60 reuses an existing
+ * string object when an output value already has string type.
+ */
 typedef struct SceLsdbValue {
 	SceInt32 type; //!< One of ::SceLsdbValueType.
-	SceUInt32 reserved;
 	union {
 		SceInt64 int64;
-		struct {
-			SceLsdbString *value;
-			void *reserved;
-		} string;
+		SceLsdbString *string;
 	} data;
 } SceLsdbValue;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceLsdbValue); // size is from FW 3.60
 
 /**
  * PAF vector of ::SceLsdbValue objects. An output vector owns its backing
- * allocation and the storage owned by its elements.
+ * allocation and the string object and buffer owned by each string element.
  */
 typedef struct SceLsdbValueArray {
 	SceLsdbValue *data;
@@ -560,9 +636,15 @@ typedef enum SceLsdbFilterFlags {
 	SCE_LSDB_FILTER_FLAG_OMIT_ICON_TITLE_SORT           = 0x4  //!< Omit the icon-title ORDER BY clause.
 } SceLsdbFilterFlags;
 
-/** New-event database wrapper. */
+/**
+ * Process-local NewEvent change-notification wrapper.
+ *
+ * This object does not own a separate database connection. Open allocates a
+ * four-byte atomic flag and registers it with the process-global NewEvent
+ * manager; any NewEvent mutation sets the flag to one.
+ */
 typedef struct SceLsdbNewEventDatabase {
-	void *handle;
+	SceUInt32 *notificationFlag;
 } SceLsdbNewEventDatabase;
 VITASDK_BUILD_ASSERT_EQ(0x4, SceLsdbNewEventDatabase); // size is from FW 3.60
 
@@ -570,6 +652,7 @@ VITASDK_BUILD_ASSERT_EQ(0x4, SceLsdbNewEventDatabase); // size is from FW 3.60
  * Selector accepted by the NewEvent update and deletion operations.
  *
  * A selector uses either both \a titleId and \a itemId, or a nonzero \a rowId.
+ * A nonzero row ID takes precedence when both forms are populated.
  */
 typedef struct SceLsdbNewEventSelector {
 	SceLsdbString titleId;
@@ -583,19 +666,26 @@ VITASDK_BUILD_ASSERT_EQ(0x20, SceLsdbNewEventSelector); // size is from FW 3.60
  *
  * The action type is stored as two 32-bit words in the ABI. It must not be
  * treated as a contiguous SceUInt64 field.
+ *
+ * String and icon-data inputs are borrowed for the duration of mutation calls.
+ * A standalone object filled by ::sceLsdbGetNewEvent or
+ * ::sceLsdbGetFirstPopupNewEvent owns each nonempty string buffer and must
+ * release them according to the ::SceLsdbString rules. A NewEvent held by a
+ * ::SceLsdbNewEventRef instead owns its nested strings through the parent
+ * reference; do not release them separately.
  */
 typedef struct SceLsdbNewEvent {
 	SceLsdbString titleId;
 	SceLsdbString itemId;
 	SceInt64 rowId;
-	SceInt64 messageType;
+	SceInt64 messageType; //!< Values at least 80 are eligible for automatic pruning and selective deletion.
 	SceUInt32 actionTypeLow;
 	SceUInt8 newFlag;
-	SceUInt8 popupFlag;
+	SceUInt8 popupFlag; //!< Nonzero requests a sequenced popup number; reads normalize popup_no to 0 or 1.
 	SceUInt8 padding[2];
 	SceLsdbString iconPath;
-	void *iconData;
-	SceSize iconDataSize;
+	void *iconData; //!< Input image bytes; query operations leave this NULL.
+	SceSize iconDataSize; //!< Input byte count, or stored BLOB length on output.
 	SceLsdbString messageArgs[9];
 	SceLsdbString title;
 	SceLsdbString description;
@@ -605,8 +695,8 @@ typedef struct SceLsdbNewEvent {
 	SceLsdbString updateTime;
 	SceInt32 soundId;
 	float soundVolume;
-	SceUInt32 hash;
-	SceUInt32 actionTypeHigh;
+	SceUInt32 hash; //!< Randomized on insertion and incremented by field updates.
+	SceUInt32 actionTypeHigh; //!< High word of the stored 64-bit action type; derived during insertion.
 } SceLsdbNewEvent;
 VITASDK_BUILD_ASSERT_EQ(0x100, SceLsdbNewEvent); // size is from FW 3.60
 
@@ -636,7 +726,7 @@ typedef enum SceLsdbNewEventUpdateFlag {
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_ICON_PATH   = 0x00000001, //!< Compare and update iconPath.
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_ICON_DATA   = 0x00000002, //!< Compare and update iconData.
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_MESSAGE     = 0x00000004, //!< Compare and update messageType and messageArgs.
-	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_ACTION_TYPE = 0x00000008, //!< Compare and update actionTypeLow.
+	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_ACTION_TYPE = 0x00000008, //!< Compare actionTypeLow and store its signed 64-bit form.
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_TITLE       = 0x00000010, //!< Compare and update title.
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_DESCRIPTION = 0x00000020, //!< Compare and update description.
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_EXECUTION   = 0x00000040, //!< Compare and update execMode, execTitleId, and execArgument.
@@ -646,17 +736,17 @@ typedef enum SceLsdbNewEventUpdateFlag {
 	SCE_LSDB_NEW_EVENT_UPDATE_FLAG_POPUP       = 0x00000400  //!< Compare popupFlag and assign popup_no.
 } SceLsdbNewEventUpdateFlag;
 
-/** Inclusive start and end times used by ::sceLsdbIsCurrentTimeInRange. */
+/** Start and end RTC ticks used by ::sceLsdbIsCurrentTimeInRange. */
 typedef struct SceLsdbTimeRange {
-	SceRtcTick start;
-	SceRtcTick end;
+	SceRtcTick start; //!< Inclusive lower bound unless the caller requests an end-only check.
+	SceRtcTick end; //!< Inclusive upper bound.
 } SceLsdbTimeRange;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceLsdbTimeRange); // size is from FW 3.60
 
 /** PCC state stored in tbl_livearea for one title. */
 typedef struct SceLsdbLiveAreaPccInfo {
 	SceRtcTick updateDate;
-	SceInt32 resourceStatus; //!< Stored pccResStatus plus one.
+	SceInt32 resourceStatus; //!< API value; FW 3.60 stores this value minus one in pccResStatus.
 	SceInt32 signOff;
 } SceLsdbLiveAreaPccInfo;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceLsdbLiveAreaPccInfo); // size is from FW 3.60
@@ -667,6 +757,25 @@ typedef enum SceLsdbLiveAreaPccUpdateFlag {
 	SCE_LSDB_LIVEAREA_PCC_UPDATE_FLAG_RESOURCE_STATUS = 0x00000002,
 	SCE_LSDB_LIVEAREA_PCC_UPDATE_FLAG_SIGN_OFF        = 0x00000004
 } SceLsdbLiveAreaPccUpdateFlag;
+
+/** Change bits returned by the LiveArea replacement and frame-update exports. */
+typedef enum SceLsdbLiveAreaChangeFlag {
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_1              = 0x00000001,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_2              = 0x00000002,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_3              = 0x00000004,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_4              = 0x00000008,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_5              = 0x00000010,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_6              = 0x00000020,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_7              = 0x00000040,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_8              = 0x00000080,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_9              = 0x00000100,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_FRAME_10             = 0x00000200,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_BACKGROUND_IMAGE     = 0x00010000,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_SYSTEM_FUNCTION_ZONE = 0x00020000,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_STARTUP_IMAGE        = 0x00040000,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_TITLE_COLOR          = 0x00080000,
+	SCE_LSDB_LIVEAREA_CHANGE_FLAG_STYLE                = 0x00100000
+} SceLsdbLiveAreaChangeFlag;
 
 /** One sfType/sfTarg pair stored in tbl_livearea. */
 typedef struct SceLsdbLiveAreaSfEntry {
@@ -694,7 +803,7 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbLiveAreaObject); // size is from FW 3.60
 /** Parsed LiveArea background image. */
 typedef struct SceLsdbLiveAreaBackgroundImage {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< Always ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_BACKGROUND_IMAGE.
+	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_BACKGROUND_IMAGE.
 	SceLsdbString sourcePath;
 } SceLsdbLiveAreaBackgroundImage;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaBackgroundImage); // size is from FW 3.60
@@ -702,7 +811,7 @@ VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaBackgroundImage); // size is from F
 /** Parsed system-function-zone entries. */
 typedef struct SceLsdbLiveAreaSystemFunctionZone {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< Always ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_SYSTEM_FUNCTION_ZONE.
+	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_SYSTEM_FUNCTION_ZONE.
 	SceLsdbLiveAreaSfEntry *entries;
 	SceSize entryCount;
 	SceSize entryCapacity;
@@ -713,15 +822,19 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceLsdbLiveAreaSystemFunctionZone); // size is fro
 /** Parsed gate startup image. */
 typedef struct SceLsdbLiveAreaStartupImage {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< Always ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_STARTUP_IMAGE.
+	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_STARTUP_IMAGE.
 	SceLsdbString sourcePath;
 } SceLsdbLiveAreaStartupImage;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaStartupImage); // size is from FW 3.60
 
-/** Parsed LiveArea title color, normalized to the range 0.0 through 1.0. */
+/**
+ * Parsed LiveArea title color, normalized to the range 0.0 through 1.0.
+ *
+ * FW 3.60 parses `#RRGGBBAA`. The initialized default is white with alpha 0.5.
+ */
 typedef struct SceLsdbLiveAreaTitleColor {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< Always ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_TITLE_COLOR.
+	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_TITLE_COLOR.
 	float red;
 	float green;
 	float blue;
@@ -797,10 +910,10 @@ typedef struct SceLsdbLiveAreaVisualElement {
 	SceInt32 type; //!< One of ::SceLsdbLiveAreaFrameElementType.
 	SceInt32 horizontalAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
 	SceInt32 verticalAlignment; //!< One of ::SceLsdbLiveAreaVerticalAlignment.
-	SceInt32 width;
-	SceInt32 height;
-	SceInt32 x;
-	SceInt32 y;
+	SceInt32 width; //!< Parsed `width`; initialized to zero.
+	SceInt32 height; //!< Parsed `height`; initialized to zero.
+	SceInt32 x; //!< Parsed `x` coordinate.
+	SceInt32 y; //!< Parsed `y` coordinate.
 	SceUInt8 hasX; //!< Nonzero when the XML element specifies `x`.
 	SceUInt8 hasY; //!< Nonzero when the XML element specifies `y`.
 	SceUInt8 padding[2];
@@ -836,13 +949,13 @@ typedef struct SceLsdbLiveAreaTextElement {
 	SceInt32 textAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
 	SceInt32 verticalTextAlignment; //!< One of ::SceLsdbLiveAreaVerticalAlignment.
 	SceInt32 lineAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
-	SceInt32 origin; //!< One of ::SceLsdbLiveAreaElementOrigin.
+	SceInt32 origin; //!< ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_FRAME or ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_BACKGROUND.
 	SceInt32 lineSpacing;
-	SceUInt8 lineBreak;
-	SceUInt8 wordWrap;
-	SceUInt8 ellipsis;
-	SceUInt8 wordScroll;
-	SceUInt8 preBreak;
+	SceUInt8 lineBreak; //!< Line-breaking flag; initialized to one.
+	SceUInt8 wordWrap; //!< Word-wrapping flag; initialized to one.
+	SceUInt8 ellipsis; //!< Ellipsis flag; initialized to zero.
+	SceUInt8 wordScroll; //!< Word-scrolling flag; initialized to zero.
+	SceUInt8 preBreak; //!< Internal pre-break flag; initialized to one.
 	SceUInt8 padding[3];
 	SceInt32 marginTop;
 	SceInt32 marginBottom;
@@ -872,13 +985,13 @@ VITASDK_BUILD_ASSERT_EQ(0x30, SceLsdbLiveAreaFrameItem); // size is from FW 3.60
 /** One parsed row of tbl_livearea_frame. */
 typedef struct SceLsdbLiveAreaFrame {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 objectType; //!< Always ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_FRAME.
+	SceInt32 objectType; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_FRAME.
 	SceLsdbString frameId;
 	SceInt32 multiMode; //!< One of ::SceLsdbLiveAreaFrameMultiMode.
-	SceInt32 autoFlipInterval; //!< Automatic item-rotation interval from the `autoflip` attribute.
+	SceUInt32 autoFlipInterval; //!< Automatic item-rotation interval from the `autoflip` attribute.
 	SceInt64 revision;
 	SceUInt8 isRetailOverride; //!< Nonzero for a database row whose type is 0.
-	SceLsdbString userData;
+	SceLsdbString userData; //!< `userdata`, truncated to at most 1023 bytes.
 	SceLsdbLiveAreaFrameItem **items;
 	SceSize itemCount;
 	SceSize itemCapacity;
@@ -910,16 +1023,19 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbLiveAreaFrameListRef); // size is from FW 3.
 /** State used while parsing one LiveArea template. */
 typedef struct SceLsdbLiveAreaParser {
 	SceLsdbString contentsPath;
-	SceUInt8 filterHardwareModel; //!< Nonzero to apply the XML `model` selector.
-	SceUInt8 flag2; //!< Affects initial template acquisition; its purpose is unknown.
-	SceUInt8 reserved; //!< Set to 0 on FW 3.60.
+	SceUInt8 filterHardwareModel; //!< Apply XML `model` selectors and enable title-color parsing.
+	SceUInt8 fallbackToDefaultTemplate; //!< Use the default system template when \a contentsPath cannot be opened.
+	SceUInt8 usingDefaultTemplate; //!< Set when the parser selects the default system template.
 	SceUInt8 padding;
 	SceLsdbLiveAreaFrameList *parsedFrames;
 	void *parsedFramesControl; //!< Reference-count control block for parsedFrames.
-	SceInt32 *languageIndex;
+	const SceInt32 *languageIndex;
 	const char *country;
 	SceInt32 contentRating;
-	SceUInt8 parseFlags[4]; //!< Their purposes are unknown.
+	SceUInt8 filterByCurrentTime; //!< Apply the liveitem `until` time when liveitem filtering is enabled.
+	SceUInt8 disableLiveItemFiltering; //!< Bypass locale, age, model, compatibility, time, and five-item-limit filtering.
+	SceUInt8 unused; //!< Written by SceShell but ignored by SceLsdb on FW 3.60.
+	SceUInt8 useAdNetworkClock; //!< Use the ad-network clock for liveitem time checks.
 	SceInt32 compatibilityMode; //!< One of ::SceLsdbLiveAreaCompatibilityMode; selects liveitems by their `pokesute` value.
 	SceInt32 selectedLanguageIndex;
 	SceLsdbString selectedCountry;
@@ -928,16 +1044,23 @@ VITASDK_BUILD_ASSERT_EQ(0x3C, SceLsdbLiveAreaParser); // size is from FW 3.60
 
 /** Entry stored in ux0:iconlayout.ini. */
 typedef struct SceLsdbIconLayoutEntry {
-	SceInt32 pageNo;
-	SceInt32 position;
-	SceInt32 parentPageNo;
-	SceInt32 parentPosition;
-	char *parentTitleId;
-	SceSize parentTitleIdLength;
+	SceInt32 pageNo; //!< Normal page 0 through 9, or special page -20000000 through -10000001.
+	SceInt32 position; //!< Position 0 through 9.
+	SceInt32 parentPageNo; //!< Parent page 0 through 9 for a special-page entry.
+	SceInt32 parentPosition; //!< Parent position 0 through 9 for a special-page entry.
+	char *parentTitleId; //!< PAF-allocated parent title ID returned for a special-page entry.
+	SceSize parentTitleIdLength; //!< Length of parentTitleId; ignored by the INI writer.
 } SceLsdbIconLayoutEntry;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceLsdbIconLayoutEntry); // size is from FW 3.60
 
-/** Callback used to obtain the current content-rating configuration. */
+/**
+ * Callback used to obtain the current content-rating configuration.
+ *
+ * Return zero after writing whether content-rating restrictions are enabled
+ * and the configured rating. A nonzero result makes
+ * ::sceLsdbGetUserContentRating calculate the user's age from the registered
+ * date of birth instead.
+ */
 typedef int (*SceLsdbContentRatingCallback)(SceInt32 *enabled, SceInt32 *rating);
 
 /** Callback invoked once for each title enumerated by ::sceLsdbGetAllAppInfo. */
@@ -947,23 +1070,63 @@ typedef void (*SceLsdbAppInfoCallback)(const SceLsdbAppInfo *appInfo, void *user
  * Initialize an explicit AppDB wrapper.
  *
  * Both this function and ::sceLsdbAppDatabaseInit2 allocate the same backing
- * object on FW 3.60. The reason for exporting two entry points is unknown.
+ * one-byte ownership token on FW 3.60. First call ::sceLsdbOpen; this function
+ * does not open a database connection. The reason for exporting two entry
+ * points is unknown.
  */
 SceLsdbAppDatabase *sceLsdbAppDatabaseInit(SceLsdbAppDatabase *database);
 SceLsdbAppDatabase *sceLsdbAppDatabaseInit2(SceLsdbAppDatabase *database);
 
-/** Release an explicit AppDB wrapper. Both entry points have the same behavior. */
+/**
+ * Release an explicit AppDB ownership token.
+ *
+ * Both entry points free a non-NULL token and return \a database. They do not
+ * close the process-global AppDB and do not clear ::SceLsdbAppDatabase::token.
+ */
 SceLsdbAppDatabase *sceLsdbAppDatabaseEnd(SceLsdbAppDatabase *database);
 SceLsdbAppDatabase *sceLsdbAppDatabaseEnd2(SceLsdbAppDatabase *database);
 
-/** Query icon records on pages in the half-open interval [firstPageNo, endPageNo). */
-int sceLsdbGetIconsInPageRange(SceLsdbAppDatabase *database, SceInt32 firstPageNo, SceInt32 endPageNo, SceLsdbIconInfoRefArray *icons);
+/**
+ * Query icon records for consecutive AppDB pages.
+ *
+ * The requested half-open page interval is
+ * `[firstPageNo, firstPageNo + pageCount)`. Before the call,
+ * \a iconsByPage must contain at least \a pageCount elements, and each element
+ * must hold a valid reference to an ::SceLsdbIconInfoRefArray object. FW 3.60
+ * clears those inner vectors and then fills element `i` with the icons from
+ * page `firstPageNo + i`, ordered by position. At most ten icons are retained
+ * for each page.
+ *
+ * @retval SCE_LSDB_ERROR_INVALID_ARGUMENT \a pageCount is zero or the outer
+ *         vector contains fewer than \a pageCount elements.
+ */
+int sceLsdbGetIconsInPageRange(SceLsdbAppDatabase *database, SceInt32 firstPageNo, SceSize pageCount, SceLsdbIconInfoRefArrayRefArray *iconsByPage);
 
-/** Query \a pageCount consecutive page records beginning at \a firstPageNo. */
+/**
+ * Query \a pageCount consecutive page records beginning at \a firstPageNo.
+ *
+ * Before the call, \a pages must contain at least \a pageCount elements. FW
+ * 3.60 releases any references already held by those elements, then writes
+ * one ::SceLsdbPageInfoRef for each requested page number.
+ *
+ * @retval SCE_LSDB_ERROR_INVALID_ARGUMENT \a pageCount is zero or \a pages
+ *         contains fewer than \a pageCount elements.
+ */
 int sceLsdbGetPageInfo(SceLsdbAppDatabase *database, SceInt32 firstPageNo, SceSize pageCount, SceLsdbPageInfoRefArray *pages);
 
-/** Delete the icon records belonging to one page. */
-int sceLsdbDeleteIconsInPage(SceLsdbAppDatabase *database, SceInt32 pageNo, SceUInt32 flags);
+/**
+ * Replace all icon records on one or more pages.
+ *
+ * \a pageNos and \a iconsByPage must have the same nonzero element count.
+ * Element `i` of \a iconsByPage is the replacement icon vector for
+ * `pageNos[i]`. FW 3.60 deletes every existing icon on each page, then inserts
+ * the supplied icons in vector order with positions beginning at zero. An
+ * empty inner vector therefore clears that page.
+ *
+ * Valid page numbers are nonnegative, -100000000, or in the range -20000000
+ * through -10000001.
+ */
+int sceLsdbReplaceIconsInPages(SceLsdbAppDatabase *database, const SceLsdbInt32Array *pageNos, const SceLsdbIconInfoRefArrayRefArray *iconsByPage);
 
 /**
  * Update selected fields of one icon record.
@@ -997,67 +1160,185 @@ int sceLsdbDeleteIconsInPage(SceLsdbAppDatabase *database, SceInt32 pageNo, SceU
  */
 int sceLsdbUpdateIconInfo(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbIconInfoRef *iconInfo, SceUInt32 updateMask, const void *iconData, SceSize iconDataSize);
 
-/** Insert one icon record on \a pageNo. */
+/**
+ * Insert one icon record on \a pageNo.
+ *
+ * Valid pages are nonnegative, -100000000, or special pages from -20000000
+ * through -10000001. Page -100000000 appends the icon after existing rows;
+ * other pages use ::SceLsdbIconInfo::position. On success the SQLite row ID is
+ * written to ::SceLsdbIconInfo::rowId. A type-zero icon must have a nonempty
+ * title ID. A title whose `#_org_path` begins with `ux0:` also receives an
+ * `ux0:iconlayout.ini` entry.
+ *
+ * FW 3.60 silently returns 0 without inserting anything for another negative
+ * page number, including -1.
+ */
 int sceLsdbInsertIcon(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbIconInfoRef *iconInfo);
 
-/** Delete the icon record and icon-layout entry belonging to \a titleId. */
+/**
+ * Delete the icon record belonging to \a titleId.
+ *
+ * The corresponding `ux0:iconlayout.ini` entry is also removed when the
+ * title's `#_org_path` begins with `ux0:`.
+ *
+ * @retval 0 One or more icon rows were deleted.
+ * @retval SCE_LSDB_ERROR_NOT_FOUND No icon row has this title ID.
+ */
 int sceLsdbDeleteIconByTitleId(SceLsdbAppDatabase *database, const SceLsdbString *titleId);
 
-/** Move corresponding source page/position entries to their destinations. */
+/**
+ * Move corresponding source page/position entries to their destinations.
+ *
+ * All four vectors must have the same nonzero count. Element `i` identifies
+ * one source and destination pair. A destination page must be nonnegative,
+ * -100000000, or in the special-page range from -20000000 through -10000001.
+ * FW 3.60 first moves each row to position
+ * `~destinationPositions[i]` on the destination page to avoid uniqueness
+ * collisions, then moves it to the requested position.
+ *
+ * An otherwise invalid destination page instead requests deletion when it is
+ * the bitwise complement of the destination position. For example, the pair
+ * `(-1, 0)` deletes the source icon. Another invalid pair returns
+ * ::SCE_LSDB_ERROR_INVALID_ARGUMENT. Final coordinates are reflected in
+ * `ux0:iconlayout.ini`.
+ */
 int sceLsdbMoveIcons(SceLsdbAppDatabase *database, const SceLsdbInt32Array *sourcePageNos, const SceLsdbInt32Array *sourcePositions, const SceLsdbInt32Array *destinationPageNos, const SceLsdbInt32Array *destinationPositions);
 
-/** Return the reference-counted blob in tbl_appinfo_icon.reserved05. */
-SceLsdbDbBlobRef sceLsdbGetIconReservedBlob(SceLsdbAppDatabase *database, const SceInt64 *iconId, int *error);
+/**
+ * Return the reference-counted blob in `tbl_appinfo_icon.reserved05` for the
+ * supplied SQLite row ID. The returned stream is read-only and opens the
+ * database BLOB lazily. \a error is optional and receives the construction
+ * result; an error returns an empty reference.
+ */
+SceLsdbDbBlobRef sceLsdbGetIconReservedBlob(SceLsdbAppDatabase *database, const SceInt64 *rowId, int *error);
 
-/** Update one AppInfo page record. */
-int sceLsdbUpdatePage(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbPageInfo *pageInfo);
+/**
+ * Update one or more AppDB page records.
+ *
+ * \a pageNos and \a pages must have the same nonzero element count. Element
+ * `i` of \a pages supplies every replacement field for `pageNos[i]`. Page
+ * numbers may be nonnegative, -100000000, or in the special-page range from
+ * -20000000 through -10000001. A missing page is a successful no-op on FW
+ * 3.60.
+ */
+int sceLsdbUpdatePages(SceLsdbAppDatabase *database, const SceLsdbInt32Array *pageNos, const SceLsdbPageInfoRefArray *pages);
 
-/** Insert a page record followed by its icon records. */
+/**
+ * Insert a nonnegative page record followed by its icon records.
+ *
+ * \a pageNo may equal the current nonnegative page count to append a page, but
+ * may not exceed it. Existing pages at and after the insertion point are
+ * shifted upward. Each icon uses its own ::SceLsdbIconInfo::position and
+ * receives its SQLite row ID in ::SceLsdbIconInfo::rowId. Corresponding
+ * `ux0:iconlayout.ini` page numbers are shifted on success.
+ */
 int sceLsdbInsertPage(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbIconInfoRefArray *icons, const SceLsdbPageInfo *pageInfo);
 
-/** Delete an AppInfo page record. */
+/**
+ * Delete a nonnegative or special negative page.
+ *
+ * Deleting a nonnegative page shifts every later page and icon-layout entry
+ * down by one. Deleting a special page also deletes the folder icon whose
+ * `reserved01` value references that page.
+ */
 int sceLsdbDeletePage(SceLsdbAppDatabase *database, SceInt32 pageNo);
 
 /**
- * Insert an icon, creating its special negative page and parent relationship
- * when required.
+ * Create a folder icon around an existing child icon.
  *
- * \a iconData and \a iconDataSize replace the icon blob only when both are
- * nonzero.
+ * FW 3.60 allocates a previously unused page number from -20000000 through
+ * -10000001, assigns it to \a folderIconInfo, and inserts that special page.
+ * It then moves the existing row at `(pageNo, folderIconInfo->position)` to
+ * `(specialPageNo, childIconInfo->position)` and inserts the folder back at
+ * `(pageNo, folderIconInfo->position)`. Shell normally sets the child's new
+ * position to zero. The existing child is selected by coordinates, not by the
+ * child reference's row ID or title ID.
+ *
+ * Both reference holders and objects are required. A type-zero child with a
+ * nonempty title ID is recorded in the special-page metadata. The newly
+ * inserted folder's SQLite row ID is written to
+ * ::SceLsdbIconInfo::rowId.
+ *
+ * \a iconData and \a iconDataSize initialize the folder's rendered-icon BLOB
+ * only when both are nonzero.
  */
-int sceLsdbInsertIconWithParent(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbIconInfoRef *parentIconInfo, const SceLsdbIconInfoRef *iconInfo, const void *iconData, SceSize iconDataSize);
+int sceLsdbInsertIconWithParent(SceLsdbAppDatabase *database, SceInt32 pageNo, const SceLsdbIconInfoRef *childIconInfo, const SceLsdbIconInfoRef *folderIconInfo, const void *iconData, SceSize iconDataSize);
 
 /** Return the number of nonnegative AppInfo pages. */
 int sceLsdbGetPageCount(SceLsdbAppDatabase *database);
 
-/** Count icons whose page number is in the inclusive requested range. */
-int sceLsdbGetIconCountInPageRange(SceLsdbAppDatabase *database, SceInt32 firstPageNo, SceInt32 lastPageNo);
+/**
+ * Count icons on a pageCount consecutive pages beginning with
+ * a firstPageNo.
+ *
+ * A valid starting page is nonnegative, -100000000, or in the special-page
+ * range from -20000000 through -10000001. For those values, FW 3.60 counts
+ * rows whose page number is between a firstPageNo and
+ * `firstPageNo + pageCount - 1`, inclusive. Any other starting value disables
+ * the page filter and counts every icon row; Shell and database recovery use
+ * -1 to request that total.
+ */
+int sceLsdbGetIconCountInPageRange(SceLsdbAppDatabase *database, SceInt32 firstPageNo, SceSize pageCount);
 
-/** Count top-level icons which count against the shell icon limit. */
+/**
+ * Count icons which count against the Shell top-level icon limit.
+ *
+ * FW 3.60 excludes folder icons with type 5 and every icon on page
+ * -100000000.
+ */
 int sceLsdbGetCountedIconCount(SceLsdbAppDatabase *database);
 
-/** Get tbl_appinfo_icon.reserved01 for the first matching title and icon type. */
-int sceLsdbGetIconId(SceLsdbAppDatabase *database, const SceLsdbString *title, SceInt32 iconType);
+/**
+ * Return folder child-page numbers for a localized bubble title.
+ *
+ * FW 3.60 hardcodes icon type 5, finds every matching `title` value, orders
+ * the rows by containing page number and position, and appends each row's
+ * `reserved01` value to \a pageNos. For a folder, that value identifies its
+ * special negative child page.
+ *
+ * @retval 0 One or more folder page numbers were returned.
+ * @retval SCE_LSDB_ERROR_NOT_FOUND No matching folder row exists.
+ */
+int sceLsdbGetFolderPageNosByTitle(SceLsdbAppDatabase *database, const SceLsdbString *title, SceLsdbInt32Array *pageNos);
 
 /** Load all AppInfo values for one title from an explicit database. */
 int sceLsdbGetAppInfoFromDatabase(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceLsdbAppInfo *appInfo);
 
-/** Read one typed AppInfo value from an explicit database. */
+/**
+ * Read one typed AppInfo value from an explicit database.
+ *
+ * @return ::SCE_LSDB_VALUE_TYPE_INT64 or ::SCE_LSDB_VALUE_TYPE_STRING on
+ *         success, or a negative error code.
+ */
 int sceLsdbGetAppInfoValueFromDatabase(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceUInt32 key, SceLsdbValue *value);
 
-/** Return nonzero when tbl_appinfo contains at least one row for \a titleId. */
+/**
+ * Return nonzero when tbl_appinfo contains at least one row for \a titleId.
+ * A closed AppDB returns 0 rather than ::SCE_LSDB_ERROR_INVALID_HANDLE.
+ */
 int sceLsdbAppInfoExists(SceLsdbAppDatabase *database, const SceLsdbString *titleId);
 
 /**
  * Read icon information for \a titleId.
  *
- * When \a useOriginalPathFallback is nonzero and the title is not found, the
- * value of the title's `_org_path` AppInfo key is tried as a second title ID.
+ * When \a useFallback is nonzero, a nonempty `reserved02` column replaces the
+ * returned ::SceLsdbIconInfo::iconPath. If no icon row exists for \a titleId,
+ * the title's `BOOT_INSTALL_DIR` AppInfo string is also tried as a second title
+ * ID. A zero value disables both fallback behaviors.
+ *
+ * The explicit \a database wrapper is required and dereferenced, but the FW
+ * 3.60 implementation performs this query through the process-global AppDB
+ * connection.
  */
-int sceLsdbGetIconInfoByTitleId(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceLsdbIconInfoRef *iconInfo, SceInt32 *pageNo, SceBool useOriginalPathFallback);
+int sceLsdbGetIconInfoByTitleId(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceLsdbIconInfoRef *iconInfo, SceInt32 *pageNo, SceBool useFallback);
 
-/** Read an icon record by its tbl_appinfo_icon.reserved01 value. */
-int sceLsdbGetIconInfoById(SceLsdbAppDatabase *database, const SceInt64 *iconId, SceInt32 *pageNo, SceLsdbIconInfoRef *iconInfo);
+/**
+ * Read the first icon record whose `tbl_appinfo_icon.reserved01` equals
+ * the signed 32-bit value at \a reserved01. This selector is distinct from
+ * ::SceLsdbIconInfo::rowId. On success \a pageNo receives the containing page
+ * and \a iconInfo receives one strong reference.
+ */
+int sceLsdbGetIconInfoById(SceLsdbAppDatabase *database, const SceInt32 *reserved01, SceInt32 *pageNo, SceLsdbIconInfoRef *iconInfo);
 
 /**
  * Return title IDs matching a chain of AppInfo filters.
@@ -1086,41 +1367,86 @@ int sceLsdbGetRecentlyUsedTitleIdsByCategoriesFromDatabase(SceLsdbAppDatabase *d
  * Resolve a URI to the title whose registered host/path is its longest prefix.
  *
  * Rows with the same prefix are ordered by descending last-launch and creation
- * times. A nonzero \a flags value enables the additional URI-row flag filter
- * used by FW 3.60.
+ * times. When \a flags is zero, no URI-row flag filter is applied. A nonzero
+ * value keeps only rows for which `(storedFlag & flags) != 0`. FW 3.60 sets
+ * stored flag bit 0 for the `GDA` category and for application name
+ * `PCSI00013`; Shell passes either 0 or 1 to this function.
  */
 int sceLsdbResolveUriTitleIdFromDatabase(SceLsdbAppDatabase *database, const char *uri, SceLsdbString *titleId, SceUInt32 flags);
 
 /** Collect distinct `scheme:host/path` prefixes for the requested schemes. */
 int sceLsdbGetUriPrefixesFromDatabase(SceLsdbAppDatabase *database, const char *const *schemes, SceSize schemeCount, SceLsdbStringArray *uriPrefixes);
 
-/** Insert the AppInfo, icon, URI, and icon-layout records for one application. */
+/**
+ * Insert the AppInfo, icon, URI, and icon-layout records for one application.
+ *
+ * The reference holders and \a additionalAppInfo vector are required even
+ * when empty. A page number of -1 skips icon insertion. Page -100000000
+ * appends the icon after the existing icons on that page; other valid pages
+ * use ::SceLsdbIconInfo::position. A successful icon insertion writes its
+ * SQLite row ID to ::SceLsdbIconInfo::rowId. An application whose
+ * `#_org_path` begins with `ux0:` also receives an `ux0:iconlayout.ini` entry.
+ * Observer event ::SCE_LSDB_APP_INFO_EVENT_INSERT_APPLICATION is dispatched
+ * after all records have been written.
+ */
 int sceLsdbInsertApplication(SceLsdbAppDatabase *database, const SceLsdbAppInfo *appInfo, SceInt32 pageNo, const SceLsdbIconInfoRef *iconInfo, const SceLsdbAppInfoArray *additionalAppInfo);
 
-/** Delete all AppDB data belonging to \a titleId. */
-int sceLsdbDeleteTitleData(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceBool keepSpecialPage, SceInt32 *pageNo);
+/**
+ * Delete all AppDB data belonging to \a titleId.
+ *
+ * The icon, AppInfo, URI, and icon-layout records are removed. When
+ * \a deleteSpecialPage is nonzero and the icon resides on a special negative
+ * page, that page and the folder row which references it are also removed.
+ * When \a pageNo is non-NULL, it receives the deleted icon's page number.
+ */
+int sceLsdbDeleteTitleData(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceBool deleteSpecialPage, SceInt32 *pageNo);
 
-/** Update the AppInfo, icon, and URI records for one application. */
-int sceLsdbUpdateApplication(SceLsdbAppDatabase *database, const SceLsdbAppInfo *appInfo, SceLsdbIconInfoRef *iconInfo, const SceLsdbAppInfoArray *additionalAppInfo);
+/**
+ * Update the AppInfo, icon, and URI records for one application.
+ *
+ * A nonempty \a iconInfo updates the existing icon row's title, path,
+ * icon0 type, command, parental-lock level, and status, but not its alternate
+ * path or rendered-icon BLOB. An empty reference leaves the icon row
+ * unchanged. Observer event ::SCE_LSDB_APP_INFO_EVENT_UPDATE_APPLICATION is
+ * dispatched on success.
+ */
+int sceLsdbUpdateApplication(SceLsdbAppDatabase *database, const SceLsdbAppInfo *appInfo, const SceLsdbIconInfoRef *iconInfo, const SceLsdbAppInfoArray *additionalAppInfo);
 
-/** Replace the AppInfo and URI records for one application, optionally updating its icon. */
-int sceLsdbReplaceApplication(SceLsdbAppDatabase *database, const SceLsdbAppInfo *appInfo, const SceLsdbIconInfoRef *iconInfo, SceBool updateIcon, const SceLsdbAppInfoArray *additionalAppInfo);
+/**
+ * Replace the AppInfo and URI records for one application.
+ *
+ * When \a updateIconTitle is nonzero, the icon reference must be nonempty and
+ * only ::SceLsdbIconInfo::title is copied to the existing icon row. No icon
+ * path, type, command, status, or image BLOB is changed. Observer event
+ * ::SCE_LSDB_APP_INFO_EVENT_UPDATE_APP_INFO is dispatched on success.
+ */
+int sceLsdbReplaceApplication(SceLsdbAppDatabase *database, const SceLsdbAppInfo *appInfo, const SceLsdbIconInfoRef *iconInfo, SceBool updateIconTitle, const SceLsdbAppInfoArray *additionalAppInfo);
 
 /**
  * Apply a masked update to a title's AppInfo value through an explicit database.
  *
  * For integer values, bits selected by \a mask are copied from \a value. String
- * values are replaced.
+ * values are replaced. SUPPORT_URI, `_fg_title_id`, and `_bg_title_id` are
+ * protected and return ::SCE_LSDB_ERROR_PROTECTED_APPINFO_KEY. Observer event
+ * ::SCE_LSDB_APP_INFO_EVENT_UPDATE_APP_INFO is dispatched on success.
  */
 int sceLsdbSetAppInfoValueMaskedFromDatabase(SceLsdbAppDatabase *database, const SceLsdbString *titleId, SceUInt32 key, const SceLsdbValue *value, SceUInt64 mask);
 
-/** Return a config string, or \a defaultValue when the key is absent. */
+/**
+ * Return a standalone config string, or a copied \a defaultValue when the key
+ * or process-global database is unavailable. The explicit wrapper is required
+ * but does not select a separate connection.
+ */
 SceLsdbString sceLsdbGetConfigStringFromDatabase(SceLsdbAppDatabase *database, SceUInt32 key, const char *defaultValue);
 
-/** Return a 64-bit config value, or \a defaultValue when the key is absent. */
+/**
+ * Return a 64-bit config value, or \a defaultValue when the key or
+ * process-global database is unavailable. The explicit wrapper does not select
+ * a separate connection.
+ */
 SceInt64 sceLsdbGetConfigInt64FromDatabase(SceLsdbAppDatabase *database, SceUInt32 key, SceInt64 defaultValue);
 
-/** Store a string in tbl_config through an explicit database. */
+/** Store or replace a string in tbl_config through the process-global AppDB. */
 int sceLsdbSetConfigStringFromDatabase(SceLsdbAppDatabase *database, SceUInt32 key, const char *value);
 
 /**
@@ -1135,7 +1461,15 @@ int sceLsdbSetConfigInt64MaskedFromDatabase(SceLsdbAppDatabase *database, SceUIn
  *
  * \a layout and \a layout->object must not be NULL. \a updateFlags is a
  * bitwise OR of ::SceLsdbThemeLayoutUpdateFlag values. Unselected portions of
- * the layout are not read.
+ * the layout are not read. The system-icon update joins each nonempty
+ * ::SceLsdbThemeSystemIconLayout::iconFilePath to the theme root and stores it
+ * as the icon row's alternate path. The page update applies one layout entry
+ * to each existing nonnegative page:
+ * ::SceLsdbThemePageLayout::waveType becomes `bgColor`,
+ * ::SceLsdbThemePageLayout::fontColor and
+ * ::SceLsdbThemePageLayout::fontShadow are encoded into `reserved01`, and a
+ * nonempty ::SceLsdbThemePageLayout::imageFilePath becomes `themeFile` with
+ * dimensions 960 by 512.
  */
 int sceLsdbUpdateThemeLayout(SceLsdbAppDatabase *database, const SceLsdbThemeLayoutRef *layout, SceUInt32 updateFlags);
 
@@ -1222,31 +1556,74 @@ int sceLsdbRegisterAppInfoObserver(SceLsdbAppInfoObserver *observer, SceLsdbAppI
  */
 int sceLsdbUnregisterAppInfoObserver(SceLsdbAppInfoObserver *observer);
 
-/** Initialize a query-context object to the closed state. */
+/**
+ * Initialize a query-context object to the detached state.
+ *
+ * Both entry points set ::SceLsdbQueryContext::state to NULL and otherwise
+ * have the same behavior on FW 3.60.
+ */
 SceLsdbQueryContext *sceLsdbQueryContextInit(SceLsdbQueryContext *context);
 SceLsdbQueryContext *sceLsdbQueryContextInit2(SceLsdbQueryContext *context);
 
-/** Close a query context. */
+/**
+ * Detach a query context from the process-global AppDB change notifications.
+ *
+ * This unregisters the context's internal AppInfo observer, releases its
+ * four-byte state object, and sets ::SceLsdbQueryContext::state to NULL. It
+ * succeeds when the context is already detached.
+ */
 int sceLsdbQueryContextClose(SceLsdbQueryContext *context);
 
-/** Release a query-context object. */
+/**
+ * Detach and release a query-context object.
+ *
+ * Both entry points perform the same cleanup as
+ * ::sceLsdbQueryContextClose, but return \a context.
+ */
 SceLsdbQueryContext *sceLsdbQueryContextEnd(SceLsdbQueryContext *context);
 SceLsdbQueryContext *sceLsdbQueryContextEnd2(SceLsdbQueryContext *context);
 
-/** Open the process-global AppDB in a query context. */
+/**
+ * Attach a query context to the already-open process-global AppDB.
+ *
+ * First call ::sceLsdbOpen. This function does not open a database; it
+ * allocates a four-byte change flag and registers an internal process-local
+ * AppInfo observer. Every AppInfo notification sets the flag to 1, which can
+ * be read and optionally cleared with
+ * ::sceLsdbQueryContextTestAndClearFlag. Call one of the query-context cleanup
+ * functions before ::sceLsdbClose.
+ *
+ * @retval 0 The context was attached.
+ * @retval SCE_LSDB_ERROR_INVALID_HANDLE The process-global AppDB is not open,
+ *         or \a context is already attached.
+ */
 int sceLsdbQueryContextOpen(SceLsdbQueryContext *context);
 
 /** Load all AppInfo values for one title. */
 int sceLsdbQueryGetAppInfo(SceLsdbQueryContext *context, const SceLsdbString *titleId, SceLsdbAppInfo *appInfo);
 
-/** Read one typed AppInfo value. */
+/**
+ * Read one typed AppInfo value.
+ *
+ * @return ::SCE_LSDB_VALUE_TYPE_INT64 or ::SCE_LSDB_VALUE_TYPE_STRING on
+ *         success, or a negative error code.
+ */
 int sceLsdbQueryGetAppInfoValue(SceLsdbQueryContext *context, const SceLsdbString *titleId, SceUInt32 key, SceLsdbValue *value);
 
-/** Return nonzero when a title has AppInfo rows. */
+/**
+ * Return nonzero when a title has AppInfo rows. A detached context or closed
+ * AppDB returns 0 rather than ::SCE_LSDB_ERROR_INVALID_HANDLE.
+ */
 int sceLsdbQueryAppInfoExists(SceLsdbQueryContext *context, const SceLsdbString *titleId);
 
-/** Read icon information for a title. */
-int sceLsdbQueryGetIconInfo(SceLsdbQueryContext *context, const SceLsdbString *titleId, SceLsdbIconInfoRef *iconInfo, SceBool includeHidden);
+/**
+ * Read icon information for a title through a query context.
+ *
+ * \a useFallback has the same `reserved02` and `BOOT_INSTALL_DIR` behavior as
+ * ::sceLsdbGetIconInfoByTitleId. It does not control whether hidden icons are
+ * included.
+ */
+int sceLsdbQueryGetIconInfo(SceLsdbQueryContext *context, const SceLsdbString *titleId, SceLsdbIconInfoRef *iconInfo, SceBool useFallback);
 
 /**
  * Return title IDs matching a chain of AppInfo filters.
@@ -1270,24 +1647,35 @@ int sceLsdbQueryResolveUriTitleId(SceLsdbQueryContext *context, const char *uri,
 /** Collect distinct URI prefixes through the process-global AppDB connection. */
 int sceLsdbQueryGetUriPrefixes(SceLsdbQueryContext *context, const char *const *schemes, SceSize schemeCount, SceLsdbStringArray *uriPrefixes);
 
-/** Return a config string, or \a defaultValue when the key is absent. */
+/**
+ * Return a standalone config string, or a copied \a defaultValue when the key
+ * is absent or the query context is detached.
+ */
 SceLsdbString sceLsdbQueryGetConfigString(SceLsdbQueryContext *context, SceUInt32 key, const char *defaultValue);
 
-/** Return a 64-bit config value, or \a defaultValue when the key is absent. */
+/** Return a 64-bit config value, or \a defaultValue when absent or detached. */
 SceInt64 sceLsdbQueryGetConfigInt64(SceLsdbQueryContext *context, SceUInt32 key, SceInt64 defaultValue);
 
 /**
- * Test the query-context notification flag and optionally clear it.
+ * Test the query-context AppInfo-change flag and optionally clear it.
  *
- * When \a clear is nonzero, FW 3.60 atomically changes the exact value 1 to 0.
- * A zero value only tests the flag.
+ * Every process-local AppInfo observer event sets the flag to 1. When
+ * \a clear is nonzero, FW 3.60 atomically changes the exact value 1 to 0. A
+ * zero value only tests the flag. A detached context returns 0.
  */
 int sceLsdbQueryContextTestAndClearFlag(SceLsdbQueryContext *context, SceBool clear);
 
 /** Return theme IDs ordered by descending modification time. */
 int sceLsdbQueryGetThemeIds(SceLsdbQueryContext *context, SceLsdbStringArray *themeIds);
 
-/** Read one localized theme record. */
+/**
+ * Read one localized theme record.
+ *
+ * \a languageIndex selects the `titleN` and `providerN` columns directly. A
+ * nonempty localized value replaces the corresponding default value. SceLsdb
+ * writes every member except ::SceLsdbThemeInfo::vtable and the natural
+ * alignment padding preceding ::SceLsdbThemeInfo::lastModifiedTime.
+ */
 int sceLsdbQueryGetTheme(SceLsdbQueryContext *context, const SceLsdbString *themeId, SceInt32 languageIndex, SceLsdbThemeInfo *themeInfo);
 
 /** Return the sum of tbl_theme.size. */
@@ -1297,22 +1685,29 @@ SceInt64 sceLsdbQueryGetTotalThemeSize(SceLsdbQueryContext *context);
  * Apply a masked update to a title's AppInfo value.
  *
  * For integer values, bits selected by \a mask are copied from \a value. String
- * values are replaced.
+ * values are replaced. SUPPORT_URI, `_fg_title_id`, and `_bg_title_id` are
+ * protected and return ::SCE_LSDB_ERROR_PROTECTED_APPINFO_KEY. Observer event
+ * ::SCE_LSDB_APP_INFO_EVENT_UPDATE_APP_INFO is dispatched on success.
  */
 int sceLsdbSetAppInfoValueMasked(const SceLsdbString *titleId, SceUInt32 key, const SceLsdbValue *value, SceUInt64 mask);
 
-/** Read one AppInfo value through the process-global AppDB connection. */
+/**
+ * Read one AppInfo value through the process-global AppDB connection.
+ *
+ * @return ::SCE_LSDB_VALUE_TYPE_INT64 or ::SCE_LSDB_VALUE_TYPE_STRING on
+ *         success, or a negative error code.
+ */
 int sceLsdbGetAppInfoValue(const SceLsdbString *titleId, SceUInt32 key, SceLsdbValue *value);
 
 /** Store a string in tbl_config through the process-global AppDB connection. */
-int sceLsdbSetConfigValue(SceUInt32 key, const char *value);
+int sceLsdbSetConfigString(SceUInt32 key, const char *value);
 
 /**
  * Apply a masked update to an integer tbl_config value.
  *
  * The resulting value is (oldValue & ~mask) | (value & mask).
  */
-int sceLsdbSetConfigValueMasked(SceUInt32 key, SceInt64 value, SceUInt64 mask);
+int sceLsdbSetConfigInt64Masked(SceUInt32 key, SceInt64 value, SceUInt64 mask);
 
 /**
  * Refresh the AppDB rows derived from an AppInfo object.
@@ -1379,7 +1774,10 @@ SceUInt32 sceLsdbGetStitleKeyForLanguage(SceInt32 languageIndex);
  */
 const char *sceLsdbGetStitle(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetTitle(const SceLsdbAppInfo *appInfo);
-const char *sceLsdbGetPspEmulatorTitleId(const SceLsdbAppInfo *appInfo);
+
+/** Return the per-title `#_livearea_path` AppInfo string. */
+const char *sceLsdbGetLiveAreaContentsPath(const SceLsdbAppInfo *appInfo);
+
 const char *sceLsdbGetOriginalPath(const SceLsdbAppInfo *appInfo);
 SceInt64 sceLsdbGetAttribute(const SceLsdbAppInfo *appInfo);
 SceInt64 sceLsdbGetLiveAreaType(const SceLsdbAppInfo *appInfo);
@@ -1396,6 +1794,8 @@ const char *sceLsdbGetCategory(const SceLsdbAppInfo *appInfo);
 int sceLsdbIsCategoryGda(const SceLsdbAppInfo *appInfo);
 
 SceInt64 sceLsdbGetPromoteAttribute(const SceLsdbAppInfo *appInfo);
+
+/** Return the AppMgr application name stored in AppInfo. */
 const char *sceLsdbGetName(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetForegroundTitleId(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetBackgroundTitleId(const SceLsdbAppInfo *appInfo);
@@ -1421,38 +1821,51 @@ const char *sceLsdbGetContentId(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetNpCommunicationId(const SceLsdbAppInfo *appInfo);
 SceInt64 sceLsdbGetSystemVersion(const SceLsdbAppInfo *appInfo);
 
-/** Query game_plugin's application-type classification for \a appInfo. */
+/**
+ * Query game_plugin's application-type classification for \a appInfo.
+ *
+ * FW 3.60 Shell handles value 1 as a native SELF launch, values 2 and 3
+ * through the PSP emulator launchers, value 4 through
+ * `ux0:app/PCSI00011/eboot.bin`, and value 5 through the per-title
+ * `ux0:psm/<name>/runtime/eboot.bin`. A missing game_plugin interface or a
+ * failed interface call produces 0.
+ */
 SceInt32 sceLsdbGetType(const SceLsdbAppInfo *appInfo);
 
 /**
  * Query game_plugin's metadata-location classification for \a appInfo.
  *
- * Consumers inspected on FW 3.60 read `ur0:appmeta/<titleId>/param.sfo` for
- * value 1. Values 2 and 3 select a param.sfo obtained through AppData mount
- * ID 110. The distinction between values 2 and 3 is unknown.
+ * Consumers inspected on FW 3.60 treat 0 as unavailable, read
+ * `ur0:appmeta/<titleId>/param.sfo` for value 1, and obtain `param.sfo`
+ * through AppData mount ID 110 for values 2 and 3. The distinction between
+ * values 2 and 3 is unknown.
  */
 SceInt32 sceLsdbGetAppMetadataLocationType(const SceLsdbAppInfo *appInfo);
 
 const char *sceLsdbGetDiscId(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetGameDataId(const SceLsdbAppInfo *appInfo);
+
+/** Return PARENTAL_LEVEL, or -1 when it is absent or is not an integer. */
 SceInt64 sceLsdbGetParentalLevel(const SceLsdbAppInfo *appInfo);
+
+/** Return BOOTABLE, or -1 when it is absent or is not an integer. */
 SceInt64 sceLsdbGetBootable(const SceLsdbAppInfo *appInfo);
 
-/** Return ATTRIBUTE bits 13 and 14. Their purpose is unknown. */
-SceUInt32 sceLsdbGetAttributeBits13To14(const SceLsdbAppInfo *appInfo);
+/** Return the LiveArea system-version value stored in ATTRIBUTE bits 13 and 14. */
+SceUInt32 sceLsdbGetLiveAreaSystemVersion(const SceLsdbAppInfo *appInfo);
 
 /** Return ATTRIBUTE bit 15. Its purpose is unknown. */
 SceUInt32 sceLsdbGetAttributeBit15(const SceLsdbAppInfo *appInfo);
 
 const char *sceLsdbGetBootInstallDir(const SceLsdbAppInfo *appInfo);
 
-/** Return nonzero for a game category or legacy system-version value 1 or 2. */
-int sceLsdbIsGameCategoryOrLegacySystemVersion(const SceLsdbAppInfo *appInfo);
+/** Return nonzero for a game category or LiveArea system-version value 1 or 2. */
+int sceLsdbIsGameCategoryOrLiveAreaSystemVersion1Or2(const SceLsdbAppInfo *appInfo);
 
 /** Return nonzero for a game category or the `EG` category. */
 int sceLsdbIsGameOrEgCategory(const SceLsdbAppInfo *appInfo);
 
-/** Return nonzero when type is 1 and ATTRIBUTE bit 15 is clear. */
+/** Return nonzero when ::sceLsdbGetType returns 1 and ATTRIBUTE bit 15 is clear. */
 int sceLsdbIsType1AndAttributeBit15Clear(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetContentLocation(const SceLsdbAppInfo *appInfo);
 
@@ -1465,23 +1878,31 @@ int sceLsdbGetAttributeBit16(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetLastLaunchTime(const SceLsdbAppInfo *appInfo);
 SceInt64 sceLsdbGetUpdateStatus(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetSupportUri(const SceLsdbAppInfo *appInfo);
-const char *sceLsdbGetSavedataAddInstallDir(const SceLsdbAppInfo *appInfo);
+/** Return the `INSTALL_DIR_SAVEDATA_ADD_1` AppInfo string. */
+const char *sceLsdbGetInstallDirSavedataAdd1(const SceLsdbAppInfo *appInfo);
 
-/** Return ATTRIBUTE bits 34 through 36. Their purpose is unknown. */
+/**
+ * Return ATTRIBUTE bits 34 through 36 as a value from 0 through 7.
+ *
+ * FW 3.60 Shell maps values 1, 2, and 3 to launch-descriptor values 29, 77,
+ * and 109 respectively, and also uses them when deciding whether one system
+ * application may replace another. Their underlying purpose is unknown.
+ */
 SceInt64 sceLsdbGetAttributeBits34To36(const SceLsdbAppInfo *appInfo);
 
 /**
  * Select the LiveArea compatibility mode for \a titleId.
  *
- * The default is ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_UNSPECIFIED. A
- * Japanese title accepted by SceCompatForVsh can produce
- * ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_ON or
- * ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_OFF depending on game_plugin state
- * on FW 3.60.
+ * The default is ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_UNSPECIFIED. For a
+ * title accepted by SceCompatForVsh, FW 3.60 returns
+ * ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_ON when game_plugin state is zero.
+ * When that state is nonzero or unavailable, it returns
+ * ::SCE_LSDB_LIVEAREA_COMPATIBILITY_MODE_OFF only if the configured NP country
+ * is `jp`; otherwise it retains the default.
  *
  * @return One of ::SceLsdbLiveAreaCompatibilityMode.
  */
-SceInt32 sceLsdbGetLiveAreaCompatibilityMode(const char *titleId);
+SceLsdbLiveAreaCompatibilityMode sceLsdbGetLiveAreaCompatibilityMode(const char *titleId);
 
 /**
  * Open the process-global AppDB connection.
@@ -1545,63 +1966,160 @@ int sceLsdbClose(void);
  */
 int sceLsdbReopen(void);
 
-/** Update localized AppInfo, icon-title, and LiveArea data. */
+/**
+ * Rebuild localized AppInfo and LiveArea data for a language index.
+ *
+ * FW 3.60 updates the ActivityDb language field only when both rebuilds
+ * succeed. After acquiring the database this export nevertheless returns 0,
+ * including when either rebuild fails.
+ */
 int sceLsdbUpdateLocalizedData(SceInt32 languageIndex);
 
-/** Return the language index stored in the Activity database. */
+/**
+ * Return the language index stored in the open Activity database.
+ *
+ * An ActivityDb error is returned when the process-global database is not
+ * open or the version information cannot be read.
+ */
 SceInt32 sceLsdbGetDatabaseLanguageIndex(void);
 
-/** Clear NewEvent state and refresh the LiveArea database. */
+/**
+ * Delete every NewEvent row and rebuild every LiveArea row from its stored
+ * contents path.
+ *
+ * FW 3.60 ignores the delete and per-title refresh results and returns 0 after
+ * acquiring the NewEvent database.
+ */
 int sceLsdbResetNewEventsAndLiveArea(void);
 
-/** Return the most recently recorded AppDB error. */
+/** Return the AppInfo daemon's most recently recorded AppDB error. */
 int sceLsdbGetLastAppDatabaseError(void);
 
-/** Return the configured LiveArea path, or `#_livearea_path` when absent. */
+/**
+ * Return tbl_config key 1 as a standalone string.
+ *
+ * A missing value or unavailable database returns an empty string.
+ */
 SceLsdbString sceLsdbGetLiveAreaPath(void);
 
-/** Set the configured LiveArea path. */
+/** Store \a value in tbl_config key 1, the process-global LiveArea path. */
 int sceLsdbSetLiveAreaPath(const SceLsdbString *value);
 
 /** Return the shell's current system-language index, or 1 when unavailable. */
 SceInt32 sceLsdbGetSystemLanguageIndex(void);
 
-/** Return the configured system region. */
+/**
+ * Return the configured system region as a standalone string.
+ *
+ * Registry failure returns an empty string.
+ */
 SceLsdbString sceLsdbGetRegion(void);
 
-/** Map an explicit/current/NP language selection to a language index. */
-SceInt32 sceLsdbMapLanguageIndex(SceInt32 mode, SceUInt32 language);
+/**
+ * Select the language index used to parse LiveArea content.
+ *
+ * LiveArea system version 1 ignores \a languageIndex and maps the registered
+ * `/CONFIG/NP/lang` string to an index from 0 through 19; registry failure or
+ * an unknown string returns -1. Other LiveArea system versions return an
+ * explicit index from 0 through 19 unchanged. Any other value, including -1,
+ * selects the shell's current system language, or 1 when shell state is not
+ * available.
+ */
+SceInt32 sceLsdbMapLanguageIndex(SceUInt32 liveAreaSystemVersion, SceInt32 languageIndex);
 
-/** Return the current NP language string. */
+/**
+ * Return `/CONFIG/NP/lang` as a standalone string.
+ *
+ * Registry failure returns an empty string.
+ */
 SceLsdbString sceLsdbGetNpLanguage(void);
 
-/** Return the configured country, with the mode-2 telephony override applied. */
-SceLsdbString sceLsdbGetCountry(SceInt32 mode);
+/**
+ * Return the country used to select localized LiveArea content.
+ *
+ * LiveArea system version 2 first requests the country from the loaded
+ * telephony plugin. If the plugin is unavailable or rejects the request, and
+ * for every other version, the function returns `/CONFIG/NP/country`.
+ * Failure of both sources returns an empty standalone string.
+ */
+SceLsdbString sceLsdbGetCountry(SceUInt32 liveAreaSystemVersion);
 
 /** Normalize an integer to 0 or 1. */
 SceBool sceLsdbNormalizeBool(SceInt32 value);
 
-/** Install the callback used when obtaining content-rating information. */
+/**
+ * Install the callback used when obtaining content-rating information.
+ *
+ * The supplied callback is stored process-wide and is also returned. The
+ * previous callback is not returned.
+ */
 SceLsdbContentRatingCallback sceLsdbSetContentRatingCallback(SceLsdbContentRatingCallback callback);
 
-/** Return the current user content-rating or age value. */
+/**
+ * Return the current user's content-rating limit or age.
+ *
+ * When the content-rating provider succeeds, the configured rating is
+ * returned if restrictions are enabled, and -1 is returned if they are
+ * disabled. When the provider fails, FW 3.60 calculates the age from the
+ * registered year, month, and day of birth. Invalid or unavailable registry
+ * data, RTC failure, and a future date of birth return 0.
+ */
 SceInt32 sceLsdbGetUserContentRating(void);
 
-/** Return the current NP environment string. */
+/**
+ * Return `/CONFIG/NP/env` as a standalone string.
+ *
+ * Registry failure returns an empty string.
+ */
 SceLsdbString sceLsdbGetNpEnvironment(void);
 
-/** Initialize a NewEvent database wrapper. */
+/**
+ * Initialize a detached NewEvent notification wrapper.
+ *
+ * Both entry points set ::SceLsdbNewEventDatabase::notificationFlag to NULL
+ * and otherwise have the same behavior on FW 3.60.
+ */
 SceLsdbNewEventDatabase *sceLsdbNewEventDatabaseInit(SceLsdbNewEventDatabase *database);
 SceLsdbNewEventDatabase *sceLsdbNewEventDatabaseInit2(SceLsdbNewEventDatabase *database);
 
-/** Open the NewEvent database. */
+/**
+ * Attach a NewEvent notification wrapper to the process-global database.
+ *
+ * First call ::sceLsdbOpen. This function allocates a four-byte flag and
+ * registers a process-local observer; it does not open a separate database.
+ * Call ::sceLsdbNewEventDatabaseClose before ::sceLsdbClose.
+ *
+ * @retval 0 The wrapper was attached.
+ * @retval SCE_LSDB_ERROR_INVALID_HANDLE The process-global AppDB is not open,
+ *         or this wrapper is already attached.
+ * @retval SCE_LSDB_ERROR_NO_MEMORY The notification flag could not be
+ *         allocated.
+ */
 int sceLsdbNewEventDatabaseOpen(SceLsdbNewEventDatabase *database);
 
-/** Close the NewEvent database. */
+/**
+ * Detach a NewEvent notification wrapper and release its flag.
+ *
+ * This succeeds when the wrapper is already detached.
+ */
 int sceLsdbNewEventDatabaseClose(SceLsdbNewEventDatabase *database);
 
-/** Insert one event and apply the FW 3.60 pruning policy when requested. */
-int sceLsdbInsertNewEvent(const SceLsdbNewEvent *event, SceBool prune);
+/**
+ * Insert one NewEvent row.
+ *
+ * When \a replaceExisting is nonzero, an existing row identified by the
+ * supplied title/item pair or row ID is deleted before the replacement is
+ * inserted. With zero, an existing row returns
+ * ::SCE_LSDB_ERROR_DATABASE_CONSTRAINT.
+ *
+ * Before inserting a new row, FW 3.60 keeps the active-row target at 64 by
+ * marking the oldest rows whose message type is at least 80 as deleted. An
+ * empty update time stores the current time. The function assigns the row ID,
+ * hash, popup number, and derived action-type high word back to \a event.
+ * A nonempty update time is validated only for a minimum length of 19 and the
+ * separators at byte positions 4, 7, 10, 13, and 16.
+ */
+int sceLsdbInsertNewEvent(SceLsdbNewEvent *event, SceBool replaceExisting);
 
 /**
  * Update selected fields of existing, nondeleted NewEvent rows.
@@ -1610,11 +2128,15 @@ int sceLsdbInsertNewEvent(const SceLsdbNewEvent *event, SceBool prune);
  * itemId strings. Only fields selected by \a updateMask are compared and
  * written. Every changed row receives an incremented hash value.
  *
- * When the time field is selected, a nonempty updateTime must begin with a
- * `YYYY-MM-DD HH:MM:SS` timestamp. When icon data is selected, a nonzero
+ * When the time field is selected, a nonempty updateTime must contain at least
+ * 19 bytes and have `-`, `-`, space, `:`, and `:` at byte positions 4, 7, 10,
+ * 13, and 16. FW 3.60 does not validate the other bytes as digits. An empty
+ * value stores the current time. When icon data is selected, a nonzero
  * iconDataSize requires a non-NULL iconData pointer. If both the stored and
  * supplied popupFlag values are nonzero, FW 3.60 preserves a copy of the
  * previous popup row before assigning a new popup number to the updated row.
+ * The action-type bit compares only `actionTypeLow`; changing it stores its
+ * signed 64-bit form and does not preserve the supplied `actionTypeHigh`.
  *
  * @param[in] events - Array of reference-counted NewEvent objects.
  * @param[in] count - Number of elements in \a events.
@@ -1626,36 +2148,79 @@ int sceLsdbInsertNewEvent(const SceLsdbNewEvent *event, SceBool prune);
  */
 int sceLsdbUpdateNewEvents(const SceLsdbNewEventRef *events, SceSize count, SceUInt32 updateMask);
 
-/** Set del_flag for the selected events. */
+/**
+ * Mark selected nondeleted events as deleted.
+ *
+ * Each selector uses a nonzero row ID or both title and item IDs. Rows whose
+ * popup number is already zero are physically removed by the NewEvent table's
+ * auto-delete trigger; popup rows remain until their popup number is cleared.
+ * The function returns ::SCE_LSDB_ERROR_NOT_FOUND when no selector changes a
+ * row.
+ */
 int sceLsdbMarkNewEventsDeleted(const SceLsdbNewEventSelector *selectors, SceSize count);
 
-/** Delete events according to the supplied byte threshold. */
-int sceLsdbDeleteNewEvents(SceUInt8 threshold);
+/**
+ * Delete NewEvent rows.
+ *
+ * A zero \a selective value deletes every row. A nonzero value marks only
+ * nondeleted rows whose message type is at least 80 as deleted; rows with a
+ * lower message type are preserved.
+ */
+int sceLsdbDeleteNewEvents(SceUInt8 selective);
 
-/** Read one selected NewEvent row. */
+/**
+ * Read one nondeleted NewEvent row.
+ *
+ * On entry, \a event must identify the row with a nonzero row ID or with both
+ * a nonempty title ID and item ID. On success every database-backed field is
+ * replaced. `iconData` remains NULL and `iconDataSize` receives the stored
+ * BLOB length; use ::sceLsdbGetNewEventIconData to read the bytes.
+ */
 int sceLsdbGetNewEvent(SceLsdbNewEventDatabase *database, SceLsdbNewEvent *event);
 
 /**
  * Enumerate nondeleted NewEvent rows.
  *
- * \a maxCount must not exceed 64. When \a clearNotification is nonzero, the
- * process-local pending-notification flag is cleared after the query.
+ * FW 3.60 clamps \a maxCount to 64. The optional \a totalCount and \a newCount
+ * outputs are also capped at 64; they are not uncapped database totals. Existing
+ * contents of \a events are released before the result is written. When
+ * \a clearNotification is nonzero, the process-local pending-notification flag
+ * is cleared after a successful query.
  */
 int sceLsdbGetNewEvents(SceLsdbNewEventDatabase *database, SceLsdbNewEventRefArray *events, SceSize maxCount, SceSize *totalCount, SceSize *newCount, SceBool clearNotification);
 
-/** Read the icon blob for a NewEvent row. */
+/**
+ * Return the read-only icon-data BLOB for an existing NewEvent row ID.
+ *
+ * The returned stream opens the database BLOB lazily. \a error is optional and
+ * receives the construction result; an error returns an empty reference.
+ */
 SceLsdbDbBlobRef sceLsdbGetNewEventIconData(SceLsdbNewEventDatabase *database, const SceInt64 *rowId, int *error);
 
-/** Return whether the NewEvent database has a pending notification. */
+/** Return whether this wrapper's process-local change flag is set. */
 SceBool sceLsdbHasPendingNewEventNotification(SceLsdbNewEventDatabase *database);
 
-/** Clear the process-local pending NewEvent notification state. */
-int sceLsdbClearPendingNewEventNotification(SceLsdbNewEventDatabase *database);
+/**
+ * Clear the process-local pending NewEvent notification state.
+ *
+ * This is a void operation and is a no-op when the wrapper is closed.
+ */
+void sceLsdbClearPendingNewEventNotification(SceLsdbNewEventDatabase *database);
 
-/** Return the number of references held by the NewEvent manager. */
-int sceLsdbGetNewEventReferenceCount(SceLsdbNewEventDatabase *database);
+/**
+ * Return the number of rows whose popup number is nonzero.
+ *
+ * FW 3.60 maintains this process-global count through the NewEvent table's
+ * insert/update triggers. The wrapper must be open.
+ */
+int sceLsdbGetNewEventPopupCount(SceLsdbNewEventDatabase *database);
 
-/** Read the first row whose popup_no is greater than zero. */
+/**
+ * Read the row with the smallest positive popup number.
+ *
+ * When no such row exists, FW 3.60 returns ::SCE_LSDB_ERROR_NOT_FOUND and
+ * resets the process-global popup count to zero.
+ */
 int sceLsdbGetFirstPopupNewEvent(SceLsdbNewEventDatabase *database, SceLsdbNewEvent *event);
 
 /** Set popup_no to zero for the selected row. */
@@ -1677,29 +2242,59 @@ int sceLsdbUpdateNewEventFlags(SceLsdbNewEventDatabase *database, const SceLsdbN
 /** Clear new_flag and increment hash for every new row. */
 int sceLsdbClearNewEventFlags(SceLsdbNewEventDatabase *database);
 
-/** Select the event operation identified by the LAUPDATE token. */
-int sceLsdbSelectLiveAreaUpdateEvent(SceLsdbNewEventDatabase *database, const SceLsdbNewEventSelector *selector);
+/**
+ * Derive the high 32 bits of a NewEvent action type for \a titleId.
+ *
+ * FW 3.60 returns the configured value for `LAUPDATE`, `LOGSTATUS0`,
+ * `BGCPSTATUS`, or `NPXS10006`. For another title it reads AppInfo key
+ * 0x5142196B and returns bits 1 through 3 when bit 0 is set. The fallback is
+ * 0xE, including when \a database is not open.
+ */
+SceUInt32 sceLsdbGetNewEventActionTypeHigh(SceLsdbNewEventDatabase *database, const SceLsdbString *titleId);
 
 /**
  * Test a time interval against the current RTC or ad-network clock.
  *
- * The interval endpoints are inclusive.
+ * The sentinel interval `{ 0, UINT64_MAX }` always matches without reading a
+ * clock. With \a ignoreStartTime set to zero, both endpoints are inclusive.
+ * With it nonzero, FW 3.60 first rejects a reversed interval and then tests
+ * only whether the current tick is at or before \a range's end. A clock-read
+ * error returns false.
  */
-int sceLsdbIsCurrentTimeInRange(const SceLsdbTimeRange *range, SceBool mode, SceBool useAdNetworkClock);
+SceBool sceLsdbIsCurrentTimeInRange(const SceLsdbTimeRange *range, SceBool ignoreStartTime, SceBool useAdNetworkClock);
 
-/** Initialize one parsed LiveArea frame. */
+/**
+ * Initialize caller-provided storage for one parsed LiveArea frame.
+ *
+ * The function initializes the nested strings and item vector and returns
+ * \a frame. It does not allocate the structure itself.
+ */
 SceLsdbLiveAreaFrame *sceLsdbLiveAreaFrameInit(SceLsdbLiveAreaFrame *frame);
 
 /** Return one indexed liveitem from a parsed frame, or NULL. */
 SceLsdbLiveAreaFrameItem *sceLsdbLiveAreaFrameGetItem(const SceLsdbLiveAreaFrame *frame, SceSize index);
 
-/** Initialize an empty parsed LiveArea object list. */
+/**
+ * Initialize caller-provided storage for an empty parsed LiveArea object list.
+ *
+ * The function allocates the circular-list sentinel and returns \a frameList.
+ */
 SceLsdbLiveAreaFrameList *sceLsdbLiveAreaFrameListInit(SceLsdbLiveAreaFrameList *frameList);
 
-/** Release a parsed LiveArea object list. */
+/**
+ * Destroy every object and list node owned by a parsed LiveArea frame list.
+ *
+ * The caller still owns the outer \a frameList storage.
+ */
 SceLsdbLiveAreaFrameList *sceLsdbLiveAreaFrameListEnd(SceLsdbLiveAreaFrameList *frameList);
 
-/** Parse a NN.NN version string into the integer representation used by SceLsdb. */
+/**
+ * Parse an exact `NN.NN` version string.
+ *
+ * The four digits are returned as one decimal integer; for example, `01.04`
+ * returns 104. Invalid length, digits, or separator return -1. Both exports
+ * have identical behavior on FW 3.60.
+ */
 SceInt32 sceLsdbParseVersion(const SceLsdbString *version);
 SceInt32 sceLsdbParseVersion2(const SceLsdbString *version);
 
@@ -1707,58 +2302,92 @@ SceInt32 sceLsdbParseVersion2(const SceLsdbString *version);
  * Initialize a LiveArea parser for \a contentsPath.
  *
  * When \a filterHardwareModel is nonzero, XML choices whose `model` attribute
- * does not match the current hardware are discarded. On FW 3.60, \a flag2
- * changes the initial template-acquisition path in
- * ::sceLsdbParseLiveAreaTemplate; its purpose is unknown.
+ * does not match the current hardware are discarded. When
+ * \a fallbackToDefaultTemplate is nonzero and \a contentsPath cannot be
+ * opened, ::sceLsdbParseLiveAreaTemplate parses the built-in default template
+ * and sets ::SceLsdbLiveAreaParser::usingDefaultTemplate.
  */
-SceLsdbLiveAreaParser *sceLsdbLiveAreaParserInit(SceLsdbLiveAreaParser *parser, const char *contentsPath, SceBool filterHardwareModel, SceBool flag2);
+SceLsdbLiveAreaParser *sceLsdbLiveAreaParserInit(SceLsdbLiveAreaParser *parser, const char *contentsPath, SceBool filterHardwareModel, SceBool fallbackToDefaultTemplate);
 
 /** Release a LiveArea parser. */
 SceLsdbLiveAreaParser *sceLsdbLiveAreaParserEnd(SceLsdbLiveAreaParser *parser);
 
-/** Parse the template selected by \a parser. */
+/**
+ * Parse the template selected by \a parser into a reference-counted frame list.
+ *
+ * A successful call replaces \a parser's existing parsed-frame reference and
+ * returns 0. FW 3.60 rejects a non-fallback input larger than 0x8000 bytes.
+ * Negative return values -1 through -6 distinguish file, allocation, XML, and
+ * size failures; they are private parser errors, not ::SceLsdbErrorCode values.
+ */
 int sceLsdbParseLiveAreaTemplate(SceLsdbLiveAreaParser *parser);
 
 /**
  * Apply locale and content-rating selection to a parsed template.
  *
  * \a languageIndex points to the selected language, \a country is the raw
- * country code, and \a contentRating is the current user rating.
+ * country code, and \a contentRating is the current user rating. A NULL
+ * language pointer and a NULL or empty country preserve the existing
+ * selections. The function returns true.
  */
-int sceLsdbLiveAreaParserSetLocale(SceLsdbLiveAreaParser *parser, SceInt32 *languageIndex, const char *country, SceInt32 contentRating);
+SceBool sceLsdbLiveAreaParserSetLocale(SceLsdbLiveAreaParser *parser, const SceInt32 *languageIndex, const char *country, SceInt32 contentRating);
 
-/** Return the default LiveArea template path. */
-SceLsdbString sceLsdbGetDefaultLiveAreaTemplatePath(void);
+/**
+ * Select the built-in default template in an initialized LiveArea parser.
+ *
+ * This replaces ::SceLsdbLiveAreaParser::contentsPath with
+ * `vs0:data/internal/livearea/default/sce_sys/livearea/contents/template.xml`,
+ * sets ::SceLsdbLiveAreaParser::usingDefaultTemplate, and returns true.
+ */
+SceBool sceLsdbLiveAreaParserSetDefaultTemplate(SceLsdbLiveAreaParser *parser);
 
 /** Read the current RTC tick. */
 int sceLsdbGetCurrentRtcTick(SceRtcTick *tick);
 
-/** Read the ad-network RTC tick. */
+/** Read the ad-network RTC tick. The output is written only on success. */
 int sceLsdbGetAdNetworkRtcTick(SceRtcTick *tick);
 
 /**
- * Parse one LiveArea frame XML document.
+ * Parse one LiveArea frame XML document and return its frame object.
  *
- * The final pointer is accepted by the export but ignored on FW 3.60.
+ * On success, \a frame receives a newly allocated frame removed from the
+ * temporary parser's object list. The caller owns that frame and its nested
+ * objects; FW 3.60 releases such objects through vtable slot 1.
+ *
+ * \a compatibilityMode is supplied by SceShell for type-3 applications but is
+ * ignored by this FW 3.60 export. The function returns false for allocation,
+ * XML, or missing-frame failures.
  */
-SceBool sceLsdbParseLiveAreaFrame(SceLsdbLiveAreaFrame **frame, const void *xml, SceSize xmlLength, SceInt32 *languageIndex, const char *country, SceInt32 contentRating, SceBool filterHardwareModel, const void *ignored);
+SceBool sceLsdbParseLiveAreaFrame(SceLsdbLiveAreaFrame **frame, const void *xml, SceSize xmlLength, const SceInt32 *languageIndex, const char *country, SceInt32 contentRating, SceBool filterHardwareModel, SceLsdbLiveAreaCompatibilityMode compatibilityMode);
 
 /**
  * Read and parse the stored LiveArea template for one title and target type.
  *
  * \a unused is ignored on FW 3.60. \a targetType is one of
  * ::SceLiveAreaTargetType; the byte-sized declaration matches this export's
- * ABI.
+ * ABI. The result is filtered for locale, content rating, hardware model, and
+ * compatibility mode. Expired database frame rows discovered during a
+ * successful read are deleted. \a frames receives an owning strong reference.
  */
 int sceLsdbGetLiveAreaFrames(void *unused, SceLsdbLiveAreaFrameListRef *frames, const SceLsdbString *titleId, SceUInt8 targetType);
 
-/** Enumerate titles which have stored LiveArea data. */
-int sceLsdbGetLiveAreaTitleIds(void *unused, const SceLsdbStringArray *existingTitleIds, SceLsdbString *titleId);
+/**
+ * Return one `ur0:`-backed LiveArea title absent from \a titleIds.
+ *
+ * FW 3.60 performs this lookup only when at least 88 `ur0:` LiveArea rows
+ * exist. Candidates are ordered by AppInfo key 0x4C5BFEC6. The first missing
+ * title is copied to \a titleId; no candidate returns
+ * ::SCE_LSDB_ERROR_NOT_FOUND. \a unused is ignored.
+ */
+int sceLsdbGetLiveAreaTitleIdNotInList(void *unused, const SceLsdbStringArray *titleIds, SceLsdbString *titleId);
 
 /**
  * Read tbl_livearea_frame.userdata.
  *
- * Both \a unused and \a activityDbHandle are ignored on FW 3.60.
+ * When both normal and retail rows exist, the row with the lowest database
+ * type is selected. No matching title/frame pair returns
+ * ::SCE_LSDB_ERROR_NOT_FOUND. Both \a unused and \a activityDbHandle are
+ * ignored on FW 3.60.
  */
 int sceLsdbGetLiveAreaFrameUserData(void *unused, const SceLsdbString *titleId, const SceLsdbString *frameId, SceLsdbString *userData, void *activityDbHandle);
 
@@ -1781,46 +2410,84 @@ void sceLsdb_29B275BA(const SceLsdbString *titleId, const char *contentsPath);
  */
 int sceLsdbRefreshLiveAreaRecords(const SceLsdbString *titleId, SceLsdbString *originalPath);
 
-/** Replace all stored LiveArea contents for one title. */
-int sceLsdbReplaceLiveAreaContents(void *handle, const SceLsdbString *titleId, const SceLsdbString *contentsPath, const SceRtcTick *lastModified, SceUInt32 changeFlags, SceLsdbString *resolvedTitleId, ScePID processId);
+/**
+ * Replace all stored LiveArea contents for one title.
+ *
+ * The template at \a contentsPath is parsed, its assets are staged in
+ * `ur0:appmeta` when necessary, and both the main LiveArea row and frame rows
+ * are replaced. \a lastModified is copied into the resulting frame-list
+ * metadata. \a changeFlags receives a bitwise OR of
+ * ::SceLsdbLiveAreaChangeFlag values. \a resolvedTitleId receives the title ID
+ * selected by SceLsdb. \a unused is ignored on FW 3.60.
+ */
+int sceLsdbReplaceLiveAreaContents(void *unused, const SceLsdbString *titleId, const SceLsdbString *contentsPath, SceUInt32 *changeFlags, const SceRtcTick *lastModified, SceLsdbString *resolvedTitleId, ScePID processId);
 
-/** Update one or more parsed LiveArea frame records. */
-int sceLsdbUpdateLiveAreaFrames(void *handle, const SceLsdbString *titleId, const SceLsdbLiveAreaFrameListRef *frames, const SceLsdbString *contentsPath, SceUInt8 targetType, SceUInt32 changeFlags, SceLsdbString *resolvedTitleId, ScePID processId);
+/**
+ * Update one or more already parsed LiveArea frame records.
+ *
+ * \a targetType is one of ::SceLiveAreaTargetType. Normal target type 0 is
+ * stored as database type 1; retail target type 1 is stored as database type
+ * 0 and takes precedence in ordered frame queries. \a changeFlags receives a
+ * bitwise OR of ::SceLsdbLiveAreaChangeFlag values. \a resolvedTitleId
+ * receives the selected title ID. \a unused is ignored on FW 3.60.
+ */
+int sceLsdbUpdateLiveAreaFrames(void *unused, const SceLsdbString *titleId, const SceLsdbLiveAreaFrameListRef *frames, const SceLsdbString *contentsPath, SceUInt8 targetType, SceUInt32 *changeFlags, SceLsdbString *resolvedTitleId, ScePID processId);
 
 /**
  * Return whether a system-function-zone entry has the requested type.
  *
  * \a unused is ignored on FW 3.60.
  */
-int sceLsdbLiveAreaSfEntryExists(void *unused, const SceLsdbString *titleId, SceInt32 type);
+SceBool sceLsdbLiveAreaSfEntryExists(void *unused, const SceLsdbString *titleId, SceInt32 type);
 
-/** Read pccUpdDate, pccResStatus, and pccSignOff for one title. \a unused is ignored on FW 3.60. */
+/**
+ * Read pccUpdDate, pccResStatus, and pccSignOff for one title.
+ *
+ * ::SceLsdbLiveAreaPccInfo::resourceStatus receives the stored pccResStatus
+ * plus one. \a unused is ignored on FW 3.60.
+ */
 int sceLsdbGetLiveAreaPccInfo(void *unused, const SceLsdbString *titleId, SceLsdbLiveAreaPccInfo *pccInfo);
 
 /**
  * Update PCC information and the empty system-function-zone slot for one title.
  *
- * \a unused is ignored on FW 3.60. When \a addSystemFunctionZoneSlot is
- * nonzero, an empty slot is added to the system-function-zone entry if needed;
- * when it is zero, one empty slot is removed. \a updateFlags is a bitwise OR
- * of ::SceLsdbLiveAreaPccUpdateFlag values and selects the fields copied from
- * \a pccInfo.
+ * \a unused is ignored on FW 3.60. When \a includeEmptySfType0Entry is
+ * nonzero, a `{ type = 0, target = "" }` system-function-zone entry is added
+ * if needed; when it is zero, one such entry is removed. \a updateFlags is a
+ * bitwise OR of ::SceLsdbLiveAreaPccUpdateFlag values and selects the fields
+ * copied from \a pccInfo.
  */
-int sceLsdbUpdateLiveAreaPccInfo(void *unused, const SceLsdbString *titleId, SceBool addSystemFunctionZoneSlot, const SceLsdbLiveAreaPccInfo *pccInfo, SceUInt32 updateFlags);
+int sceLsdbUpdateLiveAreaPccInfo(void *unused, const SceLsdbString *titleId, SceBool includeEmptySfType0Entry, const SceLsdbLiveAreaPccInfo *pccInfo, SceUInt32 updateFlags);
 
-/** Add or replace one sfType/sfTarg pair in a title's LiveArea record. */
-int sceLsdbSetLiveAreaSfEntry(void *handle, const SceLsdbString *titleId, const SceLsdbLiveAreaSfEntry *entry);
+/**
+ * Add or replace one sfType/sfTarg pair in a title's LiveArea record.
+ *
+ * A missing system-function-zone object is created. \a unused is ignored.
+ */
+int sceLsdbSetLiveAreaSfEntry(void *unused, const SceLsdbString *titleId, const SceLsdbLiveAreaSfEntry *entry);
 
-/** Delete the sfType/sfTarg pair whose sfType equals \a type. */
-int sceLsdbDeleteLiveAreaSfEntry(void *handle, const SceLsdbString *titleId, SceInt32 type);
+/**
+ * Delete the sfType/sfTarg pair whose sfType equals \a type.
+ *
+ * A missing zone or type returns ::SCE_LSDB_ERROR_NOT_FOUND. \a unused is
+ * ignored.
+ */
+int sceLsdbDeleteLiveAreaSfEntry(void *unused, const SceLsdbString *titleId, SceInt32 type);
 
-/** Read tbl_livearea.modifiedDate for one title. */
-int sceLsdbGetLiveAreaModifiedDate(void *handle, const SceLsdbString *titleId, SceRtcTick *lastModified);
+/**
+ * Read and decode tbl_livearea.modifiedDate for one title.
+ *
+ * A missing row returns ::SCE_LSDB_ERROR_NOT_FOUND. \a unused is ignored.
+ */
+int sceLsdbGetLiveAreaModifiedDate(void *unused, const SceLsdbString *titleId, SceRtcTick *lastModified);
 
 /** Set tbl_livearea.modifiedDate for one title. */
 int sceLsdbSetLiveAreaModifiedDate(void *unused, const SceLsdbString *titleId, const SceRtcTick *lastModified);
 
-/** Rebuild one title's LiveArea rows from `template.xml` under \a contentsPath. */
+/**
+ * Rebuild one title's normal-layer frame rows from `template.xml` under
+ * \a contentsPath.
+ */
 int sceLsdbUpdateLiveAreaFromContents(const SceLsdbString *titleId, const char *contentsPath);
 
 /** Delete the stored LiveArea record for one title. */
@@ -1830,55 +2497,91 @@ int sceLsdbDeleteLiveArea(const SceLsdbString *titleId);
  * Read a stored LiveArea revision.
  *
  * When \a frameId is non-NULL, \a revision receives the matching frame
- * revision and \a originalPath is not written. Otherwise, \a revision receives
- * the content revision and \a originalPath receives tbl_livearea.org_path.
+ * revision from the lowest database type and \a originalPath is not written.
+ * Otherwise, \a revision receives the content revision and the optional
+ * \a originalPath receives tbl_livearea.org_path.
  */
 int sceLsdbGetLiveAreaRevision(const SceLsdbString *titleId, const char *frameId, SceUInt64 *revision, SceLsdbString *originalPath);
 
-/** Decrement the icon-layout open count and release the INI context at zero. */
+/**
+ * Decrement the icon-layout open count and release the INI context at zero.
+ *
+ * Calling this at open count zero returns -1. For a nested open it returns the
+ * remaining positive count; the final close returns the INI finalization
+ * result.
+ */
 int sceLsdbIconLayoutClose(void);
 
-/** Open ux0:iconlayout.ini and increment the open count. */
+/**
+ * Open or create `ux0:iconlayout.ini` and increment the nested open count.
+ * A failed open restores the previous count.
+ */
 int sceLsdbIconLayoutOpen(void);
 
 /** Delete ux0:iconlayout.ini. A missing file is treated as success. */
 int sceLsdbIconLayoutDeleteFile(void);
 
 /** Return whether ux0:iconlayout.ini exists. */
-int sceLsdbIconLayoutFileExists(void);
+SceBool sceLsdbIconLayoutFileExists(void);
 
 /** Enable or disable icon-layout writes. The supplied value is returned. */
 SceBool sceLsdbIconLayoutSetWritesDisabled(SceBool disabled);
 
-/** Read one icon-layout entry by title ID. */
+/**
+ * Read one icon-layout entry by title ID.
+ *
+ * The return value is false for a missing key, malformed value, or file/open
+ * error. A successful special-page result owns the nonempty
+ * \a entry->parentTitleId allocation; release it with ::sce_paf_free.
+ */
 SceBool sceLsdbIconLayoutGetEntry(const char *titleId, SceLsdbIconLayoutEntry *entry);
 
-/** Write one icon-layout entry by title ID. */
+/**
+ * Write one icon-layout entry by title ID.
+ *
+ * Normal entries serialize only page and position. Special-page entries also
+ * serialize the parent coordinates and NUL-terminated parent title ID;
+ * \a entry->parentTitleIdLength is not read. Writes-disabled mode returns 0
+ * without changing the file.
+ */
 int sceLsdbIconLayoutSetEntry(const char *titleId, const SceLsdbIconLayoutEntry *entry);
 
 /** Delete one icon-layout entry. */
 int sceLsdbIconLayoutDeleteEntry(const char *titleId);
 
 /**
- * Update selected parent fields of an icon-layout entry.
+ * Update selected parent fields of an icon-layout entry selected by page.
  *
+ * FW 3.60 updates the first parsed entry whose page number equals \a pageNo;
+ * it does not select by title ID. No matching entry is treated as success.
  * NULL page, position, or title pointers leave the corresponding field
  * unchanged.
  */
-int sceLsdbIconLayoutUpdateParent(const char *titleId, const SceInt32 *parentPageNo, const SceInt32 *parentPosition, const char *parentTitleId);
+int sceLsdbIconLayoutUpdateParentByPageNo(SceInt32 pageNo, const SceInt32 *parentPageNo, const SceInt32 *parentPosition, const char *parentTitleId);
 
-/** Increment or decrement page numbers at or above \a pageNo. */
+/**
+ * Increment or decrement each stored page number at or above \a pageNo.
+ *
+ * Only the entry's own page number is changed; parent page numbers are not.
+ * Writes-disabled mode is a successful no-op.
+ */
 int sceLsdbIconLayoutShiftPages(SceBool increment, SceInt32 pageNo);
 
 /**
- * Return whether an icon occupies \a pageNo and \a position.
- *
- * Normal page and position values are 0 through 9. FW 3.60 also recognizes
- * special page numbers from -20000000 through -10000001.
+ * Return whether any successfully parsed entry exactly matches \a pageNo and
+ * \a position. The function performs no argument-range validation and returns
+ * zero for file/open/parse errors.
  */
-int sceLsdbIconLayoutPositionExists(SceInt32 pageNo, SceInt32 position);
+SceBool sceLsdbIconLayoutPositionExists(SceInt32 pageNo, SceInt32 position);
 
-/** Count the distinct special negative page numbers in iconlayout.ini. */
+/**
+ * Broken FW 3.60 special-page counter.
+ *
+ * The implementation intends to collect distinct special negative page
+ * numbers, but its insertion condition is inverted while the local vector
+ * starts empty. Consequently this export returns 0 for every parsed file on FW
+ * 3.60.
+ */
 int sceLsdbIconLayoutGetSpecialPageCount(void);
 
 #ifdef __cplusplus

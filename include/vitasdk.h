@@ -19,10 +19,12 @@
 #include <psp2/common_dialog.h>
 #include <psp2/compat.h>
 #include <psp2/coredump.h>
+#include <psp2/coredump_nounlink.h>
 #include <psp2/ctrl.h>
 #include <psp2/error.h>
 #include <psp2/display.h>
 #include <psp2/dmac5.h>
+#include <psp2/drmbridge.h>
 #include <psp2/fiber.h>
 #include <psp2/fios2kernel.h>
 #include <psp2/fios2kernel02.h>
@@ -37,6 +39,7 @@
 #include <psp2/jpegenc.h>
 #include <psp2/jpegencarm.h>
 #include <psp2/json.h>
+#include <psp2/libc.h>
 #include <psp2/libdbg.h>
 #include <psp2/libime.h>
 #include <psp2/libssl.h>
@@ -64,6 +67,7 @@
 #include <psp2/photoexport.h>
 #include <psp2/power.h>
 #include <psp2/promoterutil.h>
+#include <psp2/psmdrm.h>
 #include <psp2/pspnet_adhoc.h>
 #include <psp2/pspnet_adhocctl.h>
 #include <psp2/pss.h>

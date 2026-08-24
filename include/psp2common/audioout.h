@@ -57,7 +57,7 @@ typedef enum SceAudioOutMode {
  * 2.5 kHz, 6.3 kHz, and 16 kHz bands.
  */
 typedef enum SceAudioOutEffectType {
-	SCE_AUDIO_OUT_EFFECT_TYPE_OFF    = 0, //!< Bypasses the equalizer on FW 3.60.
+	SCE_AUDIO_OUT_EFFECT_TYPE_OFF    = 0, //!< Bypasses the equalizer; the stored preset uses 0 dB for every band.
 	SCE_AUDIO_OUT_EFFECT_TYPE_HEAVY  = 1, //!< +3, +3, 0, -3, +3, +3, 0 dB.
 	SCE_AUDIO_OUT_EFFECT_TYPE_POPS   = 2, //!< -3, 0, +3, +3, 0, 0, -3 dB.
 	SCE_AUDIO_OUT_EFFECT_TYPE_JAZZ   = 3, //!< 0, +6, 0, 0, -3, 0, +3 dB.
@@ -78,7 +78,7 @@ typedef enum SceAudioOutSampleRate {
 	SCE_AUDIO_OUT_SAMPLE_RATE_24000 = 24000,
 	SCE_AUDIO_OUT_SAMPLE_RATE_32000 = 32000,
 	SCE_AUDIO_OUT_SAMPLE_RATE_44100 = 44100,
-	SCE_AUDIO_OUT_SAMPLE_RATE_44184 = 44184, //!< Accepted by user-facing output ports only for PSPemu on FW 3.60.
+	SCE_AUDIO_OUT_SAMPLE_RATE_44184 = 44184, //!< Accepted by SrcMix inputs and PSPemu output ports on FW 3.60.
 	SCE_AUDIO_OUT_SAMPLE_RATE_48000 = 48000
 } SceAudioOutSampleRate;
 
@@ -103,8 +103,8 @@ typedef enum SceAudioOutConfigType {
 
 /** Automatic-level-control values associated with ::sceAudioOutSetAlcMode. */
 typedef enum SceAudioOutAlcMode {
-	SCE_AUDIO_ALC_OFF      = 0,
-	SCE_AUDIO_ALC_MODE1    = 1,
+	SCE_AUDIO_ALC_OFF      = 0, //!< Disable the BGM dynamic normalizer.
+	SCE_AUDIO_ALC_MODE1    = 1, //!< Enable the BGM dynamic normalizer.
 	SCE_AUDIO_ALC_MODE_MAX = 2 //!< Number of ALC modes; not a valid mode.
 } SceAudioOutAlcMode;
 
@@ -117,8 +117,8 @@ typedef enum SceAudioOutPortMask {
 
 /** New-port adoption behavior selected by ::sceAudioOutSetAdoptMode. */
 typedef enum SceAudioOutAdoptMode {
-	SCE_AUDIO_OUT_ADOPT_MODE_AUTOMATIC = 0, //!< Automatically adopt newly opened BGM and voice ports.
-	SCE_AUDIO_OUT_ADOPT_MODE_MANUAL    = 1  //!< Do not automatically adopt newly opened BGM and voice ports.
+	SCE_AUDIO_OUT_ADOPT_MODE_AUTOMATIC = 0, //!< Automatically adopt newly opened BGM and voice-profile ports.
+	SCE_AUDIO_OUT_ADOPT_MODE_MANUAL    = 1  //!< Do not automatically adopt newly opened BGM and voice-profile ports.
 } SceAudioOutAdoptMode;
 
 #ifdef __cplusplus

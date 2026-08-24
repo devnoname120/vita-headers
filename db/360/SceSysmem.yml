@@ -257,8 +257,8 @@ modules:
           ksceHmacSha1Digest: 0x29A28957
           ksceHmacSha224Digest: 0x7F2A7B99
           ksceHmacSha256Digest: 0x83EFA1CC
+          ksceMt19937GlobalFillArray32: 0x875B2A1C
           ksceMt19937GlobalInit: 0xD428CC2A
-          ksceMt19937GlobalUIntInRange: 0x875B2A1C
           ksceMt19937Init: 0x4C9A5730
           ksceMt19937UInt: 0x92AEDFBC
           ksceSfmt19937FillArray32: 0x2B30548B

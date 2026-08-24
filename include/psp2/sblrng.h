@@ -14,15 +14,26 @@ extern "C" {
 #endif
 
 typedef struct SceKernelGetRandomNumberParam {
-	SceUInt32 dstSize; //!< In bytes. Must be <= 0x40.
+	SceUInt32 dstSize;  //!< Number of bytes copied to the destination; must be at most 0x40.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceKernelGetRandomNumberParam;
 VITASDK_BUILD_ASSERT_EQ(8, SceKernelGetRandomNumberParam); // size is from FW 3.60
 
 /**
- * @param[in] pParam - Parameter structure. The FW 3.60 provider only reads it.
+ * Generate up to 0x40 bytes using SceSblRng's pseudorandom generator.
+ *
+ * The provider first generates \a length bytes, then copies the number in
+ * ::SceKernelGetRandomNumberParam::dstSize to \a pDst. Bytes between those
+ * two sizes are zero if the destination size is larger than \a length. The
+ * public ::sceKernelGetRandomNumber wrapper sets both sizes to the same value.
+ *
+ * @param[out] pDst - Required destination buffer.
+ * @param[in] length - Number of random bytes to generate; must be at most 0x40.
+ * @param[in] pParam - Required eight-byte input parameter structure.
+ *
+ * @return 0 on success, < 0 on error.
  */
-int _sceKernelGetRandomNumber(void *pDst, SceSize length, SceKernelGetRandomNumberParam *pParam);
+int _sceKernelGetRandomNumber(void *pDst, SceSize length, const SceKernelGetRandomNumberParam *pParam);
 
 #ifdef __cplusplus
 }

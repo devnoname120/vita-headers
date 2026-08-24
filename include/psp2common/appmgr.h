@@ -16,11 +16,17 @@ extern "C" {
 typedef char SceTitleId[16];
 VITASDK_BUILD_ASSERT_EQ(0x10, SceTitleId);
 
-typedef struct sceAppMgrPhotoMountParam {
-	SceSize size;
-	char reserved[0x80]; //!< Copied from user memory but actually unused on FW 3.60.
-} sceAppMgrPhotoMountParam;
-VITASDK_BUILD_ASSERT_EQ(0x84, sceAppMgrPhotoMountParam); // size is from FW 3.60
+typedef struct SceAppMgrPhotoMountParam {
+	SceSize size; //!< Must be the size of this structure.
+	char reserved[0x80]; //!< Ignored on FW 3.60.
+} SceAppMgrPhotoMountParam;
+VITASDK_BUILD_ASSERT_EQ(0x84, SceAppMgrPhotoMountParam); // size is from FW 3.60
+
+typedef struct SceAppMgrAcInstResult {
+	SceUInt8 keystone[0x60]; //!< Add-on-content keystone.
+	char gameTitle[0x80]; //!< NUL-terminated localized game title.
+} SceAppMgrAcInstResult;
+VITASDK_BUILD_ASSERT_EQ(0xE0, SceAppMgrAcInstResult); // size is from FW 3.60
 
 #ifdef __cplusplus
 }

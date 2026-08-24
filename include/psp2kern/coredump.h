@@ -14,38 +14,57 @@
 extern "C" {
 #endif
 
+/** Coredump section-selection levels accepted by ::SceCoredumpTriggerParam. */
+typedef enum SceCoredumpDumpLevel {
+	SCE_COREDUMP_DUMP_LEVEL_CONFIGURED = 0,      //!< Use the FW 3.60 registry configuration.
+	SCE_COREDUMP_DUMP_LEVEL_MINIMAL    = 0xF,    //!< Generate the minimal coredump.
+	SCE_COREDUMP_DUMP_LEVEL_FULL       = 0x1EF0  //!< Generate the full coredump.
+} SceCoredumpDumpLevel;
+
 typedef enum SceCoredumpOutputMode {
 	SCE_COREDUMP_OUTPUT_MODE_AUTO              = 0,  //!< Try the configured host0 path, then sd0, then ux0:data.
 	SCE_COREDUMP_OUTPUT_MODE_HOST0             = 1,  //!< Write to the host0 root.
 	SCE_COREDUMP_OUTPUT_MODE_UX0_DATA          = 2,  //!< Write to ux0:data.
-	SCE_COREDUMP_OUTPUT_MODE_HOST0_CUSTOM_PATH = 10  //!< Write to a caller-supplied host0 path.
+	SCE_COREDUMP_OUTPUT_MODE_HOST0_CUSTOM_PATH = 10  //!< Write below a caller-supplied host0 path.
 } SceCoredumpOutputMode;
 
+/**
+ * Options passed to ::ksceKernelSysrootCoredumpTrigger.
+ *
+ * FW 3.60 accepts a size-versioned prefix. Sizes from 4 through 7 select the
+ * minimal dump level. Sizes from 8 through 19 also provide \c dump_level.
+ * Sizes from 20 through 51 additionally provide the output mode and custom
+ * path. A size of 0x34 or greater provides every field.
+ */
 typedef struct SceCoredumpTriggerParam {
-	SceSize size; //!< Size of this structure.
-	int dump_level; //!< Coredump section-selection bitfield; zero uses the configured level.
+	SceSize size; //!< Size of the provided structure prefix; normally `sizeof(SceCoredumpTriggerParam)`.
+	int dump_level; //!< One of ::SceCoredumpDumpLevel; zero resolves to 0xF or 0x1EF0 from the registry.
 	int output_mode; //!< One of ::SceCoredumpOutputMode.
 	int custom_path_len; //!< Size of \c custom_path including its terminating NUL; maximum 0x400.
-	int custom_path; //!< Pointer used by ::SCE_COREDUMP_OUTPUT_MODE_HOST0_CUSTOM_PATH, represented as an \c int.
+	int custom_path; //!< Pointer to the custom host0 subdirectory, represented as an \c int for backwards compatibility.
 	SceSize titleid_len; //!< Number of bytes to copy from \c titleid; maximum 10.
 	const char *titleid; //!< Title ID; required when \c titleid_len is nonzero.
 	SceSize app_name_len; //!< Number of bytes to copy from \c app_name; maximum 0x80.
 	const char *app_name; //!< Application name; required when \c app_name_len is nonzero.
 	int app_version; //!< Decimal application version; for example, 100 is 01.00.
-	int crash_cause; //!< Crash-cause selector used with \c crash_thid; value 1 is required for GPUCRASH filename selection.
-	SceUID crash_thid; //!< Thread whose stop reason may be overridden according to \c crash_cause.
-	int use_gpu_crash_filename; //!< Nonzero selects the GPUCRASH filename when \c crash_cause is 1.
+	int crash_cause; //!< -2 requests a manual dump, 1 identifies a GPU exception, and 3 identifies an AppMgr-detected hang.
+	SceUID crash_thid; //!< Thread whose stop reason is inspected for crash causes that do not force one.
+	int use_gpu_crash_filename; //!< Nonzero selects a GPUCRASH filename when \c crash_cause is 1.
 } SceCoredumpTriggerParam;
 VITASDK_BUILD_ASSERT_EQ(0x34, SceCoredumpTriggerParam); // size is from FW 3.60
 
 /**
  * Coredump progress callback.
  *
+ * FW 3.60 reports percentages from 0 through 100, with intermediate updates
+ * quantized to five-percentage-point boundaries. The callback return value is
+ * ignored.
+ *
  * @param[in] task_id Coredump task identifier.
  * @param[in] pid Process identifier.
  * @param[in] progress Current coredump progress.
  */
-typedef int (*SceKernelCoredumpStateUpdateCallback)(int task_id, SceUID pid, int progress);
+typedef int (*SceKernelCoredumpStateUpdateCallback)(int task_id, ScePID pid, int progress);
 
 /**
  * Coredump completion callback.
@@ -57,8 +76,11 @@ typedef int (*SceKernelCoredumpStateUpdateCallback)(int task_id, SceUID pid, int
  * @param[in] path_len Length of \p path including its terminating NUL.
  * @param[in] is_caf Nonzero if \p path identifies a CAF crash report; zero if
  * it identifies a plain PSP2 coredump.
+ *
+ * The path is owned by SceCoredump and must be copied before this callback
+ * returns. The callback return value is ignored.
  */
-typedef int (*SceKernelCoredumpStateFinishCallback)(int task_id, SceUID pid, int result, const char *path, SceSize path_len, int is_caf);
+typedef int (*SceKernelCoredumpStateFinishCallback)(int task_id, ScePID pid, int result, const char *path, SceSize path_len, int is_caf);
 
 typedef enum SceCoredumpCafSegmentMode {
 	SCE_COREDUMP_CAF_SEGMENT_MODE_HMAC_SHA256     = 0, //!< Authenticate the source without encryption.
@@ -69,12 +91,19 @@ typedef enum SceCoredumpCafSegmentMode {
 /**
  * Initializes CAF cryptographic support.
  *
+ * This validates and makes the coredump key stores available. A repeated call
+ * succeeds when they are already available.
+ *
  * @return 0 on success, < 0 on error.
  */
 int ksceCoredumpCafInit(void);
 
 /**
  * Creates a CAF cryptographic context.
+ *
+ * A context contains one mutable HMAC/AES operation state. Initialization of
+ * a header or segment replaces that state, and its matching final function
+ * clears it. Callers must serialize access to an individual context.
  *
  * @return The context UID on success, < 0 on error.
  */
@@ -103,7 +132,7 @@ int ksceCoredumpCafCreateIv(void *iv, SceSize iv_size);
  * Initializes the HMAC-SHA256 state for a CAF header.
  *
  * @param[in] ctx CAF context UID.
- * @param[in] hmac_key_id Selector from 0 through 3 for the 32-byte HMAC key.
+ * @param[in] hmac_key_id Selector from 1 through 3 for the 32-byte HMAC key.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -154,16 +183,17 @@ int ksceCoredumpCafSegmentFinal(SceUID ctx, void *digest, SceSize digest_size);
  * Initializes the cryptographic state for a CAF segment.
  *
  * @param[in] ctx CAF context UID.
- * @param[in] hmac_key_id Selector from 0 through 3 for the 32-byte HMAC key.
+ * @param[in] hmac_key_id Selector from 1 through 3 for the 32-byte HMAC key.
  * @param[in] mode One of ::SceCoredumpCafSegmentMode.
- * @param[in] aes_key_id Selector from 0 through 4, or 0x10000001, for the
+ * @param[in] aes_key_id Selector from 1 through 4, or 0x10000001, for the
  * 16-byte AES key.
- * @param[in] iv Initialization vector. Exactly 16 bytes are read.
+ * @param[in] iv Initialization vector. Exactly 16 bytes are read, including
+ * in HMAC-only mode.
  * @param[in] iv_size Size of \p iv. Must be 16 bytes.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceCoredumpCafSegmentInit(SceUID ctx, int hmac_key_id, int mode, int aes_key_id, void *iv, SceSize iv_size);
+int ksceCoredumpCafSegmentInit(SceUID ctx, SceUInt32 hmac_key_id, SceCoredumpCafSegmentMode mode, SceUInt32 aes_key_id, const void *iv, SceSize iv_size);
 
 /**
  * Transforms and authenticates CAF segment data.
@@ -182,10 +212,17 @@ int ksceCoredumpCafSegmentInit(SceUID ctx, int hmac_key_id, int mode, int aes_ke
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceCoredumpCafSegmentTransform(SceUID ctx, void *src, void *dst, SceSize size);
+int ksceCoredumpCafSegmentTransform(SceUID ctx, const void *src, void *dst, SceSize size);
 
 /**
- * Creates a plain PSP2 coredump for a process and waits for completion.
+ * Creates a coredump for a process and waits for completion.
+ *
+ * FW 3.60 selects plaintext PSP2DMP or encrypted CAF output from the coredump
+ * configuration and target process. This function uses module-global wait and
+ * path state and must not be called concurrently. Its private completion
+ * callback deliberately ignores the worker's coredump result, so a return of
+ * zero proves that the request completed but not that dump generation
+ * succeeded.
  *
  * @param[in] pid Process identifier.
  * @param[in] titleid Title ID. Must be non-NULL.
@@ -199,9 +236,10 @@ int ksceCoredumpCafSegmentTransform(SceUID ctx, void *src, void *dst, SceSize si
  * @param[in] path_size Size of \p path. Must be nonzero when \p path is
  * non-NULL.
  *
- * @return 0 on success, < 0 on error.
+ * @return 0 after the request completes, or < 0 on a request, wait, or cleanup
+ * error. The worker's dump-generation result is not returned.
  */
-int ksceCoredumpCreateDump(SceUID pid, const char *titleid, SceSize titleid_len, const char *app_name, SceSize app_name_len, int app_version, char *path, SceSize path_size);
+int ksceCoredumpCreateDump(ScePID pid, const char *titleid, SceSize titleid_len, const char *app_name, SceSize app_name_len, int app_version, char *path, SceSize path_size);
 
 /**
  * Deletes the fixed CAF crash-report file at ux0:data/crash_report.caf.
@@ -212,6 +250,10 @@ int ksceCoredumpDeleteCrashReportCaf(void);
 
 /**
  * Finalizes CAF cryptographic support.
+ *
+ * The coredump key stores are securely cleared. Existing context objects are
+ * not destroyed; the next header or segment initialization reloads the needed
+ * keys lazily.
  *
  * @return 0 on success, < 0 on error.
  */

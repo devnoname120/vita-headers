@@ -340,7 +340,7 @@ int ksceKernelGetTtyInfo(char *buf, SceSize buf_size);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceEventLogPutForCurrentThread(int eventId, int index, int value, void *pBuf, SceSize bufSize);
+int ksceEventLogPutForCurrentThread(SceUInt16 eventId, SceUInt16 index, SceInt32 value, const void *pBuf, SceSize bufSize);
 
 /**
  * Writes an event-log record with explicit process and thread identifiers.
@@ -356,7 +356,7 @@ int ksceEventLogPutForCurrentThread(int eventId, int index, int value, void *pBu
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceEventLogPut(SceUInt32 sourcePid, int threadId, int eventId, int index, int value, void *pBuf, SceSize bufSize);
+int ksceEventLogPut(ScePID sourcePid, SceUID threadId, SceUInt16 eventId, SceUInt16 index, SceInt32 value, const void *pBuf, SceSize bufSize);
 
 #ifdef __cplusplus
 }

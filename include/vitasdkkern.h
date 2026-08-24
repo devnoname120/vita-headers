@@ -25,6 +25,7 @@
 #include <psp2kern/pfsmgr.h>
 #include <psp2kern/post_ss_mgr.h>
 #include <psp2kern/power.h>
+#include <psp2kern/psmdrm.h>
 #include <psp2kern/registrymgr.h>
 #include <psp2kern/touch.h>
 #include <psp2kern/udcd.h>

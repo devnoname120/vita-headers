@@ -75,7 +75,7 @@ int sceKernelGetMemBlockBase(SceUID uid, void **base);
 /**
  * Gets the associated memory block to a given memory location.
  *
- * @param[in] base - Address of the memory location to search
+ * @param[in] addr - Address of the memory location to search
  * @param[in] size - Size of the memory location in bytes
  *
  * @return SceUID of the memory block on success, < 0 on error.
@@ -118,7 +118,7 @@ SceUID sceKernelAllocMemBlockForVM(const char *name, SceSize size);
  * Flushes Virtual Machine caches for the given memory location.
  *
  * @param[in]  uid  - SceUID of the memory block to flush.
- * @param[in]  base - Address of the memory location to flush
+ * @param[in]  data - Address of the memory location to flush
  * @param[in]  size - Size of the memory to flush in bytes
  *
  * @return SceUID of the memory block on success, < 0 on error.
@@ -172,21 +172,37 @@ int sceKernelGetFreeMemorySize(SceKernelFreeMemorySizeInfo *info);
 int sceKernelIsPSVitaTV(void);
 
 typedef struct SceKernelSubbudgetInfo {
-	int size; //!< Must be set to sizeof(SceKernelSubbudgetInfo).
-	SceUInt32 totalSize; //!< Total size of the subbudget in bytes.
-	SceUInt32 freeSize; //!< Free size of the subbudget in bytes.
+	SceSize size; //!< Must be set to `sizeof(SceKernelSubbudgetInfo)`.
+	SceSize totalSize; //!< Total size of the subbudget in bytes.
+	SceSize freeSize; //!< Free size of the subbudget in bytes.
 } SceKernelSubbudgetInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceKernelSubbudgetInfo); // size is from FW 3.60
 
-#define SCE_KERNEL_SUBBUDGET_ID_MAIN (0)
-#define SCE_KERNEL_SUBBUDGET_ID_CDLG (1)
+typedef enum SceKernelSubbudgetId {
+	SCE_KERNEL_SUBBUDGET_ID_MAIN = 0,
+	SCE_KERNEL_SUBBUDGET_ID_CDLG = 1 //!< Common-dialog memory subbudget.
+} SceKernelSubbudgetId;
 
-int sceKernelAllocUnmapMemBlock(char *name, SceSize size);
+/**
+ * Allocates a user memblock without mapping it.
+ *
+ * FW 3.60 accepts only sizes aligned to 1 MiB and copies at most 31 bytes of
+ * \p name. The export is available only while user remapping is enabled.
+ *
+ * @param[in] name - Memory-block name.
+ * @param[in] size - Allocation size, aligned to 1 MiB.
+ *
+ * @return The process-local memblock UID on success, < 0 on error.
+ */
+SceUID sceKernelAllocUnmapMemBlock(const char *name, SceSize size);
 
 /**
  * Tests a hardware-model capability whose purpose is unknown.
  *
- * FW 3.60 accepts capability indices 7 and 10; their meanings are unknown.
+ * FW 3.60 accepts only indices 7 and 10. Index 10 identifies the
+ * Teleport-client model: TeleportClient requires it, while TeleportServer
+ * rejects operation when it is present. The purpose of index 7 is unknown;
+ * no dumped FW 3.60 importer uses it.
  *
  * @param[in] capabilityIndex Capability bit index.
  *
@@ -194,6 +210,14 @@ int sceKernelAllocUnmapMemBlock(char *name, SceSize size);
  * ::SCE_KERNEL_ERROR_INVALID_ARGUMENT if the index is unsupported.
  */
 int sceKernelCheckModelCapability(int capabilityIndex);
+
+/**
+ * Frees a VM memblock tracked by the calling process.
+ *
+ * @param[in] uid - UID previously returned for a tracked VM allocation.
+ *
+ * @return 0 on success, < 0 on error.
+ */
 int sceKernelFreeMemBlockForVM(SceUID uid);
 
 /**
@@ -207,7 +231,7 @@ int sceKernelFreeMemBlockForVM(SceUID uid);
  *
  * @note FW 3.60 requires DIP switch 159 to be enabled.
  */
-int sceKernelGetSubbudgetInfo(SceInt subbudget, SceKernelSubbudgetInfo *pInfo);
+int sceKernelGetSubbudgetInfo(SceKernelSubbudgetId subbudget, SceKernelSubbudgetInfo *pInfo);
 
 #ifdef __cplusplus
 }

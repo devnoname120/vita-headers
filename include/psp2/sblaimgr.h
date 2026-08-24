@@ -13,6 +13,15 @@
 extern "C" {
 #endif
 
+/**
+ * Copy the console's OpenPSID to user memory.
+ *
+ * This is the raw export used by ::sceKernelGetOpenPsId.
+ *
+ * @param[out] pOpenPsId - Required output for the 16-byte OpenPSID.
+ *
+ * @return 0 on success, < 0 on error.
+ */
 int _sceKernelGetOpenPsId(SceOpenPsId *pOpenPsId);
 
 #ifdef __cplusplus

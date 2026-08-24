@@ -119,47 +119,34 @@ SceInt64 ksceKernelAtomicDecIfPositive64(SceInt64 *store);
 
 
 /**
- * Atomically updates a 16-bit value when \p val compares greater.
- *
- * The firmware sign-extends the value loaded from \p addr before a signed
- * comparison, while using \p val as passed in the argument register. The
- * historical unsigned types are retained for backwards compatibility; a normal C
- * caller therefore passes \p val zero-extended.
+ * Atomically updates a signed 16-bit value when \p val compares greater.
  *
  * @param[in,out] addr Address updated with an exclusive 16-bit load/store.
- * @param[in] val Candidate value. Only its low 16 bits are stored.
+ * @param[in] val - Candidate value. Only its low 16 bits are stored.
  *
- * @return \p val if it compares greater than the sign-extended previous value;
- * otherwise the previous value, through the historical unsigned return type.
+ * @return The greater of the previous value and \p val.
  */
-unsigned short ksceKernelAtomicSetIfGreaterGet16(unsigned short *addr, unsigned short val);
+SceInt16 ksceKernelAtomicSetIfGreaterGet16(SceInt16 *addr, SceInt16 val);
 
 /**
  * Atomically stores \p val when it is greater under a signed 32-bit comparison.
  *
  * @param[in,out] addr Address updated with an exclusive 32-bit load/store.
- * @param[in] val Candidate whose bit pattern is interpreted as signed.
+ * @param[in] val - Candidate value.
  *
- * @return The signed maximum of the previous value and \p val, through the
- * historical unsigned return type.
+ * @return The greater of the previous value and \p val.
  */
-unsigned int ksceKernelAtomicSetIfGreaterGet32(unsigned int *addr, unsigned int val);
+SceInt32 ksceKernelAtomicSetIfGreaterGet32(SceInt32 *addr, SceInt32 val);
 
 /**
- * Atomically updates an 8-bit value when \p val compares greater.
- *
- * The firmware sign-extends the value loaded from \p addr before a signed
- * comparison, while using \p val as passed in the argument register. The
- * historical unsigned types are retained for backwards compatibility; a normal C
- * caller therefore passes \p val zero-extended.
+ * Atomically updates a signed 8-bit value when \p val compares greater.
  *
  * @param[in,out] addr Address updated with an exclusive 8-bit load/store.
- * @param[in] val Candidate value. Only its low 8 bits are stored.
+ * @param[in] val - Candidate value. Only its low 8 bits are stored.
  *
- * @return \p val if it compares greater than the sign-extended previous value;
- * otherwise the previous value, through the historical unsigned return type.
+ * @return The greater of the previous value and \p val.
  */
-unsigned char ksceKernelAtomicSetIfGreaterGet8(unsigned char *addr, unsigned char val);
+SceInt8 ksceKernelAtomicSetIfGreaterGet8(SceInt8 *addr, SceInt8 val);
 
 #ifdef __cplusplus
 }

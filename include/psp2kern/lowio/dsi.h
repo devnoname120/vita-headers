@@ -7,7 +7,6 @@
 #define _PSP2KERN_LOWIO_DSI_H_
 
 #include <psp2kern/types.h>
-#include <psp2common/display.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,11 +36,26 @@ int ksceDsiGenericReadRequest(int head, int param, void *buff, unsigned int size
 int ksceDsiDcsShortWrite(int head, unsigned short param0, int param1);
 int ksceDsiDcsRead(int head, unsigned short param, void *buff, unsigned int size);
 
-int ksceDsiStartDisplay(SceDisplayHead head, SceUInt32 control);
+/**
+ * Start scanout on a configured DSI head.
+ *
+ * FW 3.60 accepts start-control values 0 through 4. Value 0 writes hardware
+ * start value 1. Value 1 writes 1 for head 0 and 2 for head 1; value 2
+ * reverses that pairing. Values 3 and 4 write the corresponding hardware
+ * start value. SceDisplay uses values 0 through 3; no loaded FW 3.60 caller
+ * uses value 4.
+ *
+ * @param[in] head - One of ::SceDsiHead.
+ * @param[in] start_control - DSI start-control value from 0 through 4.
+ *
+ * @return 0 on success, ::SCE_DSI_ERROR_INVALID_HEAD for an invalid head,
+ * ::SCE_DSI_ERROR_INVALID_PARAM for an invalid start control, or
+ * ::SCE_DSI_ERROR_INVALID_STATE if the head has not been configured.
+ */
+int ksceDsiStartDisplay(SceDsiHead head, SceUInt32 start_control);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _PSP2KERN_LOWIO_DSI_H_ */
-

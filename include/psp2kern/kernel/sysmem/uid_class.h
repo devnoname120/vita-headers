@@ -17,17 +17,17 @@ typedef int (* SceClassCallback)(void *item);
 
 typedef struct SceClass {
 	struct SceClass *next;
-	struct SceClass *root; //!< better name: pClass
+	struct SceClass *root; //!< Root UID meta-class returned by ::ksceKernelGetUIDClass.
 	struct SceClass *prev;
 	const char *name;
 	struct SceClass *uidclass; //!< better name: parent
-	unsigned int attributes;
+	unsigned int attributes; //!< The low byte is the class identifier assigned during registration.
 	unsigned short itemsize;
 	unsigned short itemsize_aligned;
-	unsigned int unk1C;
+	unsigned int objectHeapType; //!< Default object-heap allocation type, from 0 through 5.
 	SceClassCallback create_cb; //!< better name: constructor
 	SceClassCallback destroy_cb; //!< better name: destructor
-	unsigned int magic; //!< Magic value that needs to be set to 0xABCD9DA5.
+	unsigned int magic; //!< Magic value that needs to be set to 0xABCE9DA5.
 } SceClass;
 VITASDK_BUILD_ASSERT_EQ(0x2C, SceClass); // size is from FW 3.60
 

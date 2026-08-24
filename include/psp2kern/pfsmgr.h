@@ -19,7 +19,7 @@ extern "C" {
  *
  * @param[in] path         - The pfs encrypted directory path
  * @param[in] rnd_drive_id - The pfs mount target Pseudo Drive strings
- * @param[in] authid       - The authid
+ * @param[in] program_authority_id - The program authority ID
  * @param[in] klicensee    - The klicensee
  * @param[in] mode_index   - The mode_index
  *
@@ -51,9 +51,58 @@ int kscePfsUnmount(const ScePfsRndDriveId *rnd_drive_id);
 int kscePfsApprove(const ScePfsRndDriveId *rnd_drive_id, SceUInt64 program_authority_id);
 int kscePfsDisapprove(const ScePfsRndDriveId *rnd_drive_id, SceUInt64 program_authority_id);
 
-int kscePfsAcidDirApprove(const char *mountpoint, const char *dlc_folder);
-int kscePfsAcidDirMount(const char *mountpoint, const char *dlc_folder, const void *klicensee);
-int kscePfsAcidDirUnmount(const char *mountpoint, const char *dlc_folder);
+/**
+ * Approve an ACID-protected add-on-content directory.
+ *
+ * FW 3.60 opens `<mountPointPrefix>0:<dlcFolder>`, issues ioctl 0x4403,
+ * and closes the directory. Both strings are read synchronously and are not
+ * retained. Their maximum lengths are 31 and 62 bytes respectively, excluding
+ * the NUL terminator. NULL, empty, or overlong strings return 0x80010016.
+ *
+ * @param[in] mountPointPrefix - Prefix used to build the directory path.
+ * @param[in] dlcFolder - Add-on-content directory component.
+ *
+ * @return The ioctl result, a directory-close error after a successful ioctl,
+ * or another negative I/O error.
+ */
+int kscePfsAcidDirApprove(const char *mountPointPrefix, const char *dlcFolder);
+
+/**
+ * Mount an ACID-protected add-on-content directory.
+ *
+ * FW 3.60 opens `<mountPointPrefix>0:<dlcFolder>`, then issues ioctl 0x4402
+ * with exactly 16 input bytes from \a klicensee and no output buffer. The
+ * klicensee may be NULL. After validating the add-on-content license metadata,
+ * AppMgr passes NULL when its 16-byte key is all zero and otherwise passes the key.
+ * All arguments are consumed synchronously and are not retained.
+ * AppMgr invokes this operation with thread-access permission 0x40; the PFS
+ * VFS implementation performs the effective caller authorization.
+ * NULL, empty, or overlong strings return 0x80010016.
+ *
+ * @param[in] mountPointPrefix - Prefix used to build the directory path.
+ * @param[in] dlcFolder - Add-on-content directory component.
+ * @param[in] klicensee - Optional 16-byte content key.
+ *
+ * @return The ioctl result, a directory-close error after a successful ioctl,
+ * or another negative I/O error.
+ */
+int kscePfsAcidDirMount(const char *mountPointPrefix, const char *dlcFolder, const void *klicensee);
+
+/**
+ * Unmount an ACID-protected add-on-content directory.
+ *
+ * FW 3.60 opens `<mountPointPrefix>0:<dlcFolder>`, issues ioctl 0x4404,
+ * and closes the directory. Both strings are read synchronously and are not
+ * retained. Their maximum lengths are 31 and 62 bytes respectively, excluding
+ * the NUL terminator. NULL, empty, or overlong strings return 0x80010016.
+ *
+ * @param[in] mountPointPrefix - Prefix used to build the directory path.
+ * @param[in] dlcFolder - Add-on-content directory component.
+ *
+ * @return The ioctl result, a directory-close error after a successful ioctl,
+ * or another negative I/O error.
+ */
+int kscePfsAcidDirUnmount(const char *mountPointPrefix, const char *dlcFolder);
 
 #ifdef __cplusplus
 }

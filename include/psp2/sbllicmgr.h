@@ -13,13 +13,100 @@
 extern "C" {
 #endif
 
-int sceSblLicMgrActivateDevkit(char *afv_path);
+/**
+ * Activate a development or testing kit from an AFV file.
+ *
+ * This operation is restricted to system programs. FW 3.60 copies at most
+ * 255 path bytes and accepts paths under `host0:`, `ux0:/data/activate/`, and
+ * `ur0:/temp/activation`. A successful installation does not recompute the
+ * already cached license state.
+ *
+ * @param[in] afv_path - NUL-terminated activation-file path.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int sceSblLicMgrActivateDevkit(const char *afv_path);
+
+/**
+ * Activate from the first `.afv` file in `ux0:/data/activate/`.
+ *
+ * This operation is restricted to system programs. A successful installation
+ * does not recompute the already cached license state.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
 int sceSblLicMgrActivateFromFs(void);
+
+/**
+ * Clear activation data in NVS and in `tm0:activate/`.
+ *
+ * FW 3.60 overwrites the stored data with 0xFF bytes rather than removing the
+ * two activation files. It does not recompute the already cached license
+ * state. This operation is restricted to system programs.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
 int sceSblLicMgrClearActivationData(void);
+
+/**
+ * Get the console activation key.
+ *
+ * This operation is restricted to system programs.
+ *
+ * @param[out] key - Receives the OpenPSID and its four-lane byte-sum hash.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
 int sceSblLicMgrGetActivationKey(SceSblActivationKey *key);
-int sceSblLicMgrGetExpireDate(int *expire_date, int request_data_flag);
-int sceSblLicMgrGetIssueNo(int *issue_number, int request_data_flag);
+
+/**
+ * Get cached or refreshed activation-expiration information.
+ *
+ * This operation is restricted to system programs. When \a read_from_nvs is
+ * zero, FW 3.60 returns the cached absolute expiration time. When it is
+ * nonzero, it reads and verifies NVS and returns the number of seconds
+ * remaining.
+ *
+ * @param[out] expire_date - Receives the expiration result described above.
+ * @param[in] read_from_nvs - Nonzero to refresh from NVS.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int sceSblLicMgrGetExpireDate(int *expire_date, SceBool read_from_nvs);
+
+/**
+ * Get the activation issue number.
+ *
+ * This operation is restricted to system programs.
+ *
+ * @param[out] issue_number - Receives the issue number.
+ * @param[in] read_from_nvs - Nonzero to refresh from NVS; zero uses the cache.
+ *
+ * @return SCE_OK on success, < 0 on error.
+ */
+int sceSblLicMgrGetIssueNo(int *issue_number, SceBool read_from_nvs);
+
+/**
+ * Get the cached activation state.
+ *
+ * @return A ::SceSblLicenseStatus value, or a negative permission error.
+ */
 int sceSblLicMgrGetLicenseStatus(void);
+
+/**
+ * Get the kit's remaining activation time in seconds.
+ *
+ * A successful result of zero means the kit has expired. This operation is
+ * restricted to system programs. When any QAF flag is set, FW 3.60 returns
+ * the bitwise complement of the current secure Unix time as an effectively
+ * unrestricted value instead of the normal expiration interval.
+ *
+ * @param[out] time_limit - Receives the remaining number of seconds.
+ *
+ * @return SCE_OK on success, 0x800F1326 when not activated, 0x800F1329 when
+ *         the RTC backup battery has failed, 0x80251002 when the current time
+ *         cannot be established, or another negative error code.
+ */
 int sceSblLicMgrGetUsageTimeLimit(SceUInt32 *time_limit);
 
 #ifdef __cplusplus
