@@ -151,16 +151,23 @@ int _vshNpDrmEbootSigVerify(const char *eboot_pbp_path, const char *eboot_signat
 */
 int _vshNpDrmPspEbootVerify(const char *eboot_pbp_path, const char *eboot_signature, char** eboot_signature_header);
 
+/** FW 3.60 copies this complete option block but does not interpret its words. */
+typedef struct SceVshNpDrmEbootSigOpt {
+	SceUInt32 reserved[2];
+} SceVshNpDrmEbootSigOpt;
+VITASDK_BUILD_ASSERT_EQ(8, SceVshNpDrmEbootSigOpt);
+
 /**
  * Generate an older 0x100 byte eboot.pbp signature "__sce_ebootpbp" for a PSP game - this is unused in firmware >2.00
  * 
  * @param[in]  eboot_pbp_path         - The pointer of the file path of the EBOOT.PBP file
  * @param[in]  eboot_sha256           - The pointer of SHA256 hash of first (data.psar offset + 0x1C0000) bytes into the EBOOT.PBP file
  * @param[out] eboot_signature        - The pointer of the output eboot signature data. size is 0x100
+ * @param[in]  opt                    - Required 8-byte option block; ignored after being copied on FW 3.60.
  *
  * @return eboot_signature size on success, < 0 on error.
 */
-int _vshNpDrmPspEbootSigGen(const char *eboot_pbp_path, const void *eboot_sha256, void *eboot_signature);
+int _vshNpDrmPspEbootSigGen(const char *eboot_pbp_path, const void *eboot_sha256, void *eboot_signature, const SceVshNpDrmEbootSigOpt *opt);
 
 /**
  * Convert an older 0x100 byte eboot.pbp signature "__sce_ebootpbp" to a 0x200 byte one used in firmwares >2.00
@@ -168,10 +175,11 @@ int _vshNpDrmPspEbootSigGen(const char *eboot_pbp_path, const void *eboot_sha256
  * @param[in]  eboot_pbp_path         - The pointer of the file path of the EBOOT.PBP file
  * @param[in]  old_eboot_signature    - The pointer of old eboot signature data. size is 0x100
  * @param[out] new_eboot_signature    - The pointer of new eboot signature data. size is 0x200
+ * @param[in]  opt                    - Required 8-byte option block; ignored after being copied on FW 3.60.
  *
  * @return eboot_signature size on success, < 0 on error.
 */
-int _vshNpDrmEbootSigConvert(const char *eboot_pbp_path, const void* old_eboot_signature, void* new_eboot_signature); 
+int _vshNpDrmEbootSigConvert(const char *eboot_pbp_path, const void *old_eboot_signature, void *new_eboot_signature, const SceVshNpDrmEbootSigOpt *opt);
 
 
 /**
@@ -234,7 +242,7 @@ int vshSysconIduModeClear(void);
 int vshSysconShowModeSet(void);
 int vshSysconShowModeClear(void);
 
-int vshMemoryCardGetCardInsertState(void);
+int vshMemoryCardGetCardInsertState(int device_index);
 int vshRemovableMemoryGetCardInsertState(void);
 
 int vshMsifGetMsInfo(SceMsInfo *info);

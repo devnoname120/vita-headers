@@ -29,9 +29,8 @@ typedef enum SceHprmConnectedDevice {
 /**
  * Direct connection callback installed by ::ksceHprmSetConnectCallback.
  *
- * On FW 3.60 this callback runs from the vblank subinterrupt handler. Its
- * return value is ignored. The callback is invoked synchronously and must use
- * only operations that are safe from interrupt context.
+ * On FW 3.60 this callback runs synchronously from the vblank subinterrupt
+ * handler and must use only operations that are safe from interrupt context.
  *
  * @param[in] headphone_detect - Debounced Syscon headphone-detect signal.
  * @param[in] audio_out_dock_exists - Whether the multiconnector is in its
@@ -41,7 +40,7 @@ typedef enum SceHprmConnectedDevice {
  * @param[in] microphone_state - Headset-microphone connection state.
  * @param[in] argp - Argument supplied to ::ksceHprmSetConnectCallback.
  */
-typedef int (*SceHprmConnectCallback)(SceBool headphone_detect,
+typedef void (*SceHprmConnectCallback)(SceBool headphone_detect,
 	SceBool audio_out_dock_exists, SceBool headphone_exists,
 	SceHprmDeviceState remote_state, SceHprmDeviceState microphone_state,
 	void *argp);

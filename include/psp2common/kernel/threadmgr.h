@@ -95,7 +95,7 @@ VITASDK_BUILD_ASSERT_EQ(0x60, SceKernelTimerInfo); // size is from FW 3.60
 typedef struct SceKernelThreadRunStatus {
 	SceSize        size;
 	struct {
-		SceUID processId;
+		ScePID processId;
 		SceUID threadId;
 		int    priority;
 	} cpuInfo[4];

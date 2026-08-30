@@ -623,7 +623,7 @@ typedef struct SceLsdbAppInfoFilter {
 	SceUInt32 key;                         //!< FNV-1a hash of the AppInfo key.
 	SceLsdbValueArray values;              //!< Values to compare against.
 	SceUInt32 reserved;                    //!< Ignored on FW 3.60.
-	SceInt32 operation;                   //!< One of ::SceLsdbFilterOperator.
+	SceLsdbFilterOperator operation;
 	SceUInt64 mask;                        //!< Mask used by ::SCE_LSDB_FILTER_OPERATOR_BITMASK_EQUAL.
 	const struct SceLsdbAppInfoFilter *next;
 } __attribute__((packed, aligned(4))) SceLsdbAppInfoFilter;
@@ -796,14 +796,14 @@ typedef enum SceLsdbLiveAreaObjectType {
 /** Common prefix of every object in a parsed LiveArea object list. */
 typedef struct SceLsdbLiveAreaObject {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< One of ::SceLsdbLiveAreaObjectType.
+	SceLsdbLiveAreaObjectType type;
 } SceLsdbLiveAreaObject;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbLiveAreaObject); // size is from FW 3.60
 
 /** Parsed LiveArea background image. */
 typedef struct SceLsdbLiveAreaBackgroundImage {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_BACKGROUND_IMAGE.
+	SceLsdbLiveAreaObjectType type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_BACKGROUND_IMAGE.
 	SceLsdbString sourcePath;
 } SceLsdbLiveAreaBackgroundImage;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaBackgroundImage); // size is from FW 3.60
@@ -811,7 +811,7 @@ VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaBackgroundImage); // size is from F
 /** Parsed system-function-zone entries. */
 typedef struct SceLsdbLiveAreaSystemFunctionZone {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_SYSTEM_FUNCTION_ZONE.
+	SceLsdbLiveAreaObjectType type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_SYSTEM_FUNCTION_ZONE.
 	SceLsdbLiveAreaSfEntry *entries;
 	SceSize entryCount;
 	SceSize entryCapacity;
@@ -822,7 +822,7 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceLsdbLiveAreaSystemFunctionZone); // size is fro
 /** Parsed gate startup image. */
 typedef struct SceLsdbLiveAreaStartupImage {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_STARTUP_IMAGE.
+	SceLsdbLiveAreaObjectType type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_STARTUP_IMAGE.
 	SceLsdbString sourcePath;
 } SceLsdbLiveAreaStartupImage;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaStartupImage); // size is from FW 3.60
@@ -834,7 +834,7 @@ VITASDK_BUILD_ASSERT_EQ(0x14, SceLsdbLiveAreaStartupImage); // size is from FW 3
  */
 typedef struct SceLsdbLiveAreaTitleColor {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_TITLE_COLOR.
+	SceLsdbLiveAreaObjectType type; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_TITLE_COLOR.
 	float red;
 	float green;
 	float blue;
@@ -900,16 +900,16 @@ typedef enum SceLsdbLiveAreaCompatibilityMode {
 /** Common prefix of a parsed target, background, image, or text element. */
 typedef struct SceLsdbLiveAreaFrameElement {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< One of ::SceLsdbLiveAreaFrameElementType.
+	SceLsdbLiveAreaFrameElementType type;
 } SceLsdbLiveAreaFrameElement;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbLiveAreaFrameElement); // size is from FW 3.60
 
 /** Common prefix of parsed background, image, and text elements. */
 typedef struct SceLsdbLiveAreaVisualElement {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 type; //!< One of ::SceLsdbLiveAreaFrameElementType.
-	SceInt32 horizontalAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
-	SceInt32 verticalAlignment; //!< One of ::SceLsdbLiveAreaVerticalAlignment.
+	SceLsdbLiveAreaFrameElementType type;
+	SceLsdbLiveAreaHorizontalAlignment horizontalAlignment;
+	SceLsdbLiveAreaVerticalAlignment verticalAlignment;
 	SceInt32 width; //!< Parsed `width`; initialized to zero.
 	SceInt32 height; //!< Parsed `height`; initialized to zero.
 	SceInt32 x; //!< Parsed `x` coordinate.
@@ -939,17 +939,17 @@ VITASDK_BUILD_ASSERT_EQ(0x30, SceLsdbLiveAreaBackgroundElement); // size is from
 typedef struct SceLsdbLiveAreaImageElement {
 	SceLsdbLiveAreaVisualElement visual;
 	SceLsdbString sourcePath;
-	SceInt32 origin; //!< ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_FRAME or ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_BACKGROUND.
+	SceLsdbLiveAreaElementOrigin origin; //!< FRAME or BACKGROUND on FW 3.60.
 } SceLsdbLiveAreaImageElement;
 VITASDK_BUILD_ASSERT_EQ(0x34, SceLsdbLiveAreaImageElement); // size is from FW 3.60
 
 /** Parsed LiveArea text element. */
 typedef struct SceLsdbLiveAreaTextElement {
 	SceLsdbLiveAreaVisualElement visual;
-	SceInt32 textAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
-	SceInt32 verticalTextAlignment; //!< One of ::SceLsdbLiveAreaVerticalAlignment.
-	SceInt32 lineAlignment; //!< One of ::SceLsdbLiveAreaHorizontalAlignment.
-	SceInt32 origin; //!< ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_FRAME or ::SCE_LSDB_LIVEAREA_ELEMENT_ORIGIN_BACKGROUND.
+	SceLsdbLiveAreaHorizontalAlignment textAlignment;
+	SceLsdbLiveAreaVerticalAlignment verticalTextAlignment;
+	SceLsdbLiveAreaHorizontalAlignment lineAlignment;
+	SceLsdbLiveAreaElementOrigin origin; //!< FRAME, BACKGROUND, or IMAGE on FW 3.60.
 	SceInt32 lineSpacing;
 	SceUInt8 lineBreak; //!< Line-breaking flag; initialized to one.
 	SceUInt8 wordWrap; //!< Word-wrapping flag; initialized to one.
@@ -985,9 +985,9 @@ VITASDK_BUILD_ASSERT_EQ(0x30, SceLsdbLiveAreaFrameItem); // size is from FW 3.60
 /** One parsed row of tbl_livearea_frame. */
 typedef struct SceLsdbLiveAreaFrame {
 	void *vtable; //!< Internal FW 3.60 virtual-function table.
-	SceInt32 objectType; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_FRAME.
+	SceLsdbLiveAreaObjectType objectType; //!< ::SCE_LSDB_LIVEAREA_OBJECT_TYPE_FRAME.
 	SceLsdbString frameId;
-	SceInt32 multiMode; //!< One of ::SceLsdbLiveAreaFrameMultiMode.
+	SceLsdbLiveAreaFrameMultiMode multiMode;
 	SceUInt32 autoFlipInterval; //!< Automatic item-rotation interval from the `autoflip` attribute.
 	SceInt64 revision;
 	SceUInt8 isRetailOverride; //!< Nonzero for a database row whose type is 0.
@@ -1036,7 +1036,7 @@ typedef struct SceLsdbLiveAreaParser {
 	SceUInt8 disableLiveItemFiltering; //!< Bypass locale, age, model, compatibility, time, and five-item-limit filtering.
 	SceUInt8 unused; //!< Written by SceShell but ignored by SceLsdb on FW 3.60.
 	SceUInt8 useAdNetworkClock; //!< Use the ad-network clock for liveitem time checks.
-	SceInt32 compatibilityMode; //!< One of ::SceLsdbLiveAreaCompatibilityMode; selects liveitems by their `pokesute` value.
+	SceLsdbLiveAreaCompatibilityMode compatibilityMode; //!< Selects liveitems by their `pokesute` value.
 	SceInt32 selectedLanguageIndex;
 	SceLsdbString selectedCountry;
 } SceLsdbLiveAreaParser;

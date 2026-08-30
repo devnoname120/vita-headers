@@ -27,7 +27,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceOpenPsId); // size is from FW 3.60
 
 /** Sixteen-byte console identifier returned by aimgr_sm command 1. */
 typedef struct SceConsoleId {
-	SceUInt16 unk; //!< Its purpose is unknown; ignored on FW 3.60 and by observed importers.
+	SceUInt16 unk; //!< Its purpose is unknown; the complete 16-byte identifier is cryptographically significant.
 	SceUInt16 company_code;
 	SceUInt16 product_code;
 	SceUInt16 product_sub_code;
@@ -38,7 +38,7 @@ typedef struct SceConsoleId {
 		};
 		SceUInt8 chassis_check;
 	};
-	SceUInt8 unk3[7]; //!< Its purpose is unknown; ignored on FW 3.60 and by observed importers.
+	SceUInt8 unk3[7]; //!< Its purpose is unknown; these bytes are consumed as part of the complete identifier.
 } SceConsoleId;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceConsoleId); // size is from FW 3.60
 

@@ -70,6 +70,12 @@ typedef struct SceKernelStartModuleOpt {
 } SceKernelStartModuleOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelStartModuleOpt); // size is from FW 3.60
 
+typedef struct SceKernelStopModuleOpt {
+	SceSize size; //!< Size of this structure.
+	SceUInt32 reserved[3]; //!< Copied from user memory but unused on FW 3.60; initialize to 0.
+} SceKernelStopModuleOpt;
+VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelStopModuleOpt); // size is from FW 3.60
+
 typedef struct SceKernelSegmentInfo {
 	SceSize size;      //!< Size of this structure.
 	SceUInt perms;     //!< Access-permission byte combined with a loader metadata byte shifted left by 20 on FW 3.60.
@@ -143,8 +149,14 @@ typedef struct SceKernelModuleLibraryInfo {
   uint16_t unk_0x14;
   uint16_t unk_0x16;
   char library_name[0x100];
-  SceSize number_of_imported;
-  SceUID modid2;
+  union {
+    SceSize client_count; //!< Number of modules importing this library.
+    SceSize number_of_imported; //!< Legacy name for ::client_count.
+  };
+  union {
+    SceUID owner_module_id; //!< Module that owns the library.
+    SceUID modid2; //!< Legacy name for ::owner_module_id.
+  };
 } SceKernelModuleLibraryInfo;
 VITASDK_BUILD_ASSERT_EQ(0x120, SceKernelModuleLibraryInfo);
 

@@ -27,10 +27,9 @@ typedef void (*SceDebugLedHandler)(int arg0, int arg1, int arg2, int arg3);
  *
  * @param[in] bits - Output bitfield.
  *
- * @note FW 3.60 returns 0 in R0. The function remains declared \c void for
- * backwards compatibility with the previous VitaSDK prototype.
+ * @return 0 on FW 3.60.
  */
-void ksceKernelSetGPO(SceUInt32 bits);
+int ksceKernelSetGPO(SceUInt32 bits);
 
 /**
  * Gets the retained general-purpose output bitfield.

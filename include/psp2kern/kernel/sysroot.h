@@ -348,10 +348,10 @@ int ksceKernelSysrootGetSystemSwVersion(void);
 SceUID ksceKernelSysrootGetShellPid(void);
 
 typedef int (* SceKernelCoredumpTriggerFunc)(
-	SceUID pid,
+	ScePID pid,
 	SceKernelCoredumpStateUpdateCallback update_func,
 	SceKernelCoredumpStateFinishCallback finish_func,
-	SceCoredumpTriggerParam *param
+	const SceCoredumpTriggerParam *param
 );
 
 /**

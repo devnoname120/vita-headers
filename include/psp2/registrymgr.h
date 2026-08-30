@@ -213,12 +213,9 @@ int sceRegMgrSystemParamGetStr(const int id, char* buf, const int size);
 /**
  * Get the registry version
  *
- * @param version - The id of the key
- * @param buf[out] - Pointer to a char buffer to hold the value
- *
- * @return 0 on success, < 0 on error
+ * @return The packed registry version value on FW 3.60.
  */
-int sceRegMgrGetRegVersion(int version, char* buf);
+int sceRegMgrGetRegVersion(void);
 
 
 /**

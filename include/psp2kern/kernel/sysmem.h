@@ -39,16 +39,17 @@ typedef struct SceKernelAllocMemBlockKernelOpt {
 	SceSize size;                   //!< Size of this structure.
 	SceUInt32 reserved;             //!< Ignored on FW 3.60.
 	SceUInt32 attr;                 //!< Bitwise OR of ::SceKernelAllocMemBlockAttr values.
-	SceUInt32 vbase;                //!< A virtual base address represented as \c void*.
-	SceUInt32 paddr;                //!< better name: pbase; a physical base address represented as \c void*.
+	void *vbase;                    //!< Optional virtual base address.
+	void *paddr;                    //!< Optional physical base address.
 	SceSize alignment;
-	SceUInt32 extraLow;             //!< A ::SceSize value.
-	SceUInt32 extraHigh;            //!< A ::SceSize value.
-	SceUInt32 baseMemBlock;         //!< Value of type ::SceUID for the memblock this allocation is based on.
+	SceSize extraLow;
+	SceSize extraHigh;
+	SceUID baseMemBlock;            //!< Memblock this allocation is based on.
 	SceUID pid;
-	SceKernelPaddrList *paddr_list; //!< better name: pPAV; a pointer to a ::SceKernelPAVector structure.
-	SceUInt32 roundupUnitSize;      //!< Value of type ::SceSize.
-	SceUInt32 domain;               //!< Its low byte is a value of type ::SceUInt8.
+	const SceKernelPAVector *paddr_list; //!< Input physical-address vector.
+	SceSize roundupUnitSize;
+	SceUInt8 domain;
+	SceUInt8 reservedDomain[3];     //!< Unused padding on FW 3.60.
 	SceUInt32 allowedOpenFlags;     //!< Flags permitted when another process opens the block.
 	SceUInt32 requiredCapabilityMask[8]; //!< Required 256-bit process capability mask.
 } SceKernelAllocMemBlockKernelOpt;
@@ -66,7 +67,7 @@ typedef SceKernelAllocMemBlockKernelOpt SceKernelAllocMemBlockOptKernel;
  *
  * @return SceUID of the memory block on success, < 0 on error.
 */
-SceUID ksceKernelAllocMemBlock(const char *name, SceKernelMemBlockType type, SceSize size, SceKernelAllocMemBlockKernelOpt *opt);
+SceUID ksceKernelAllocMemBlock(const char *name, SceKernelMemBlockType type, SceSize size, const SceKernelAllocMemBlockKernelOpt *opt);
 
 /**
  * Frees new memory block
@@ -245,7 +246,7 @@ int ksceKernelUserUnmap(SceUID uid);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelLockRange(void *addr, SceSize size);
+int ksceKernelLockRange(const void *addr, SceSize size);
 
 /**
  * Locks a memory range for a process (pid)
@@ -260,7 +261,7 @@ int ksceKernelLockRange(void *addr, SceSize size);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelLockRangeProc(SceUID pid, void *addr, SceSize size);
+int ksceKernelLockRangeProc(ScePID pid, const void *addr, SceSize size);
 
 /**
  * Locks a memory range, checking for a given permission
@@ -275,7 +276,7 @@ int ksceKernelLockRangeProc(SceUID pid, void *addr, SceSize size);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelLockRangeWithMode(SceKernelMemoryRefPerm perm, void *addr, SceSize size);
+int ksceKernelLockRangeWithMode(SceKernelMemoryRefPerm perm, const void *addr, SceSize size);
 
 /**
  * Unlocks a memory range
@@ -289,7 +290,7 @@ int ksceKernelLockRangeWithMode(SceKernelMemoryRefPerm perm, void *addr, SceSize
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelUnlockRange(void *addr, SceSize size);
+int ksceKernelUnlockRange(const void *addr, SceSize size);
 
 /**
  * Unlocks a memory range for a process (pid)
@@ -304,7 +305,7 @@ int ksceKernelUnlockRange(void *addr, SceSize size);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelUnlockRangeProc(SceUID pid, void *addr, SceSize size);
+int ksceKernelUnlockRangeProc(ScePID pid, const void *addr, SceSize size);
 
 /**
  * Unlocks a memory range checking for a given permission
@@ -319,7 +320,7 @@ int ksceKernelUnlockRangeProc(SceUID pid, void *addr, SceSize size);
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelUnlockRangeWithMode(SceKernelMemoryRefPerm perm, void *addr, SceSize size);
+int ksceKernelUnlockRangeWithMode(SceKernelMemoryRefPerm perm, const void *addr, SceSize size);
 
 
 SceUID ksceKernelAllocPartitionMemBlock(SceUID part, const char *name, SceKernelMemBlockType type, SceSize size, const SceKernelAllocMemBlockOptKernel *pOpt);
@@ -360,9 +361,9 @@ typedef enum SceKernelHeapMemoryMappingAction {
  */
 typedef struct SceKernelHeapMemoryOpt {
 	SceSize size; //!< Must be set to `sizeof(SceKernelHeapMemoryOpt)`.
-	SceUInt32 mappingAction; //!< One of ::SceKernelHeapMemoryMappingAction.
+	SceKernelHeapMemoryMappingAction mappingAction;
 	SceSize alignment; //!< Requested allocation alignment, or zero for the heap default.
-	SceUInt32 mappedBase; //!< Base of the mapped or unmapped backing range, represented as a \c void*.
+	void *mappedBase; //!< Base of the mapped or unmapped backing range.
 	SceSize mappedSize; //!< Size of the mapped or unmapped backing range.
 } SceKernelHeapMemoryOpt;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceKernelHeapMemoryOpt); // size is from FW 0.990-3.60
@@ -591,8 +592,8 @@ int ksceKernelGetPhysicalMemoryType(const void *vaddr);
 
 /** Increments a memblock's internal range/reference counter. */
 int ksceKernelIncRefCountMemBlock(SceUID uid);
-int ksceKernelIsAccessibleRange(SceUInt32 permission, const void *pVA, SceSize len);
-int ksceKernelIsAccessibleRangeProc(ScePID pid, SceUInt32 permission, const void *pVA, SceSize len);
+int ksceKernelIsAccessibleRange(SceKernelMemoryRefPerm permission, const void *pVA, SceSize len);
+int ksceKernelIsAccessibleRangeProc(ScePID pid, SceKernelMemoryRefPerm permission, const void *pVA, SceSize len);
 
 /**
  * Checks whether a range has exactly the requested software permissions.
@@ -607,7 +608,7 @@ int ksceKernelIsAccessibleRangeProc(ScePID pid, SceUInt32 permission, const void
  * @return 0 if every page has exactly the requested permissions, < 0 on
  * error.
  */
-int ksceKernelIsEqualAccessibleRangeProcBySW(ScePID pid, SceUInt32 permission, const void *pVA, SceSize len);
+int ksceKernelIsEqualAccessibleRangeProcBySW(ScePID pid, SceKernelMemoryRefPerm permission, const void *pVA, SceSize len);
 
 /**
  * Gets extended memblock information at visibility level 7.
@@ -631,7 +632,7 @@ int ksceKernelMemBlockType2Memtype(SceKernelMemBlockType type);
  *
  * @return A bitwise OR of ::SceKernelMemoryRefPerm values.
  */
-int ksceKernelMemBlockTypeGetPrivileges(SceKernelMemBlockType type);
+SceKernelMemoryRefPerm ksceKernelMemBlockTypeGetPrivileges(SceKernelMemBlockType type);
 
 /**
  * Translates an address in another process after applying an MMU access mode.
@@ -641,7 +642,7 @@ int ksceKernelMemBlockTypeGetPrivileges(SceKernelMemBlockType type);
  * @param[in] pVA - Virtual address.
  * @param[out] pPA - Physical address.
  */
-int ksceKernelProcModeVAtoPA(ScePID pid, SceUInt32 permission, const void *pVA, void **pPA);
+int ksceKernelProcModeVAtoPA(ScePID pid, SceKernelMemoryRefPerm permission, const void *pVA, void **pPA);
 int ksceKernelVARangeToPARangeByHW(const SceKernelVARange *vRange, SceKernelPARange *pRange);
 int ksceKernelVARangeToPARangeBySW(const SceKernelVARange *vRange, SceKernelPARange *pRange);
 int ksceKernelVARangeToPAVectorByHW(const SceKernelVARange *vRange, SceKernelPAVector *pPAV);

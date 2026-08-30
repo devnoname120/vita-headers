@@ -79,12 +79,11 @@ int _sceNpDrmPackageCheck(const void *buffer, SceSize size, int opt, unsigned in
  *
  * @param[in,out] buffer - PKG data to decrypt in place
  * @param[in] size - Size of the buffer
- * @param[in] opt - Required input-only offset and context identifier. Still
- *                  declared as non-const for backwards compatibility.
+ * @param[in] opt - Required input-only offset and context identifier.
  *
  * @return 0 on success, < 0 on error
  */
-int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, SceNpDrmPackageDecryptOpt * __restrict__ opt);
+int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, const SceNpDrmPackageDecryptOpt * __restrict__ opt);
 
 /**
  * Update a package hash-transform context

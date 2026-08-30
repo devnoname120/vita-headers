@@ -101,13 +101,13 @@ typedef struct SceAppMgrLaunchParam {
 	SceSize size;                       //!< Ignored on FW 3.60; initialize to the size of this structure.
 	unsigned int attr;                  //!< Bitwise OR of ::SceAppMgrLaunchParamAttr values.
 	unsigned int cpuAffinityMask;       //!< Game-only CPU affinity mask; zero selects the default.
-	unsigned int initPriority;          //!< Game/system initial priority; a value of type ::SceInt32.
-	unsigned int stackSize;             //!< Game/system main-thread stack size; a value of type ::SceSize.
+	SceInt32 initPriority;               //!< Game/system initial priority.
+	SceSize stackSize;                   //!< Game/system main-thread stack size.
 	unsigned int reserved0;             //!< Copied for game launches but ignored by Processmgr on FW 3.60.
-	unsigned int budgetId;              //!< Game-only process-budget identifier.
+	SceUID budgetId;                     //!< Game-only process-budget selector or UID.
 	unsigned int reserved1;             //!< Ignored by AppMgr on FW 3.60.
-	unsigned int processExitSpawnMode;  //!< One of ::SceAppMgrProcessExitSpawnMode.
-	unsigned int processExitSpawnPid;   //!< PID prepared using ::ksceKernelKillProcess with option 2; a ::ScePID value.
+	SceAppMgrProcessExitSpawnMode processExitSpawnMode;
+	ScePID processExitSpawnPid;          //!< PID prepared using ::ksceKernelKillProcess with option 2.
 	unsigned int reserved2[3];          //!< Ignored by AppMgr on FW 3.60.
 } SceAppMgrLaunchParam;
 VITASDK_BUILD_ASSERT_EQ(0x34, SceAppMgrLaunchParam); // size is from FW 3.60

@@ -14,11 +14,11 @@
 extern "C" {
 #endif
 
-/** Coredump section-selection levels accepted by ::SceCoredumpTriggerParam. */
+/** Named dump-level presets and configuration selector. */
 typedef enum SceCoredumpDumpLevel {
 	SCE_COREDUMP_DUMP_LEVEL_CONFIGURED = 0,      //!< Use the FW 3.60 registry configuration.
-	SCE_COREDUMP_DUMP_LEVEL_MINIMAL    = 0xF,    //!< Generate the minimal coredump.
-	SCE_COREDUMP_DUMP_LEVEL_FULL       = 0x1EF0  //!< Generate the full coredump.
+	SCE_COREDUMP_DUMP_LEVEL_MINIMAL    = 0xF,    //!< Preset selecting the minimal sections.
+	SCE_COREDUMP_DUMP_LEVEL_FULL       = 0x1EF0  //!< Preset selecting the full sections.
 } SceCoredumpDumpLevel;
 
 typedef enum SceCoredumpOutputMode {
@@ -38,9 +38,9 @@ typedef enum SceCoredumpOutputMode {
  */
 typedef struct SceCoredumpTriggerParam {
 	SceSize size; //!< Size of the provided structure prefix; normally `sizeof(SceCoredumpTriggerParam)`.
-	int dump_level; //!< One of ::SceCoredumpDumpLevel; zero resolves to 0xF or 0x1EF0 from the registry.
-	int output_mode; //!< One of ::SceCoredumpOutputMode.
-	int custom_path_len; //!< Size of \c custom_path including its terminating NUL; maximum 0x400.
+	int dump_level; //!< Section-selection bitmask. Zero resolves to a registry preset; intermediate masks are valid.
+	SceCoredumpOutputMode output_mode;
+	SceSize custom_path_len; //!< Size of \c custom_path including its terminating NUL; maximum 0x400.
 	int custom_path; //!< Pointer to the custom host0 subdirectory, represented as an \c int for backwards compatibility.
 	SceSize titleid_len; //!< Number of bytes to copy from \c titleid; maximum 10.
 	const char *titleid; //!< Title ID; required when \c titleid_len is nonzero.

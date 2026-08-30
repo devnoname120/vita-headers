@@ -38,12 +38,12 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceSblDmac5HashTransformParam);
 /**
  * @brief Execute DMAC5 encdec command
  *
- * @param[in,out] param  - Operation parameters; referenced destination and IV buffers are written.
+ * @param[in]     param  - Operation parameters; referenced destination and IV buffers are written.
  * @param[in]    command - The DMAC5 encdec command.
  *
  * @return 0 on success, else < 0.
  */
-int sceSblDmac5EncDec(SceSblDmac5EncDecParam *param, SceUInt32 command);
+int sceSblDmac5EncDec(const SceSblDmac5EncDecParam *param, SceUInt32 command);
 
 /**
  * Execute a user-mode DMAC5 cipher operation using an AuthMgr-derived key.
@@ -67,7 +67,7 @@ int sceSblDmac5EncDecKeyGen(const SceSblDmac5EncDecParam *param, SceUInt32 key_i
 /**
  * @brief Execute DMAC5 hash transform command
  *
- * @param[in,out] param  - Operation parameters; referenced destination and context buffers may be written.
+ * @param[in]     param  - Operation parameters; referenced destination and context buffers may be written.
  * @param[in]    command - The DMAC5 hash base command.
  * @param[in]    flags   - Bitwise OR of ::SceSblDmac5HashFlag values. Use 0
  *                         for a complete one-shot operation, 0x400 for the
@@ -76,7 +76,7 @@ int sceSblDmac5EncDecKeyGen(const SceSblDmac5EncDecParam *param, SceUInt32 key_i
  *
  * @return 0 on success, else < 0.
  */
-int sceSblDmac5HashTransform(SceSblDmac5HashTransformParam *param, SceUInt32 command, SceUInt32 flags);
+int sceSblDmac5HashTransform(const SceSblDmac5HashTransformParam *param, SceUInt32 command, SceUInt32 flags);
 
 /**
  * Execute a user-mode keyed DMAC5 hash operation using an AuthMgr-derived key.

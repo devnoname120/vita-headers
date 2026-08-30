@@ -13,14 +13,17 @@ extern "C" {
 #endif
 
 /**
- * Coredump handler invoked on a dedicated thread.
+ * Coredump handler invoked as a normal Vita thread entry point.
  *
- * @param[in] handler_arg Argument registered with
- * ::sceCoredumpRegisterCoredumpHandler.
+ * FW 3.60 starts the handler with \p args equal to 8 and \p argp pointing to a
+ * transient two-word block containing `{handler, handler_arg}`. The second word
+ * is the argument registered with ::sceCoredumpRegisterCoredumpHandler.
  *
- * @return The return value is ignored on FW 3.60.
+ * @param[in] args Size of the transient argument block; 8 on FW 3.60.
+ * @param[in] argp Pointer to the transient argument block described above.
+ * @return The thread-entry return value; ignored by the coredump path.
  */
-typedef int (*SceCoredumpHandler)(void *handler_arg);
+typedef int (*SceCoredumpHandler)(SceSize args, void *argp);
 
 /**
  * Registers a callback that can append application-specific data to a coredump.
@@ -33,9 +36,9 @@ typedef int (*SceCoredumpHandler)(void *handler_arg);
  * @param[in] handler Pointer to a ::SceCoredumpHandler function.
  * @param[in] stack_size Stack size of the thread used to invoke the handler.
  * Must be at least 0x1000 bytes on FW 3.60.
- * @param[in] handler_arg Argument passed to the handler. When non-NULL, it must
- * point to at least 16 readable bytes on FW 3.60 and remain valid until the
- * handler is unregistered.
+ * @param[in] handler_arg Argument stored in the handler's transient argument
+ * block. When non-NULL, FW 3.60 probes exactly 4 readable bytes at registration
+ * time. It must remain valid until the handler is unregistered.
  *
  * @retval 0 Success.
  * @retval 0x800A0000 Invalid handler, stack size, or handler argument, or

@@ -98,7 +98,7 @@ typedef struct SceVoiceEventAudioInputOwnershipChanged {
 VITASDK_BUILD_ASSERT_EQ(0x10, SceVoiceEventAudioInputOwnershipChanged); // size is from FW 3.60
 
 typedef struct SceVoiceEvent {
-	SceUInt32 eventType; //!< One of ::SceVoiceEventType.
+	SceVoiceEventType eventType;
 	void *userData; //!< Value supplied to ::sceVoiceInit.
 	union {
 		SceVoiceEventPortDataReady portDataReady;
@@ -120,7 +120,7 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceVoiceEvent); // size is from FW 3.60
 typedef void (*SceVoiceEventCallback)(const SceVoiceEvent *event);
 
 typedef struct SceVoiceInitParam {
-	SceUInt32 applicationType; //!< One of ::SceVoiceApplicationType.
+	SceVoiceApplicationType applicationType;
 	SceVoiceEventCallback eventCallback; //!< Optional event callback, or NULL to disable events.
 	void *userData; //!< Copied to ::SceVoiceEvent::userData.
 	SceUInt32 reserved[5]; //!< Ignored on FW 3.60.
@@ -134,16 +134,16 @@ typedef struct SceVoiceStartParam {
 VITASDK_BUILD_ASSERT_EQ(0x20, SceVoiceStartParam); // size is from FW 3.60
 
 typedef struct SceVoicePortParam {
-	SceUInt32 portType; //!< One of ::SceVoicePortType.
+	SceVoicePortType portType;
 	SceUInt16 threshold; //!< Application-fed input threshold in milliseconds; at least two frame durations are used.
 	SceUInt16 muteFlag; //!< Nonzero to create the port muted.
 	float volume; //!< Linear volume; 1.0 is unity gain.
 	union {
 		SceSize bufferSize; //!< PCM byte capacity for PCMAUDIO ports.
-		SceUInt32 bitRate; //!< One of ::SceVoiceBitRate for VOICE ports.
+		SceVoiceBitRate bitRate; //!< Codec bitrate for VOICE ports.
 	} data;
-	SceUInt32 pcmDataType; //!< One of ::SceVoicePcmDataType for PCMAUDIO ports.
-	SceUInt32 samplingRate; //!< One of ::SceVoiceSamplingRate for PCMAUDIO ports.
+	SceVoicePcmDataType pcmDataType;
+	SceVoiceSamplingRate samplingRate;
 } SceVoicePortParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVoicePortParam); // size is from FW 3.60
 
@@ -157,8 +157,8 @@ typedef struct SceVoiceResourceInfo {
 VITASDK_BUILD_ASSERT_EQ(0xA, SceVoiceResourceInfo); // size is from FW 3.60
 
 typedef struct SceVoicePortInfo {
-	SceUInt32 portType; //!< One of ::SceVoicePortType.
-	SceUInt32 state; //!< One of ::SceVoicePortState.
+	SceVoicePortType portType;
+	SceVoicePortState state;
 	SceUInt32 reserved0; //!< Not written on FW 3.60.
 	SceSize dataSize; //!< Free bytes in the input ring or queued bytes in the output ring.
 	SceSize frameSize; //!< Encoded or PCM processing-frame size in bytes.
@@ -320,7 +320,7 @@ int sceVoiceGetVolume(SceVoicePortId portId, float *volume);
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceSetBitRate(SceVoicePortId portId, SceUInt32 bitRate);
+int sceVoiceSetBitRate(SceVoicePortId portId, SceVoiceBitRate bitRate);
 
 /**
  * Get the bitrate of an encoded input or output port.
@@ -331,7 +331,7 @@ int sceVoiceSetBitRate(SceVoicePortId portId, SceUInt32 bitRate);
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetBitRate(SceVoicePortId portId, SceUInt32 *bitRate);
+int sceVoiceGetBitRate(SceVoicePortId portId, SceVoiceBitRate *bitRate);
 
 /**
  * Set a port attribute.
