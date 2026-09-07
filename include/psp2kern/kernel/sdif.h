@@ -45,6 +45,8 @@ typedef void* SceSdifDeviceContext;
 typedef struct SceSdifContextPart SceSdifContextPart;
 
 /**
+ * Get an initialized MMC context.
+ *
  * @param[in] dev_index - Device to validate.
  *
  * @return A direct pointer to ::SceSdifContextPart, or NULL if \a dev_index is
@@ -61,8 +63,8 @@ SceSdifDeviceContext* ksceSdifGetSdContextPartValidateMmc(SceSdifDeviceIndex dev
  * context is static SceSdif storage and must not be freed.
  *
  * @param[in]  dev_index - Device to initialize.
- * @param[out] dev_ctx - Optional storage that receives the borrowed device
- *                       context pointer. It is set to NULL before
+ * @param[out] dev_ctx - Optional storage for the SceSdif-owned device context
+ *                       pointer. It is set to NULL before
  *                       initialization is attempted.
  *
  * @return 0 on success, or a negative SceSdif error code.
@@ -74,10 +76,9 @@ int ksceSdifInitializeMmcDevice(SceSdifDeviceIndex dev_index, SceSdifDeviceConte
  *
  * FW 3.60 sends command argument 0 as a synchronous one-block write.
  *
- * @param[in] dev_ctx - Direct pointer to ::SceSdifContextPart. Despite the
- *                      historical declaration, FW 3.60 interprets this value
- *                      itself as the context pointer, not as a pointer to
- *                      another pointer.
+ * @param[in] dev_ctx - Direct pointer to ::SceSdifContextPart. On FW 3.60,
+ *                      pass the context pointer itself, not the address of
+ *                      that pointer, despite the historical declaration.
  * @param[in] buf     - Command input buffer.
  * @param[in] size    - Input buffer size. It must equal the MMC block size in
  *                      the context; this is 0x200 for a FW 3.60 game card.
@@ -93,10 +94,9 @@ int ksceSdifWriteCmd56(SceSdifDeviceContext* dev_ctx, const void* buf, SceSize s
  *
  * FW 3.60 sends command argument 1 as a synchronous one-block read.
  *
- * @param[in]  dev_ctx - Direct pointer to ::SceSdifContextPart. Despite the
- *                       historical declaration, FW 3.60 interprets this value
- *                       itself as the context pointer, not as a pointer to
- *                       another pointer.
+ * @param[in]  dev_ctx - Direct pointer to ::SceSdifContextPart. On FW 3.60,
+ *                       pass the context pointer itself, not the address of
+ *                       that pointer, despite the historical declaration.
  * @param[out] buf     - Command output buffer.
  * @param[in]  size    - Output buffer size. It must equal the MMC block size in
  *                       the context; this is 0x200 for a FW 3.60 game card.
@@ -178,7 +178,7 @@ typedef struct SceSdifHostRegisters {
 } SceSdifHostRegisters;
 VITASDK_BUILD_ASSERT_EQ(0x1000, SceSdifHostRegisters); // size is from FW 3.60
 
-/** Internal lifecycle state of a command owned by a controller context. */
+/** Internal state of a command owned by a controller context. */
 typedef enum SceSdifCommandState {
 	SCE_SDIF_COMMAND_STATE_FREE      = 0,
 	SCE_SDIF_COMMAND_STATE_QUEUED    = 1,
@@ -230,7 +230,7 @@ typedef struct SceSdifCmdInput {
 	struct SceSdifCmdInput *next_cmd;
 	SceSdifCommandState state;
 	SceUInt32 command_index; //!< Index from 0 through 15 in the owning controller's command array.
-	/** Invoked after completion; its return value is propagated internally. */
+	/** Called after completion; its return value is passed on internally. */
 	int (*completion_callback)(struct SceSdifCmdInput *cmd);
 
 	SceUID event_flag_id; //!< Event flag used by synchronous commands.
@@ -241,7 +241,7 @@ typedef struct SceSdifCmdInput {
 	SceUInt8 internal_dma_descriptors[0x80]; //!< Embedded table of up to 16 eight-byte DMA descriptors.
 
 	void *active_dma_descriptors; //!< Active DMA descriptor table.
-	SceKernelPARange physical_ranges[16]; //!< Embedded backing storage passed to ::ksceKernelVARangeToPAVector.
+	SceKernelPARange physical_ranges[16]; //!< Storage within this command object, passed to ::ksceKernelVARangeToPAVector.
 
 	SceUIntPtr internal_dma_descriptors_paddr; //!< Physical address of \a internal_dma_descriptors.
 	SceUID dma_descriptor_memblock_uid; //!< UID of the dynamically allocated DMA descriptor memblock, if any.
@@ -273,7 +273,7 @@ typedef struct SceSdifContextData {
 	SceSdifCmdInput *pending_cmd_tail;
 
 	SceSdifDeviceType device_type;
-	SceSdifContextPartBase *device_context; //!< Borrowed device-specific context owned by SceSdif.
+	SceSdifContextPartBase *device_context; //!< Device-specific context owned by SceSdif; callers must not free it.
 	/** OCR voltage mask: 0x80 for controllers 0 and 2, and 0x300000 for controller 1. */
 	SceUInt32 supported_voltages;
 	SceUInt32 relative_card_address; //!< Relative card address in the low 16 bits.
@@ -290,8 +290,8 @@ typedef struct SceSdifContextData {
 	SceUInt32 enabled_subintr_mask;
 	SceUInt8 timeout_control; //!< Host timeout-control value; initialized to 14 on FW 3.60.
 	SceUInt8 slow_mode; //!< Enables minimum transfer delays for controller 1 MMC reads and writes.
-	SceUInt8 slow_read_count; //!< Seeded from system time and incremented for each slow-mode read chunk.
-	SceUInt8 slow_write_count; //!< Seeded from system time and incremented for each slow-mode write.
+	SceUInt8 slow_read_count; //!< Initialized from system time and incremented for each slow-mode read chunk.
+	SceUInt8 slow_write_count; //!< Initialized from system time and incremented for each slow-mode write.
 
 	SceUID host_registers_uid; //!< UID of the controller's 0x1000-byte register memblock.
 
@@ -403,7 +403,7 @@ SceSdifDeviceContext* ksceSdifGetSdContextPartValidateSd(SceSdifDeviceIndex dev_
  *                           Bluetooth callers use
  *                           ::SCE_SDIF_DEVICE_SDIO.
  *
- * @return A borrowed device context when the current device type is
+ * @return The SceSdif-owned device context when the current device type is
  *         ::SCE_SDIF_DEVICE_TYPE_SDIO, or NULL otherwise. The returned
  *         pointer must not be freed.
  */
@@ -415,9 +415,10 @@ SceSdifContextPart *ksceSdifGetSdContextPartValidateSdio(SceSdifDeviceIndex devi
  * @param[in] device_index - Controller to initialize. FW 3.60 accepts indices
  *                           0 through 2, but initialization succeeds only when
  *                           the detected device is an SD card.
- * @param[out] result - Optional storage that receives the borrowed 0xC0-byte
- *                      SD context. It is set to NULL before initialization is
- *                      attempted.
+ * @param[out] result - Optional storage for a pointer to the SceSdif-owned
+ *                      0xC0-byte SD context. The pointer is set to NULL before
+ *                      initialization is attempted. Callers must not free the
+ *                      context.
  *
  * @return 0 on success, 0x80320013 for an unsupported controller,
  *         0x80320017 when the detected device is not an SD card, or another
@@ -496,7 +497,7 @@ int ksceSdifWriteSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, const void
 int ksceSdifWriteSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, const void *buffer, SceUInt32 sectorCount);
 
 /**
- * Enable slow-mode pacing for controller 1 MMC transfers.
+ * Enable slow-mode delays for controller 1 MMC transfers.
  *
  * This affects SceSdif game-card MMC sector reads and writes only. It does not
  * affect SD, SDIO, or SceMsif Memory Stick transfers.
@@ -506,7 +507,7 @@ int ksceSdifWriteSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, const void 
 int ksceSdifMemoryCardEnableSlowMode(void);
 
 /**
- * Disable slow-mode pacing for controller 1 MMC transfers.
+ * Disable slow-mode delays for controller 1 MMC transfers.
  *
  * @return 0.
  */

@@ -15,20 +15,20 @@ extern "C" {
 
 typedef SceUInt32 SceSmSchedRequestId; //!< Secure-module scheduler request ID.
 
-typedef int SceSblSmCommId; //!< Signed VitaSDK spelling of ::SceSmSchedRequestId; -1 represents no active request.
+typedef int SceSblSmCommId; //!< Signed VitaSDK type for ::SceSmSchedRequestId; -1 means no active request.
 
 typedef struct SceSblSmCommPair {
 	int result; //!< Result or error returned by the secure module.
-	int status; //!< Secure-module scheduler lifecycle state; one of ::SceSmStatus.
+	int status; //!< Secure-module scheduler state; one of ::SceSmStatus.
 } SceSblSmCommPair;
 VITASDK_BUILD_ASSERT_EQ(8, SceSblSmCommPair);
 
 /**
- * Secure-module-defined startup data.
+ * Startup data whose meaning is defined by the secure module.
  *
  * The FW 3.60 scheduler copies all four words unchanged into the secure-module
  * startup command. It does not interpret the words; their meanings are defined
- * by the invoked secure module. QAF supplies `{ 0xFF, 0, 0, 0 }`, while every
+ * by the secure module being started. QAF supplies `{ 0xFF, 0, 0, 0 }`, while every
  * other reviewed FW 3.60 caller passes NULL and therefore supplies four zeros.
  */
 typedef struct SceSmInvokeDataBlockInput {
@@ -41,8 +41,8 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceSmInvokeDataBlockInput); // size is from FW 3.6
  *
  * FW 3.60 forwards only \a self_type, \a media_type, and the program
  * authority ID and capability from \a spawner_self_auth_info. The remaining
- * members are not forwarded or modified. All reviewed SceSblSmComm callers
- * zero-initialize the structure, set the low nibble of \a self_type to 2,
+ * fields are not forwarded or modified. All reviewed SceSblSmComm callers
+ * initialize the structure to zero, set bits 0-3 of \a self_type to 2,
  * and obtain \a media_type from ACMgr or use value 2 for an embedded image.
  * Because both SceSblSmComm start exports supply physical image ranges, the
  * scheduler invocation tag in bits 12 through 15 of \a self_type must be zero
@@ -63,17 +63,17 @@ VITASDK_BUILD_ASSERT_EQ(0x130, SceSblSmCommContext130); // size is from FW 0.931
  *
  * This function reads at most 0x20000 bytes, copies the SELF into private
  * kernel memory, converts that image to physical ranges, and starts a scheduler
- * request. The path, startup data, and context are consumed synchronously and
- * are not retained. A successful request remains active until
+ * request. You may reuse or free the path, startup data, and context after
+ * this function returns. A successful request remains active until
  * ::ksceSblSmCommStopSm is called.
  *
- * This is a blocking kernel-thread API and must not be called from interrupt
+ * This function blocks and must be called from a kernel thread, not interrupt
  * context. FW 3.60 supports at most 32 SceSblSmComm requests. It reserves a
  * slot before validating or loading the image and does not restore the slot
- * semaphore after a failed start, so repeated failures can exhaust subsequent
- * starts until the module is reloaded.
+ * semaphore after a failed start. Repeated failures can therefore prevent
+ * further starts until the module is reloaded.
  *
- * @param priority - Boolean priority: 0 for high priority, 1 for low priority.
+ * @param priority - 0 for high priority, 1 for low priority.
  *                   Other values are rejected with 0x800F0416 on FW 3.60.
  * @param sm_self_path - Path to the secure module SELF.
  * @param invoke_input - Optional data forwarded to the scheduler proxy. Passing
@@ -96,13 +96,15 @@ int ksceSblSmCommStartSmFromFile(SceUInt32 priority, const char *sm_self_path, c
  * Starts a secure module from a memory image.
  *
  * The supplied image is copied into private kernel memory before the scheduler
- * request is created. No input pointer is retained. A successful request
- * remains active until ::ksceSblSmCommStopSm is called.
+ * request is created. You may reuse or free the image, startup data, and
+ * context after this function returns. A successful request remains active
+ * until ::ksceSblSmCommStopSm is called.
  *
- * This function has the same blocking-thread, 32-request, and failed-start
- * semaphore behavior as ::ksceSblSmCommStartSmFromFile.
+ * Like ::ksceSblSmCommStartSmFromFile, this function blocks and must be called
+ * from a kernel thread, not interrupt context. It shares the same 32-request
+ * limit and failure to restore the slot semaphore after a failed start.
  *
- * @param priority - Boolean priority: 0 for high priority, 1 for low priority.
+ * @param priority - 0 for high priority, 1 for low priority.
  *                   Other values are rejected with 0x800F0416 on FW 3.60.
  * @param sm_self - Required secure-module SELF image when \a sm_self_size is
  *                  nonzero.
@@ -124,20 +126,21 @@ int ksceSblSmCommStartSmFromData(SceBool priority, const void *sm_self, SceSize 
  *
  * FW 3.60 copies exactly \a data_size bytes into the request's private
  * 0x1000-byte command buffer, sends \a func_id through scheduler mailbox 1,
- * waits for completion, and copies the same number of bytes back. The data and
- * response pointers are not retained. The secure-module response is distinct
- * from the transport return value.
+ * waits for completion, and copies the same number of bytes back. You may
+ * reuse or free the data and response buffers after this function returns.
+ * The return value reports transport success or failure, not the secure
+ * module's result.
  *
  * A request has only one command buffer and completion event flag, with no
- * per-request lock. Calls using the same \a req_id, including
- * ::ksceSblSmCommStopSm, must therefore be serialized by the caller.
+ * per-request lock. Do not run calls using the same \a req_id concurrently;
+ * this includes calls to ::ksceSblSmCommStopSm.
  * Callers must also enforce the 0xFC0 limit themselves: the FW 3.60 size check
  * adds 0x40 before comparing against 0x1000 and does not guard that addition
  * against unsigned overflow.
  *
  * Function ID 0xFFFFFFFF is reserved for the asynchronous stop protocol. That
- * value returns after sending the mailbox command without waiting for a reply
- * or copying data back; callers should use ::ksceSblSmCommStopSm instead.
+ * value makes the function return after sending the mailbox command, without
+ * waiting for a reply or copying data back. Use ::ksceSblSmCommStopSm instead.
  * For an ordinary command, FW 3.60 maps mailbox completion values 2, 4, and 8
  * to 0x800F0002, 0x800F0001, and 0x800F0005 respectively; another nonzero
  * completion value is mapped to 0x800F0016.
@@ -161,15 +164,15 @@ int ksceSblSmCommCallFunc(SceSblSmCommId req_id, SceUInt32 func_id, SceUInt32 *r
  *
  * FW 3.60 sends the asynchronous function ID 0xFFFFFFFF, frees the command
  * buffer and completion event, releases the SceSblSmComm slot, and waits for
- * the scheduler's terminal result. Scheduler error 0x800F0429 is treated as an
- * already-stopped request and still proceeds through cleanup and the wait.
- * Once that cleanup path begins, \a req_id must not be reused even if the
+ * the scheduler's final result. Scheduler error 0x800F0429 means the request
+ * is treated as already stopped; cleanup and the wait still proceed.
+ * Once this cleanup begins, \a req_id must not be reused even if the
  * final wait returns an error.
  *
  * @param req_id - Secure-module scheduler request ID.
  * @param result - Required output. Its first word receives the secure-module
- *                 result and its second word receives the terminal scheduler
- *                 lifecycle state.
+ *                 result and its second word receives the final scheduler
+ *                 state.
  *
  * @return 0 on transport and cleanup success, or a negative command,
  *         scheduler, semaphore, or kernel error.

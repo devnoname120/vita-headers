@@ -106,11 +106,11 @@ typedef enum SceSblUsSpackageRequestState {
 VITASDK_BUILD_ASSERT_EQ(1, SceSblUsSpackageRequestState);
 
 /**
- * Canonical flag values used by FW 3.60 package-operation consumers.
+ * Flag values used by package-operation callers on FW 3.60.
  *
- * The provider requires bit pair 0x5 or 0x9 but does not reject additional
- * bits. Value 0x9 performs version checks. Value 0x5 bypasses version checks
- * for the boot and system-partition package types, but not peripheral
+ * FW 3.60 requires the bits in mask 0x5 or 0x9 to be set, but does not reject
+ * additional bits. Value 0x9 enables version checks. Value 0x5 skips version
+ * checks for the boot and system-partition package types, but not peripheral
  * firmware checks. When the system does not use external storage, value 0x5
  * is rejected on CEX units.
  */
@@ -136,12 +136,12 @@ VITASDK_BUILD_ASSERT_EQ(1, SceSblUsPowerControlMode);
 
 typedef struct SceKernelSpackageArgs {
 	SceSize size; //!< Initialize to sizeof(SceKernelSpackageArgs); copied but not validated on FW 3.60.
-	SceUInt32 packageType; //!< One of ::SceSblUsSpackageType; the function argument is authoritative on FW 3.60.
+	SceUInt32 packageType; //!< One of ::SceSblUsSpackageType; the function uses its packageType argument instead on FW 3.60.
 	void *buffer; //!< Process-owned buffer returned by ::sceSblUsAllocateBuffer.
 	SceSize bufferSize; //!< Must equal the size passed to ::sceSblUsAllocateBuffer for this buffer.
-	SceUInt32 flags; //!< A canonical value from ::SceSblUsSpackageFlags.
+	SceUInt32 flags; //!< One of ::SceSblUsSpackageFlags.
 	SceUInt32 reserved[2]; //!< Preserved by ::sceSblUsGetExtractSpackage and ignored by SceSblUpdateMgr.
-	SceUInt32 *sequenceNumber; //!< Receives a counter incremented on each request-state transition.
+	SceUInt32 *sequenceNumber; //!< Receives a counter incremented each time the request state changes.
 	SceInt32 *requestResult; //!< Receives the operation result; valid when the request is completed.
 	SceUInt32 *requestState; //!< Receives one of ::SceSblUsSpackageRequestState.
 	SceUInt32 *writtenRate; //!< Receives the write-rate value; applicable update paths report 100 when finished.
@@ -177,8 +177,8 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceSblUsApplicableVersionInfo); // size is from FW
 /**
  * Allocate a process-owned update buffer.
  *
- * FW 3.60 rounds \a size up to a 4 KiB boundary and supports four concurrent
- * update-buffer slots across all processes.
+ * FW 3.60 rounds \a size up to a 4 KiB boundary and has four update-buffer
+ * slots shared by all processes.
  *
  * @param[in] size - Nonzero buffer size.
  * @param[out] userBuffer - Receives the user-space mapping.
@@ -209,7 +209,7 @@ SceInt32 sceSblUsCheckSystemIntegrity(void);
  * @param[out] requestId - Request identifier used by
  * ::sceSblUsGetStatus and ::sceSblUsGetExtractSpackage.
  *
- * @return 0 on success, < 0 on error.
+ * @return 0 if the request was submitted, < 0 on error.
  */
 int sceSblUsExtractSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
 
@@ -232,7 +232,7 @@ int sceSblUsGetApplicableVersion(int packageType, SceSblUsApplicableVersionInfo 
  *
  * FW 3.60 accepts every valid request type and does not itself require the
  * request to be completed. The request type and ID must identify the current
- * request node. Only ::SceKernelSpackageArgs::buffer is replaced; every other
+ * request. Only ::SceKernelSpackageArgs::buffer is replaced; every other
  * byte of the caller's structure is preserved.
  *
  * @param[in] requestType - One of ::SceSblUsSpackageRequestType.
@@ -259,9 +259,9 @@ int sceSblUsGetSpkgInfo(int packageType, SceSblUsSpkgInfo *info);
 /**
  * Get the state of an asynchronous package request.
  *
- * All four output pointers in \a args are required. A nonzero request ID must
- * match the current node for \a requestType. Request ID zero selects the
- * module's legacy fallback-result path.
+ * All four output pointers in \a args must be non-NULL. A nonzero request ID
+ * must match the current request for \a requestType. Request ID zero selects
+ * the module's legacy fallback-result path.
  *
  * @param[in] requestType - One of ::SceSblUsSpackageRequestType.
  * @param[in] requestId - Request identifier.
@@ -291,7 +291,7 @@ int sceSblUsInformUpdateFinished(SceUInt32 task, const char *message, SceSize me
  *
  * Both arguments are forwarded unchanged to the registered system-root
  * callback. If no callback is registered, the call succeeds without otherwise
- * consuming the values.
+ * using the values.
  *
  * @param[in] task - Update task value.
  * @param[in] percentage - Update completion percentage.
@@ -326,7 +326,7 @@ int sceSblUsInformUpdateStarted(SceUInt32 task, SceUInt32 value, const char *mes
  * @param[in] args - Update buffer, size, and flags.
  * @param[out] requestId - Request identifier used by ::sceSblUsGetStatus.
  *
- * @return 0 on success, < 0 on error.
+ * @return 0 if the request was submitted, < 0 on error.
  */
 int sceSblUsInspectSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
 
@@ -349,9 +349,9 @@ int sceSblUsPowerControl(int mode, SceUInt32 flags);
 /**
  * Release an update buffer allocated by ::sceSblUsAllocateBuffer.
  *
- * Releasing a buffer that is still owned by an asynchronous request removes
- * the caller's mapping; FW 3.60 defers the underlying memory release until
- * the request stops using it.
+ * If an asynchronous request still owns the buffer, this call removes the
+ * caller's mapping. FW 3.60 frees the underlying memory only after the request
+ * stops using it.
  *
  * @param[in] userBuffer - User-space update buffer.
  *
@@ -363,7 +363,7 @@ int sceSblUsReleaseBuffer(void *userBuffer);
  * Set a binary software-information value.
  *
  * The input buffers are copied before the registered system-root callback is
- * invoked. If no callback is registered, the call succeeds after validating
+ * called. If no callback is registered, the call succeeds after validating
  * and copying the inputs.
  *
  * @param[in] name - Name buffer.
@@ -393,7 +393,7 @@ int sceSblUsSetSwInfoInt(const char *name, SceSize nameLength, SceUInt32 value);
  * Set a string software-information value.
  *
  * The input buffers are copied before the registered system-root callback is
- * invoked. If no callback is registered, the call succeeds after validating
+ * called. If no callback is registered, the call succeeds after validating
  * and copying the inputs.
  *
  * @param[in] name - Name buffer.
@@ -415,7 +415,7 @@ int sceSblUsSetSwInfoStr(const char *name, SceSize nameLength, const char *value
  * @param[in] args - Update buffer, size, and flags.
  * @param[out] requestId - Request identifier used by ::sceSblUsGetStatus.
  *
- * @return 0 on success, < 0 on error.
+ * @return 0 if the request was submitted, < 0 on error.
  */
 int sceSblUsUpdateSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
 

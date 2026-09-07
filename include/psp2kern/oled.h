@@ -21,7 +21,7 @@ typedef enum SceOledErrorCode {
 } SceOledErrorCode;
 VITASDK_BUILD_ASSERT_EQ(4, SceOledErrorCode); // size is from FW 3.60
 
-/** OLED color-space modes. Their visual meanings are unknown. */
+/** OLED color-space modes. Their visual effects are unknown. */
 typedef enum SceOledColorSpaceMode {
 	SCE_OLED_COLOR_SPACE_MODE_0 = 0,
 	SCE_OLED_COLOR_SPACE_MODE_1 = 1
@@ -33,7 +33,8 @@ VITASDK_BUILD_ASSERT_EQ(1, SceOledColorSpaceMode); // size is from FW 3.60
  *
  * The sequence sends DCS display-off command 0x28, waits 16 ms, sends sleep-in
  * command 0x10, and waits 96 ms. The cached brightness is set to 0.
- * Per-command SPI and initialization errors are not propagated.
+ * SPI and initialization errors from individual commands are not returned
+ * to the caller.
  *
  * @return 0 on success, or ::SCE_OLED_ERROR_INVALID_STATE if another command
  *         sequence is pending.
@@ -45,8 +46,8 @@ int ksceOledDisplayOff(void);
  *
  * The sequence waits 64 ms, sends DCS sleep-out command 0x11, waits 208 ms,
  * sends display-on command 0x29, and waits 16 ms. It does not restore the
- * cached brightness. Per-command SPI and initialization errors are not
- * propagated.
+ * cached brightness. SPI and initialization errors from individual commands
+ * are not returned to the caller.
  *
  * @return 0 on success, or ::SCE_OLED_ERROR_INVALID_STATE if another command
  *         sequence is pending.
@@ -81,10 +82,11 @@ SceOledColorSpaceMode ksceOledGetDisplayColorSpaceMode(void);
  *
  * Valid values range from 0 through 0x10000. Zero queues the display-off
  * sequence. One selects a special dimmed calibration. Values from 2 through
- * 0x10000 are quantized to 16 panel-calibrated hardware levels, while the
- * exact requested value remains available through ::ksceOledGetBrightness.
+ * 0x10000 map to one of 16 panel-calibrated hardware levels. The exact
+ * requested value remains available through ::ksceOledGetBrightness.
  * Changing from zero to a nonzero value appends the display-on sequence.
- * Per-command SPI and initialization errors are not propagated.
+ * SPI and initialization errors from individual commands are not returned
+ * to the caller.
  *
  * @param[in] brightness - Wide brightness from 0 through 0x10000.
  *
@@ -101,8 +103,8 @@ int ksceOledSetBrightness(SceUInt32 brightness);
  * If brightness is zero, the new mode is cached without sending a command.
  * Otherwise the driver sends DCS command 0xB3 with the selected mode. Before
  * panel calibration has been installed, the function returns success without
- * changing the cached mode. Per-command SPI and initialization errors are not
- * propagated.
+ * changing the cached mode. SPI and initialization errors from individual
+ * commands are not returned to the caller.
  *
  * @param[in] mode - One of ::SceOledColorSpaceMode.
  *
@@ -116,9 +118,10 @@ int ksceOledSetDisplayColorSpaceMode(SceOledColorSpaceMode mode);
  * Wait until the asynchronous OLED initialization attempt has completed.
  *
  * This function busy-waits and returns 0 for both successful and failed
- * initialization. Call ::ksceOledGetDDB to distinguish those states.
+ * initialization. Call ::ksceOledGetDDB to check whether initialization succeeded.
  *
- * @return 0 after the initialization state leaves pending.
+ * @return 0 once initialization is no longer pending, whether it succeeded
+ *         or failed.
  */
 int ksceOledWaitReady(void);
 

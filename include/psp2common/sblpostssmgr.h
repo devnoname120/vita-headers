@@ -55,7 +55,7 @@ typedef struct SceUtoken {
 } SceUtoken;
 VITASDK_BUILD_ASSERT_EQ(0x800, SceUtoken); // size is from FW 3.60
 
-/** Complete SELF authorization override carried by Utoken segment type 11. */
+/** Complete SELF authorization override stored in Utoken segment type 11. */
 typedef struct SceUtokenSelfAuthInfo {
 	SceUInt64 program_authority_id; //!< Replacement program authority ID.
 	SceUInt8 capability[0x20];      //!< Replacement capability bits.

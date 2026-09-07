@@ -15,7 +15,7 @@ extern "C" {
 /**
  * Set the CP activation key from the activation data managed by the service.
  *
- * This operation is restricted to system programs.
+ * The calling process must be a system program.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -24,8 +24,8 @@ int sceSblRtcMgrSetCpActivationKey(void);
 /**
  * Set the 32-bit CP physical RTC value and corresponding key.
  *
- * This operation is restricted to system programs and requires manufacturing
- * mode. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
+ * The calling process must be a system program, and manufacturing mode is
+ * required. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
  *
  * @param[in] rtc - New physical RTC value.
  *
@@ -36,8 +36,8 @@ int sceSblRtcMgrSetCpRtcPhysicalAndKey(int rtc);
 /**
  * Get the CP serial identifier.
  *
- * This operation is restricted to system programs and requires manufacturing
- * mode.
+ * The calling process must be a system program, and manufacturing mode is
+ * required.
  *
  * @param[out] serial_id - Receives exactly 0x80 bytes.
  *
@@ -48,8 +48,8 @@ int sceSblRtcMgrGetCpSerialId(void *serial_id);
 /**
  * Set the 32-bit CP physical RTC value.
  *
- * This operation is restricted to system programs and requires manufacturing
- * mode. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
+ * The calling process must be a system program, and manufacturing mode is
+ * required. FW 3.60 accepts values from 1262314800 through 2145927600 inclusive.
  *
  * @param[in] rtc - New physical RTC value.
  *
@@ -60,8 +60,8 @@ int sceSblRtcMgrSetCpRtcPhysicalForUser(int rtc);
 /**
  * Get the 32-bit CP physical RTC value.
  *
- * This operation is restricted to system programs and requires manufacturing
- * mode.
+ * The calling process must be a system program, and manufacturing mode is
+ * required.
  *
  * @param[out] rtc - Receives the physical RTC value.
  *
@@ -70,23 +70,22 @@ int sceSblRtcMgrSetCpRtcPhysicalForUser(int rtc);
 int sceSblRtcMgrGetCpRtcPhysicalForUser(int *rtc);
 
 /**
- * Set the 32-bit CP logical RTC value.
+ * Request a new 32-bit CP logical RTC value.
  *
- * This operation is restricted to system programs. Interpreted as an unsigned
- * 32-bit value, FW 3.60 accepts values from 946652400 through 4102412399 for
- * validation, but does not perform the set operation.
+ * The calling process must be a system program. FW 3.60 treats \a rtc as an
+ * unsigned 32-bit value and checks that it is from 946652400 through
+ * 4102412399. It does not change the RTC, even when the value is valid.
  *
- * @param[in] rtc - New logical RTC value.
+ * @param[in] rtc - Requested logical RTC value.
  *
- * @note FW 3.60 validates the value but does not set the RTC; it returns
- * 0x800F1025 for a valid value.
+ * @return 0x800F1025 for a valid value on FW 3.60.
  */
 int sceSblRtcMgrSetCpRtcLogical(int rtc);
 
 /**
  * Get the 32-bit CP logical RTC value.
  *
- * This operation is restricted to system programs.
+ * The calling process must be a system program.
  *
  * @param[out] rtc - Receives the logical RTC value.
  *

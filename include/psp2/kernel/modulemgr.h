@@ -57,9 +57,9 @@ SceUInt32 sceKernelGetAllowedSdkVersionOnSystem(void);
 
 typedef struct SceKernelModuleStartParam {
 	SceUInt32 flags; //!< Must be 0.
-	const SceKernelStartModuleOpt *pOpt; //!< Optional start parameters whose size must be 0x10.
-	int *pRes; //!< Required; receives the result returned by the module start entry.
-	SceUInt32 reserved; //!< Copied from user memory but actually unused on FW 3.60.
+	const SceKernelStartModuleOpt *pOpt; //!< Optional start parameters; their size field must be 0x10.
+	int *pRes; //!< Must be non-NULL; receives the return value of the module start entry point.
+	SceUInt32 reserved; //!< Copied from user memory but unused on FW 3.60.
 } SceKernelModuleStartParam;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelModuleStartParam); // size is from FW 3.60
 
@@ -69,7 +69,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelModuleStartParam); // size is from FW 3.6
  * @param[in] modid Module ID.
  * @param[in] args Size of the argument block.
  * @param[in] argp Argument block, or NULL when \a args is 0.
- * @param[in] pParam Required start parameters.
+ * @param[in] pParam Start parameters; must be non-NULL.
  *
  * @return 0 on success, < 0 on error.
  */

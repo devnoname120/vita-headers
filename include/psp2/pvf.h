@@ -206,13 +206,13 @@ typedef struct ScePvfInitRec {
 VITASDK_BUILD_ASSERT_EQ(0x1C, ScePvfInitRec);
 
 /**
- * Font style descriptor.
+ * Font style and search criteria.
  *
- * When used with ::scePvfFindFont or ::scePvfFindOptimumFont, a `weight`
- * value <= 0.0f, zero-valued classification fields, and empty `fontName` or
- * `fileName` strings disable the corresponding search criteria. A nonzero
- * `subStyle` is compared as a complete 16-bit mask. `styleName`,
- * `extraAttributes`, and `expireDate` are not search criteria on FW 3.60.
+ * ::scePvfFindFont and ::scePvfFindOptimumFont ignore `weight` values <= 0.0f,
+ * classification fields set to zero, and empty `fontName` or `fileName`
+ * strings. A nonzero `subStyle` is compared as a whole 16-bit mask.
+ * `styleName`, `extraAttributes`, and `expireDate` are not used in searches
+ * on FW 3.60.
  */
 typedef struct ScePvfFontStyleInfo {
 	ScePvfFloat32 weight;

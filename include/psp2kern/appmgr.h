@@ -26,17 +26,17 @@ int ksceAppMgrKillProcess(SceUID pid);
  * Attribute bits accepted in ::SceAppMgrLaunchParam::attr.
  *
  * FW 3.60 rejects bits outside 0xF02FF000. Bits 0x00002000 and
- * 0x00008000 are accepted but ignored. Bits 0x00040000 and 0x00080000 select
- * Processmgr fields that are not present here; AppMgr supplies or clears those
- * fields according to the launch class. Bit 0x00100000 is rejected when
+ * 0x00008000 are accepted but ignored. Bits 0x00040000 and 0x00080000 tell
+ * Processmgr to read fields absent from this structure; AppMgr supplies or
+ * clears those fields according to the launch class. Bit 0x00100000 is rejected when
  * supplied by the caller, although AppMgr may set it in the Processmgr options
- * it constructs internally. Bit 0x00200000 tells Processmgr to read a nonzero
- * unique-heap size from its 0x40-byte process option. This 0x34-byte structure
+ * it builds internally. Bit 0x00200000 tells Processmgr to read a nonzero
+ * unique-heap size from its 0x40-byte process options. This 0x34-byte structure
  * has no corresponding member, so AppMgr leaves
  * ::SceKernelProcessOpt2::uniqueHeapSize at zero and process creation fails on
  * FW 3.60.
  *
- * Bit 0x80000000 prevents Processmgr from invoking the process-start callbacks
+ * Bit 0x80000000 prevents Processmgr from calling the process-start callbacks
  * registered through ::ksceKernelSysrootSetProcessHandler and
  * ::ksceKernelSysrootRegisterDbgpHandler. Process creation, image loading, and
  * main-thread startup continue normally.
@@ -91,7 +91,7 @@ typedef enum SceAppMgrProcessExitSpawnMode {
  * replacement mode/PID pair. For mini-application launches, AppMgr supplies
  * the other Processmgr values internally and copies only the process-
  * replacement pair from this structure; \a attr still selects which option
- * fields Processmgr consumes. System-application launches use the initial
+ * fields Processmgr reads. System-application launches use the initial
  * priority, stack size, and replacement mode, but force the exiting-process PID
  * to zero, so they cannot consume a prepared replacement object.
  * A nonzero CPU affinity mask must use a subset of either bits 0-3 or bits
@@ -101,12 +101,12 @@ typedef struct SceAppMgrLaunchParam {
 	SceSize size;                       //!< Ignored on FW 3.60; initialize to the size of this structure.
 	unsigned int attr;                  //!< Bitwise OR of ::SceAppMgrLaunchParamAttr values.
 	unsigned int cpuAffinityMask;       //!< Game-only CPU affinity mask; zero selects the default.
-	SceInt32 initPriority;               //!< Game/system initial priority.
-	SceSize stackSize;                   //!< Game/system main-thread stack size.
+	SceInt32 initPriority;               //!< Initial priority for game and system applications.
+	SceSize stackSize;                   //!< Main-thread stack size for game and system applications.
 	unsigned int reserved0;             //!< Copied for game launches but ignored by Processmgr on FW 3.60.
 	SceUID budgetId;                     //!< Game-only process-budget selector or UID.
 	unsigned int reserved1;             //!< Ignored by AppMgr on FW 3.60.
-	SceAppMgrProcessExitSpawnMode processExitSpawnMode;
+	unsigned int processExitSpawnMode;  //!< One of ::SceAppMgrProcessExitSpawnMode.
 	ScePID processExitSpawnPid;          //!< PID prepared using ::ksceKernelKillProcess with option 2.
 	unsigned int reserved2[3];          //!< Ignored by AppMgr on FW 3.60.
 } SceAppMgrLaunchParam;
@@ -173,10 +173,10 @@ typedef enum SceAppMgrDebugSetting {
 } SceAppMgrDebugSetting;
 
 /**
- * @param[in] titleId A pointer to an exact 9-character title ID: four
+ * @param[in] titleId Title ID of exactly 9 characters: four
  *                    uppercase letters followed by five decimal digits.
- * @param[in] addcontId A pointer to an exact 16-character uppercase
- *                      alphanumeric additional-content ID.
+ * @param[in] addcontId Additional-content ID of exactly 16 uppercase
+ *                      alphanumeric characters.
  * @param[out] outputData The 0xE0-byte result.
  */
 int ksceAppMgrAcInstGetAcdirParam(const char *titleId, const char *addcontId, SceAppMgrAcInstResult *outputData);
@@ -203,7 +203,7 @@ int ksceAppMgrAppDataMount(int mountId, char mountPoint[16]);
 int ksceAppMgrAppDataMountById(int mountId, const char *titleId, char mountPoint[16]);
 
 /**
- * @param[in] processId Value of type ::ScePID; 0 selects the current process.
+ * @param[in] processId Process ID of type ::ScePID; 0 selects the calling process.
  *
  * @return 0 while the process is in a content-install period, or a negative
  *         error code otherwise.
@@ -234,7 +234,7 @@ int ksceAppMgrCloudDataDstCreateMount(const char *titleId, char mountPoint[16]);
 /**
  * @param[in] mode Value 1 selects grw0 save data; values 2 and 3 select the
  *                 per-user ux0 save-data location.
- * @param[in] titleId A pointer to an exact 9-character title ID: four
+ * @param[in] titleId Title ID of exactly 9 characters: four
  *                    uppercase letters followed by five decimal digits.
  * @param[out] mountPoint Buffer that receives a 16-byte randomized mount point.
  */

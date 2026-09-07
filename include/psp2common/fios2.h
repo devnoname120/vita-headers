@@ -30,20 +30,20 @@ typedef enum SceFiosOverlayType {
 /**
  * File-system overlay configuration and returned state.
  *
- * When adding or modifying an overlay, the provider synchronously copies the
- * structure and does not retain the caller's pointer. Callers supply type,
- * order, dst, and src; the provider normalizes the paths and populates the
- * other fields. A per-process overlay remains installed until it is removed or
- * the process exits.
+ * When adding or modifying an overlay, FIOS2 copies the structure before the
+ * function returns. Keep the structure valid until then; you may reuse or free
+ * it afterwards. Supply type, order, dst, and src; FIOS2 normalizes the paths and
+ * fills in the other fields. A per-process overlay remains installed until it
+ * is removed or the process exits.
  */
 typedef struct SceFiosOverlay {
 	uint8_t type; //!< One of ::SceFiosOverlayType.
 	uint8_t order; //!< Resolution order. Lower values are evaluated first; 0x00-0x7F are application orders and 0x80-0xFF are reserved for privileged overlays.
-	uint16_t dst_len; //!< Destination-path length computed by the provider.
-	uint16_t src_len; //!< Source-path length computed by the provider.
-	uint16_t reserved; //!< Set to zero by the provider.
-	SceUID pid; //!< Target process ID. Used by ::ksceFiosKernelOverlayAdd and overwritten by the explicit-process variants.
-	SceFiosOverlayID id; //!< Overlay ID assigned by the provider; ignored when adding an overlay.
+	uint16_t dst_len; //!< Destination-path length computed by FIOS2.
+	uint16_t src_len; //!< Source-path length computed by FIOS2.
+	uint16_t reserved; //!< Set to zero by FIOS2.
+	SceUID pid; //!< Target process ID. Used by ::ksceFiosKernelOverlayAdd and overwritten by functions that take a process ID argument.
+	SceFiosOverlayID id; //!< Overlay ID assigned by FIOS2; ignored when adding an overlay.
 	char dst[SCE_FIOS2_OVERLAY_PATH_SIZE]; //!< Destination-path prefix matched during resolution.
 	char src[SCE_FIOS2_OVERLAY_PATH_SIZE]; //!< Source-path prefix substituted according to ::SceFiosOverlayType.
 } SceFiosOverlay;

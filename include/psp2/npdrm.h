@@ -48,10 +48,10 @@ int _sceNpDrmGetFixedRifName(char *rif_name, uint64_t aid);
  *
  * @param[out]  account_id      - Optional activated account ID output.
  *
- * @param[in]   opt             - Required pointer to the layout described by
- *                                ::SceNpDrmCheckActDataOpt. The ABI-equivalent
- *                                ::SceUInt64 pointer type is retained for
- *                                backwards compatibility.
+ * @param[in]   opt             - Required pointer to a ::SceNpDrmCheckActDataOpt
+ *                                structure, passed as a ::SceUInt64 pointer
+ *                                for backwards compatibility. Both pointer
+ *                                types have the same ABI.
  *
  * @return 0 on success, < 0 on error.
 */
@@ -79,8 +79,8 @@ typedef struct SceNpDrmCheckActDataOpt {
 VITASDK_BUILD_ASSERT_EQ(0x10, SceNpDrmCheckActDataOpt); // size is from FW 3.60
 
 typedef struct SceNpDrmCheckDrmResetOpt {
-	SceUInt64 account_id; //!< Account ID against which the current activation data is checked.
-	SceBool *pReset; //!< Optional output set to ::SCE_TRUE if act.dat was reset during the function call.
+	SceUInt64 account_id; //!< Account ID to compare with the current activation data.
+	SceBool *pReset; //!< Optional output set to ::SCE_TRUE if this call reset act.dat.
 	SceSize input_copy_size; //!< Number of input bytes to copy; set to \a input_size and do not exceed 0x40.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceNpDrmCheckDrmResetOpt;
@@ -114,8 +114,9 @@ VITASDK_BUILD_ASSERT_EQ(0x28, SceNpDrmGetRifInfoOpt); // size is from FW 3.60
  * @param[in] input - Required input data. If its first byte is zero, FW 3.60 returns
  *                    success without checking or resetting act.dat.
  * @param[in] input_size - Size of the input data; must be in the range [2, 0x40]
- * @param[in] pOpt - Required account ID, optional reset-result pointer, and
- *                   input copy size. Set \a input_copy_size to \a input_size.
+ * @param[in] pOpt - Required structure containing the account ID, optional
+ *                   reset-result pointer, and input copy size. Set
+ *                   \a input_copy_size to \a input_size.
  *
  * @return 0 on success, < 0 on error.
  */

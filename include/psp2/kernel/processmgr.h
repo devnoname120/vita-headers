@@ -112,18 +112,19 @@ __attribute__((__noreturn__))
 int _sceKernelExitProcessForUser(SceInt32 exitStatus);
 
 /**
- * Registers LibKernel's process-exit trampolines and cached-value addresses.
+ * Registers LibKernel's process-exit trampolines and addresses of cached values.
  *
  * FW 3.60 copies exactly 0x1C bytes and requires
  * ::SceLibkernelAddresses::size to equal 0x1C. A registered non-NULL address
- * is not replaced by a later call. The six addresses are retained in the
- * process object and must remain valid for the process lifetime.
+ * is not replaced by a later call. The process object stores the six addresses;
+ * the functions and storage they point to must remain valid for the process
+ * lifetime.
  *
- * FW 3.60 does not propagate a failure while initializing the user
- * `pProcessTime` destination; that failure also prevents `pPMUSERENR` from
- * being installed by the same call.
+ * On FW 3.60, a failure to initialize the user `pProcessTime` destination is
+ * not returned to the caller. That failure also prevents `pPMUSERENR` from
+ * being registered by the same call.
  *
- * @param[in] pAddresses Required registration block.
+ * @param[in] pAddresses Non-NULL registration block.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -132,7 +133,7 @@ int _sceKernelRegisterLibkernelAddresses(const SceLibkernelAddresses *pAddresses
 /**
  * Gets the calling process's elapsed time in microseconds.
  *
- * @param[out] pTime Required output using ::SceKernelSysClock semantics.
+ * @param[out] pTime Non-NULL output for the elapsed time as a ::SceKernelSysClock value.
  *
  * @return 0 on success, or < 0 on error.
  */

@@ -16,15 +16,17 @@ extern "C" {
  * Appends data to the current coredump's user-data section.
  *
  * This function is intended to be called from a ::SceCoredumpHandler. All
- * calls made by one handler share a 0x4000-byte destination on FW 3.60. A call
- * that would exceed the remaining capacity succeeds with a short byte count.
+ * calls made by one handler share a 0x4000-byte buffer on FW 3.60. If the
+ * requested data does not fit, the call succeeds, appending only as many bytes
+ * as fit.
  *
  * @param[in] data Data to append.
  * @param[in] size Number of bytes requested.
  *
  * @return The number of bytes appended, which can be less than \p size when
- * the destination is full, or a negative error code. The return value has
- * ::SceSSize semantics despite the published \c int type.
+ * the buffer is full, or a negative error code. This uses the same byte-count
+ * or error convention as ::SceSSize, although the declared return type is
+ * \c int.
  *
  * @retval 0x800A0000 The user buffer is inaccessible.
  * @retval 0x800A0003 No user-data capture is active.

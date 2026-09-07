@@ -174,7 +174,7 @@ int sceKernelIsPSVitaTV(void);
 typedef struct SceKernelSubbudgetInfo {
 	SceSize size; //!< Must be set to `sizeof(SceKernelSubbudgetInfo)`.
 	SceSize totalSize; //!< Total size of the subbudget in bytes.
-	SceSize freeSize; //!< Free size of the subbudget in bytes.
+	SceSize freeSize; //!< Free space in the subbudget in bytes.
 } SceKernelSubbudgetInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceKernelSubbudgetInfo); // size is from FW 3.60
 
@@ -187,12 +187,12 @@ typedef enum SceKernelSubbudgetId {
  * Allocates a user memblock without mapping it.
  *
  * FW 3.60 accepts only sizes aligned to 1 MiB and copies at most 31 bytes of
- * \p name. The export is available only while user remapping is enabled.
+ * \p name. This function is available only while user remapping is enabled.
  *
  * @param[in] name - Memory-block name.
  * @param[in] size - Allocation size, aligned to 1 MiB.
  *
- * @return The process-local memblock UID on success, < 0 on error.
+ * @return The memblock UID in the calling process on success, < 0 on error.
  */
 SceUID sceKernelAllocUnmapMemBlock(const char *name, SceSize size);
 
@@ -202,7 +202,7 @@ SceUID sceKernelAllocUnmapMemBlock(const char *name, SceSize size);
  * FW 3.60 accepts only indices 7 and 10. Index 10 identifies the
  * Teleport-client model: TeleportClient requires it, while TeleportServer
  * rejects operation when it is present. The purpose of index 7 is unknown;
- * no dumped FW 3.60 importer uses it.
+ * no caller in the FW 3.60 dumps uses it.
  *
  * @param[in] capabilityIndex Capability bit index.
  *

@@ -16,7 +16,7 @@ extern "C" {
 /**
  * Copy the console's OpenPSID to user memory.
  *
- * This is the raw export used by ::sceKernelGetOpenPsId.
+ * This is the underlying export called by ::sceKernelGetOpenPsId.
  *
  * @param[out] pOpenPsId - Required output for the 16-byte OpenPSID.
  *

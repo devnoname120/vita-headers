@@ -29,16 +29,16 @@ typedef enum SceExcpHandlingCode {
 	SCE_EXCPMGR_EXCEPTION_HANDLED           = 0, //!< Resume from the supplied exception context.
 	SCE_EXCPMGR_EXCEPTION_NOT_HANDLED       = 1, //!< Process an unhandled thread exception,
 	                                             //!< then continue the handler chain.
-	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_2   = 2, //!< Forwarded unchanged; no producer was identified
-	                                             //!< in the available FW 3.60 modules.
+	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_2   = 2, //!< Passed on unchanged; no code that produces this value
+	                                             //!< was found in the available FW 3.60 modules.
 	SCE_EXCPMGR_EXCEPTION_NOT_HANDLED_FATAL = 3, //!< Fatal exception; panics the kernel.
-	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_4   = 4  //!< ThreadMgr queued the exception for deferred debug processing;
-	                                             //!< the terminal handler follows the normal exception-return path.
+	SCE_EXCPMGR_EXCEPTION_HANDLING_CODE_4   = 4  //!< ThreadMgr queued the exception for later debug processing;
+	                                             //!< the final handler follows the normal exception-return path.
 } SceExcpHandlingCode;
 
 typedef struct SceExcpmgrBreakpointState {
 	SceKernelSpinlock lock;
-	SceUInt32 reserved; //!< Ignored on FW 3.60 by Excpmgr and Intrmgr; zero in the known BSS-backed default state.
+	SceUInt32 reserved; //!< Ignored on FW 3.60 by Excpmgr and Intrmgr; zero in the known default state stored in BSS.
 	SceUInt32 DBGBVR0;
 	SceUInt32 DBGBCR0;
 	SceUInt32 DBGBVR1;
@@ -54,7 +54,7 @@ VITASDK_BUILD_ASSERT_EQ(0x30, SceExcpmgrBreakpointState); // size is from FW 3.6
 
 typedef struct SceExcpmgrWatchpointState {
 	SceKernelSpinlock lock;
-	SceUInt32 reserved; //!< Ignored on FW 3.60 by Excpmgr and Intrmgr; zero in the known BSS-backed default state.
+	SceUInt32 reserved; //!< Ignored on FW 3.60 by Excpmgr and Intrmgr; zero in the known default state stored in BSS.
 	SceUInt32 DBGWVR0;
 	SceUInt32 DBGWCR0;
 	SceUInt32 DBGWVR1;
@@ -70,13 +70,13 @@ typedef struct SceExcpmgrData {
 	int nestedExceptionCount[4]; //!< Active UNDEF, PABT, or DABT exception depth on each CPU core.
 	int reserved[4]; //!< Zero-initialized BSS; ignored on FW 3.60.
 	void *ExcpStackTop[4]; //!< Base address of each CPU core's 0x1000-byte exception stack.
-	void *ExcpStackBottom[4]; //!< One-past-end address used as the initial exception stack pointer on each CPU core.
+	void *ExcpStackBottom[4]; //!< Address immediately after each CPU core's exception stack, used as its initial stack pointer.
 	void *kernelProcessContext; //!< A pointer to the kernel's ::SceKernelProcessContext,
 	                            //!< used to install TTBR1 and CONTEXTIDR.
 	SceExcpmgrBreakpointState *breakpointState; //!< Fallback breakpoint-register state used when TPIDRPRW is zero.
 	SceExcpmgrWatchpointState *watchpointState; //!< Fallback watchpoint-state pointer;
-	                                            //!< Excpmgr gates and locks the restore path,
-	                                            //!< while Intrmgr consumes its register fields.
+	                                            //!< Excpmgr controls and locks the restore path,
+	                                            //!< while Intrmgr reads its register fields.
 } SceExcpmgrData;
 VITASDK_BUILD_ASSERT_EQ(0x4C, SceExcpmgrData); // size is from FW 3.60
 
@@ -130,7 +130,7 @@ typedef struct SceExcpmgrExceptionContext {
 	uint32_t TPIDRURO;
 	uint32_t TPIDRPRW;
 	uint32_t TTBR1;
-	uint32_t reserved68; //!< Not populated or read on FW 3.60; contains indeterminate exception-stack data.
+	uint32_t reserved68; //!< Not written or read on FW 3.60; contains indeterminate exception-stack data.
 	uint32_t DACR;
 	uint32_t DFSR;
 	uint32_t IFSR;
@@ -156,11 +156,11 @@ typedef struct SceExcpmgrExceptionContext {
 	uint32_t PMXEVCNTR4;
 	uint32_t PMXEVTYPER5;
 	uint32_t PMXEVCNTR5;
-	uint32_t reservedD0; //!< Not populated or read on FW 3.60; contains indeterminate exception-stack data.
+	uint32_t reservedD0; //!< Not written or read on FW 3.60; contains indeterminate exception-stack data.
 	uint32_t waypointControl; //!< Bit 0 is set during initialization and after exception processing;
 	                          //!< bits 8-12 contain the current index in the waypoint ring buffer.
 	uint32_t DBGSCRext;
-	uint32_t reservedDC[9]; //!< Not populated or read on FW 3.60; contents are indeterminate exception-stack data.
+	uint32_t reservedDC[9]; //!< Not written or read on FW 3.60; contents are indeterminate exception-stack data.
 	uint64_t VFP_registers[32]; //!< Content of floating-point registers D0-D31.
 	SceArmWaypoint waypoints[32]; //!< Circular ARM waypoint trace history.
 } SceExcpmgrExceptionContext;
@@ -176,7 +176,7 @@ VITASDK_BUILD_ASSERT_EQ(0x400, SceExcpmgrExceptionContext); // size is from FW 3
 typedef void(SceExcpmgrExceptionHandler)(SceExcpmgrExceptionContext *context, SceExcpHandlingCode code);
 
 typedef struct SceExcpmgrExceptionHandlerContext {
-	struct SceExcpmgrExceptionHandlerContext *next; //!< Tagged pointer to the next handler record;
+	struct SceExcpmgrExceptionHandlerContext *next; //!< Pointer to the next handler record;
 	                                                //!< bit 0 preserves Thumb state.
 	SceUInt32 mustBeZero; //!< Must be zero when registering during cold boot; otherwise unused on FW 3.60.
 } SceExcpmgrExceptionHandlerContext;
@@ -192,10 +192,10 @@ SceExcpmgrData *ksceExcpmgrGetData(void);
 /**
  * Register an exception handler.
  *
- * After clearing bits 0-1, \p handler must point to a
+ * The address obtained by clearing bits 0-1 of \p handler must point to a
  * ::SceExcpmgrExceptionHandlerContext immediately followed by the handler
- * code. Bit 0 selects Thumb state and bit 1 must be clear. Priorities 1-7 use
- * the ::SceExcpmgrExceptionHandler prototype; priority 0 uses a raw,
+ * code. In \p handler, bit 0 selects Thumb state and bit 1 must be clear.
+ * Priorities 1-7 use the ::SceExcpmgrExceptionHandler prototype; priority 0 uses a raw,
  * exception-specific vector-entry ABI.
  *
  * @param[in]      kind      The kind of exception.

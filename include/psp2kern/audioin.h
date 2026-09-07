@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 /**
- * Callback invoked after an audio-input port is opened or released.
+ * Callback called after an audio-input port is opened or released.
  *
  * @param[in] processId - Owner PID for an opened port, or former owner PID for
  *                        a released port.
@@ -44,7 +44,7 @@ int ksceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAud
 int ksceAudioInReleasePort(int port);
 
 /**
- * Capture one grain of mono signed 16-bit PCM.
+ * Capture the configured number of mono signed 16-bit PCM samples.
  *
  * @param[in] port - Port handle returned by ::ksceAudioInOpenPort.
  * @param[out] destPtr - Kernel buffer for the captured samples. Its size must
@@ -78,8 +78,9 @@ SceBool ksceAudioInIsProcessPortOwner(ScePID processId);
  * \a transitionDelay temporarily suppresses the selected process's input. The
  * input worker subtracts 16 from this value per processing cycle. If the value
  * reaches exactly zero while route-change reports remain, the worker holds it
- * at 16 until both reports have been consumed. Values that are not positive
- * multiples of 16 can cross below zero and end suppression without that hold.
+ * at 16 until both reports have been returned by input calls. Values that are
+ * not positive multiples of 16 can cross below zero and end suppression
+ * without that hold.
  * AppMgr always passes zero on FW 3.60.
  *
  * @param[in] processId - Process to adopt.
@@ -123,8 +124,9 @@ int ksceAudioInSetPortReleaseCallback(SceAudioInPortCallback callback);
  * Select the input route.
  *
  * The request is applied asynchronously by the input worker. FW 3.60 does not
- * reject other integer values: the worker records the requested value as the
- * current route but performs no explicit backend selection for it.
+ * reject values outside ::SceAudioInInputMode: the worker records the requested
+ * value as the current route but does not explicitly select an input source
+ * for it.
  *
  * @param[in] inputMode - Input route.
  *
@@ -137,8 +139,8 @@ int ksceAudioInSelectInput(SceAudioInInputMode inputMode);
  * Submit Bluetooth microphone PCM to AudioIn.
  *
  * AVConfig uses this function after receiving Bluetooth audio. The samples are
- * consumed only while the Bluetooth input backend is active. FW 3.60 stages
- * them in a 360-sample ring buffer and advances the expected producer position
+ * used only while Bluetooth input is active. FW 3.60 stores them in a
+ * 360-sample ring buffer and advances the expected producer position
  * by 120 samples per submission. It inserts silence when the producer is more
  * than 120 samples behind and trims input when the producer is more than 120
  * samples ahead. The worker upsamples the submitted stream by two using
@@ -149,7 +151,7 @@ int ksceAudioInSelectInput(SceAudioInInputMode inputMode);
  * @param[in] sampleCount - Number of 16-bit samples, not bytes.
  *
  * @return The input-worker notification result on success, -1 when the
- *         Bluetooth backend is not active, or a negative mutex error.
+ *         Bluetooth input is not active, or a negative mutex error.
  */
 int ksceAudioInSubmitBluetoothPcm(const SceInt16 *samples, SceSize sampleCount);
 

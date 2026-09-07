@@ -92,9 +92,8 @@ int ksceKernelQueryIntrHandlerInfo(unsigned int intr_code, unsigned int a2, int 
 /**
  * Query a subinterrupt controller's occurrence state.
  *
- * The result is supplied by the controller-specific callback registered for
- * \a intr_code. IntrMgr serializes the callback under the parent interrupt's
- * spinlock.
+ * The controller-specific callback registered for \a intr_code supplies the
+ * result. IntrMgr calls it while holding the parent interrupt's spinlock.
  *
  * @param[in] intr_code - Parent interrupt code, from 0 through 255.
  * @param[in] subintr_code - Subinterrupt index registered for the parent.
@@ -111,15 +110,16 @@ int ksceKernelIsSubInterruptOccurred(int intr_code, int subintr_code);
  *
  * Only one hook can be installed for each interrupt. On success, IntrMgr saves
  * the current handler internally, writes it to \a old_handler, and atomically
- * installs \a new_handler. The hook receives the interrupt code, the original
- * registration context, and the registered interrupt priority.
+ * installs \a new_handler. The hook receives the interrupt code, the context
+ * supplied when the primary handler was registered, and the registered
+ * interrupt priority.
  *
  * @param[in] intr_code - Interrupt code, from 0 through 255.
  * @param[in] new_handler - Required replacement handler.
  * @param[out] old_handler - Required output that receives the replaced handler.
  *
- * @return 0 on success, ::SCE_KERNEL_ERROR_ILLEGAL_CONTEXT when hook mutation
- *         is not allowed in the current context,
+ * @return 0 on success, ::SCE_KERNEL_ERROR_ILLEGAL_CONTEXT when installing a
+ *         hook is not allowed in the current context,
  *         ::SCE_KERNEL_ERROR_ILLEGAL_INTRCODE for an invalid interrupt code,
  *         ::SCE_KERNEL_ERROR_ILLEGAL_HANDLER for a NULL \a new_handler,
  *         ::SCE_KERNEL_ERROR_INVALID_ARGUMENT for a NULL \a old_handler,
@@ -135,18 +135,18 @@ int ksceKernelRegisterIntrHookHandler(int intr_code, SceKernelIntrHookHandler ne
  *
  * @param[in] intr_code - Interrupt code, from 0 through 255.
  *
- * @return 0 on success, ::SCE_KERNEL_ERROR_ILLEGAL_CONTEXT when hook mutation
- *         is not allowed in the current context,
+ * @return 0 on success, ::SCE_KERNEL_ERROR_ILLEGAL_CONTEXT when removing a
+ *         hook is not allowed in the current context,
  *         ::SCE_KERNEL_ERROR_ILLEGAL_INTRCODE for an invalid interrupt code, or
  *         ::SCE_KERNEL_ERROR_NOTFOUND_HANDLER when no hook is installed.
  */
 int ksceKernelReleaseIntrHookHandler(int intr_code);
 
 /**
- * Invoke a subinterrupt controller's resume operation.
+ * Call a subinterrupt controller's resume operation.
  *
- * The meaning of \a state and all successful/error results are defined by the
- * controller-specific callback.
+ * The controller-specific callback defines what \a state means and which
+ * results it returns for success or error.
  *
  * @param[in] intr_code - Parent interrupt code, from 0 through 255.
  * @param[in] subintr_code - Subinterrupt index registered for the parent.
@@ -160,11 +160,12 @@ int ksceKernelReleaseIntrHookHandler(int intr_code);
 int ksceKernelResumeSubIntr(int intr_code, int subintr_code, int state);
 
 /**
- * Invoke a subinterrupt controller's suspend operation.
+ * Call a subinterrupt controller's suspend operation.
  *
- * The required \a arg and all successful/error results are defined by the
- * controller-specific callback. For example, SceSdif's implementation ignores
- * \a arg and performs the same action as disabling that subinterrupt.
+ * The controller-specific callback defines how \a arg is used and which
+ * results it returns for success or error. \a arg must be non-NULL. For example,
+ * SceSdif's implementation ignores \a arg and performs the same action as
+ * disabling that subinterrupt.
  *
  * @param[in] intr_code - Parent interrupt code, from 0 through 255.
  * @param[in] subintr_code - Subinterrupt index registered for the parent.

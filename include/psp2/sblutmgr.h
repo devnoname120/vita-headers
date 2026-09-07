@@ -16,7 +16,7 @@ extern "C" {
 /**
  * Get the remaining validity time for the initialized Utoken.
  *
- * This operation is restricted to system programs.
+ * Only system programs may call this function.
  *
  * @param[out] remaining_seconds - Receives -1 when no validity deadline is
  * configured or the deadline is 0xFFFFFFFF, 0 when the deadline has passed,
@@ -30,8 +30,8 @@ int sceSblUtMgrGetRemainingValidityTime(int *remaining_seconds);
 /**
  * Copy the Utoken name.
  *
- * This operation is restricted to system programs and requires initialized
- * Utoken state. No terminator is added when fewer than 0x18 bytes are copied.
+ * Only system programs may call this function. The Utoken must be initialized.
+ * No terminator is added when fewer than 0x18 bytes are copied.
  *
  * @param[out] name - Destination buffer.
  * @param[in] size - Destination size. At most 0x18 bytes are copied.
@@ -41,9 +41,9 @@ int sceSblUtMgrGetRemainingValidityTime(int *remaining_seconds);
 int sceSblUtMgrGetUtName(char *name, SceSize size);
 
 /**
- * Read and verify the persisted encrypted Utoken.
+ * Read and verify the stored encrypted Utoken.
  *
- * This operation is restricted to system programs.
+ * Only system programs may call this function.
  *
  * The returned contents remain encrypted; FW 3.60 uses secure-module command
  * 1 only to verify them before copying them to user memory.
@@ -56,9 +56,9 @@ int sceSblUtMgrGetUtName(char *name, SceSize size);
 int sceSblUtMgrReadUtoken(SceUtoken *utoken, SceSize size);
 
 /**
- * Overwrite and remove the persisted Utoken file.
+ * Overwrite and remove the stored Utoken file.
  *
- * This operation is restricted to system programs.
+ * Only system programs may call this function.
  *
  * Already parsed Utoken flags remain cached on FW 3.60 until the module is
  * reinitialized.
@@ -68,12 +68,12 @@ int sceSblUtMgrReadUtoken(SceUtoken *utoken, SceSize size);
 int sceSblUtMgrResetUtokenFile(void);
 
 /**
- * Verify and persist an encrypted Utoken.
+ * Verify an encrypted Utoken and write it to storage.
  *
- * This operation is restricted to system programs.
+ * Only system programs may call this function.
  *
- * @param[in] utoken - Encrypted Utoken to verify and persist.
- * @param[in] size - Must be at least 0x800; exactly 0x800 bytes are consumed.
+ * @param[in] utoken - Encrypted Utoken to verify and store.
+ * @param[in] size - Must be at least 0x800; exactly 0x800 bytes are used.
  *
  * @return SCE_OK on success, < 0 on error.
  */

@@ -32,7 +32,7 @@ int ksceSblSsDecryptWithPortability(SceUInt32 key_type, const void *iv, const Sc
  * Retrieve the secondary platform security code from aimgr_sm.
  *
  * The four 16-bit fields are returned in host byte order. This operation is
- * available only when the product-mode gate permits it.
+ * available only when the product-mode check allows it.
  *
  * @param[out] pPsCode - Required eight-byte output.
  *
@@ -275,7 +275,7 @@ int ksceSblQafManagerGetQAFlags(SceUInt8 buffer[0x10]);
 /**
  * Copy the active QAF profile name.
  *
- * Values of \a max_len above 0x18 are clamped. The resulting string is
+ * Values of \a max_len above 0x18 are treated as 0x18. The resulting string is
  * always NUL-terminated within the selected range.
  *
  * @param[out] buffer - Required profile-name buffer.
@@ -330,7 +330,7 @@ int ksceSblRngGenuineRandomNumber(void *dest);
 /**
  * Create a 0x200-byte CMA pass phrase through aimgr_sm command 5.
  *
- * The provider copies the 16 account-ID characters, IdStorage leaf 0x44, and
+ * The function copies the 16 account-ID characters, IdStorage leaf 0x44, and
  * the current secure tick into the secure-module request. It does not inspect
  * ::SceSblSsCreatePassPhraseParam::size.
  *
@@ -362,14 +362,14 @@ int ksceSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *pParam, void 
 SceInt32 ksceSblSsEncryptWithPortability(SceUInt32 key_type, const void *iv, const ScePortabilityData *plain_msg, ScePortabilityData *enc_msg);
 
 /**
- * Read one descriptor-selected NVS value.
+ * Read the NVS value selected by \a type.
  *
  * \a size must be 1, 2, 4, 8, 16, or 32 and must be at least the selected
- * descriptor's data size. Only that descriptor size is copied.
+ * value's size. Only that value's bytes are copied.
  *
- * @param[in] type - NVS data selector.
+ * @param[in] type - NVS value to read.
  * @param[out] pData - Required output buffer.
- * @param[in] size - Validated caller buffer size.
+ * @param[in] size - Caller buffer size, subject to the limits above.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -403,14 +403,14 @@ void *ksceSblSsMemset(void *dest, int value, SceSize size);
 int ksceSblSsMgrExecuteDmac5HashCommand(const void *src, void *dst, SceSize size, void *ctx, SceBool mask_enable, SceUInt32 command, SceUInt32 flags);
 
 /**
- * Write one descriptor-selected NVS value.
+ * Write the NVS value selected by \a type.
  *
  * \a size follows the same validation rules as ::ksceSblSsGetNvsData.
- * Only the selected descriptor's data size is written.
+ * Only the selected value's bytes are written.
  *
- * @param[in] type - NVS data selector.
+ * @param[in] type - NVS value to write.
  * @param[in] pData - Required source buffer.
- * @param[in] size - Validated caller buffer size.
+ * @param[in] size - Caller buffer size, subject to the limits above.
  *
  * @return 0 on success, < 0 on error.
  */

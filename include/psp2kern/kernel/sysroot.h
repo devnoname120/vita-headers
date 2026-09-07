@@ -383,14 +383,14 @@ VITASDK_BUILD_ASSERT_EQ(0x3C, SceSyscallInfo); // size is from FW 3.60
 typedef struct SceUIDAddressSpaceObject SceUIDAddressSpaceObject;
 
 /**
- * Allocates memory from a process heap.
+ * Allocate memory from a process heap.
  *
  * FW 3.60 redirects ::SCE_KERNEL_PROCESS_ID,
  * ::SCE_KERNEL_DUMMY_PROCESS_GAME_ID, and
  * ::SCE_KERNEL_DUMMY_PROCESS_SYSTEM_ID to ::SCE_KERNEL_HEAP_ID. Other process
  * IDs are passed to the registered process-heap allocator.
  *
- * @param[in] pid - Process whose heap supplies the allocation.
+ * @param[in] pid Process whose heap supplies the allocation.
  * @param[in] size Allocation size.
  * @param[in,out] pOpt Optional heap-allocation options and mapping results.
  *
@@ -399,10 +399,10 @@ typedef struct SceUIDAddressSpaceObject SceUIDAddressSpaceObject;
 void *ksceKernelAllocHeapMemory2(ScePID pid, SceSize size, SceKernelHeapMemoryOpt *pOpt);
 
 /**
- * Invokes all pending initialization callbacks through a target slot.
+ * Call all pending initialization callbacks up to and including a target slot.
  *
  * Slots are processed in order, at most once, and each slot contains at most
- * eight callbacks. FW 3.60 forwards zero and the callback's registered private
+ * eight callbacks. FW 3.60 passes zero and the callback's registered private
  * argument to each callback. An index outside 0 through 8 has no effect.
  *
  * @param[in] index Initialization slot index from 0 through 8.
@@ -411,14 +411,14 @@ void *ksceKernelAllocHeapMemory2(ScePID pid, SceSize size, SceKernelHeapMemoryOp
 void ksceKernelInvokeInitCallback(int index);
 
 /**
- * Tests whether the current boot is a cold boot.
+ * Test whether the current boot is a cold boot.
  *
  * @return 1 when bit 4 of the FW 3.60 boot-state word is clear, otherwise 0.
  */
 int ksceKernelIsColdBoot(void);
 
 /**
- * Tests whether the boot parameters request SD card mode.
+ * Test whether the boot parameters request SD card mode.
  *
  * @return 1 when bit 19 of the ::SceKblParam boot type indicator is set,
  * otherwise 0.
@@ -427,11 +427,11 @@ int ksceSysrootIsSdCardMode(void);
 #define ksceKernelIsSomeBootMode ksceSysrootIsSdCardMode
 
 /**
- * Tests a hardware-model capability bit.
+ * Test a hardware-model capability bit.
  *
  * The low byte of \p capabilityIndex is used as the ARM shift count. A value
  * from 0 through 31 selects that bit; a larger low-byte value returns zero.
- * Known FW 3.60 consumers use index 11 to enable the alternate removable-SD
+ * Known FW 3.60 callers use index 11 to enable the alternate removable-SD
  * storage slot. The RTL USB-Ethernet driver uses index 12 to select a board
  * variant that skips its GPIO port 1, bit 2 power sequence.
  *
@@ -440,15 +440,15 @@ int ksceSysrootIsSdCardMode(void);
 int ksceKernelSysrootCheckModelCapability(int capabilityIndex);
 
 /**
- * Triggers a coredump through the registered coredump callback.
+ * Trigger a coredump through the registered coredump callback.
  *
- * @param[in] pid - Process identifier.
- * @param[in] updateCallback - Optional progress callback.
- * @param[in] finishCallback - Required completion callback.
- * @param[in] pParam - Coredump parameters.
+ * @param[in] pid Process identifier.
+ * @param[in] updateCallback Optional progress callback.
+ * @param[in] finishCallback Required completion callback.
+ * @param[in] pParam Coredump parameters.
  *
- * FW 3.60 accepts a size-versioned prefix: size 4 through 7 uses the default
- * dump level; size 8 through 19 also supplies \c dump_level; size 20 through
+ * FW 3.60 accepts the first part of the structure: size 4 through 7 uses the
+ * default dump level; size 8 through 19 also supplies \c dump_level; size 20 through
  * 51 also supplies the output mode and custom path; and size 0x34 supplies the
  * complete structure.
  *
@@ -457,16 +457,17 @@ int ksceKernelSysrootCheckModelCapability(int capabilityIndex);
 int ksceKernelSysrootCoredumpTrigger(ScePID pid, SceKernelCoredumpStateUpdateCallback updateCallback, SceKernelCoredumpStateFinishCallback finishCallback, const SceCoredumpTriggerParam *pParam);
 
 /**
- * Gets the current address-space UID object's class-specific data.
+ * Get the current address-space UID object's class-specific data.
  *
  * FW 3.60 uses the registered current-address-space callback when present and
- * otherwise returns Sysroot's stored address-space pointer. No reference is
- * taken; the returned object is owned by the current process/Sysroot state.
+ * otherwise returns Sysroot's stored address-space pointer. This function does
+ * not acquire a reference to the object. The current process/Sysroot state
+ * still owns it.
  */
 SceUIDAddressSpaceObject *ksceKernelSysrootGetCurrentAddressSpaceCB(void);
 
 /**
- * Gets a module-private area from the sysroot object.
+ * Get a module-private area from the sysroot object.
  *
  * FW 3.60 performs no bounds check on \p index. Known indices include 3 for
  * Sysmem and 9 for Kernel Module Manager.
@@ -478,14 +479,15 @@ SceUIDAddressSpaceObject *ksceKernelSysrootGetCurrentAddressSpaceCB(void);
 void *ksceKernelSysrootGetModulePrivate(int index);
 
 /**
- * Gets a process's internal PUID-entry heap.
+ * Get a process's internal PUID-entry heap.
  *
- * @param[in] pid - Process identifier passed to the registered Processmgr
+ * @param[in] pid Process identifier passed to the registered Processmgr
  * callback.
- * @param[out] pEntryHeap - Required output pointer. When Processmgr has not yet
- * registered its callback, FW 3.60 returns Sysroot's default entry heap.
+ * @param[out] pEntryHeap Receives the heap pointer; must be non-NULL. When
+ * Processmgr has not yet registered its callback, FW 3.60 supplies Sysroot's
+ * default entry heap.
  *
- * @return 0 on the fallback path, or the registered callback's result.
+ * @return 0 when no callback is registered, otherwise the callback's result.
  */
 int ksceKernelSysrootGetPUIDEntryHeap(ScePID pid, void **pEntryHeap);
 
@@ -493,10 +495,10 @@ int ksceKernelSysrootGetPUIDEntryHeap(ScePID pid, void **pEntryHeap);
 SceUInt32 ksceKernelSysrootGetStatus(void);
 
 /**
- * Gets the calling thread's access level.
+ * Get the calling thread's access level.
  *
  * @return The FW 3.60 access level: 0x10, 0x20, 0x40, or 0x80; or 0 when the
- * provider is not registered.
+ * function that supplies it is not registered.
  */
 int ksceKernelSysrootGetThreadAccessLevel(void);
 
@@ -507,28 +509,28 @@ void *ksceKernelSysrootGetVbaseResetVector(void);
 SceUInt32 ksceSysrootGetFactorySystemSwVersion(void);
 
 /**
- * Gets the hardware-information bitfield.
+ * Get the hardware-information bitfield.
  *
  * @return The hardware-information bitfield.
  */
 SceUInt32 ksceSysrootGetHardwareInfo(void);
 
 /**
- * Resolves the imported function stub containing \p pc.
+ * Get information about the imported function stub containing \p pc.
  *
- * @param[in] pid - Process whose loaded modules are searched.
- * @param[in] pc - Address in an imported function stub.
- * @param[in,out] pInfo - Output whose \c size must be set to 0x3C.
+ * @param[in] pid Process whose loaded modules are searched.
+ * @param[in] pc Address in an imported function stub.
+ * @param[in,out] pInfo Output structure. Set its \c size to 0x3C before calling.
  *
  * @return 0 on success, < 0 on error or when Modulemgr is not registered.
  */
 int ksceSysrootGetModuleInfoForPid(ScePID pid, const void *pc, SceSyscallInfo *pInfo);
 
-/** Gets a read-only symbolic name for a function NID when one is registered. */
+/** Get a read-only symbolic name for a function NID when one is registered. */
 int ksceSysrootGetNidName(SceNID functionNid, const char **pName);
 
 /**
- * Gets the 0x90-byte SELF authorization information for a process.
+ * Get the 0x90-byte SELF authorization information for a process.
  *
  * Before Processmgr registers its callback, FW 3.60 returns the boot/default
  * authorization information.
@@ -536,7 +538,7 @@ int ksceSysrootGetNidName(SceNID functionNid, const char **pName);
 int ksceSysrootGetSelfAuthInfo(ScePID pid, SceSelfAuthInfo *pSelfAuthInfo);
 
 /**
- * Gets the 16-byte system session identifier.
+ * Get the 16-byte system session identifier.
  *
  * @param[out] pSessionId Buffer that receives exactly 16 bytes.
  *

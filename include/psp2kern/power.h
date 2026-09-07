@@ -242,13 +242,13 @@ typedef enum ScePowerBatteryUsbStatus {
 typedef struct ScePowerBatteryFakeStatus {
 	SceSize size;                 //!< Must be `sizeof(ScePowerBatteryFakeStatus)`.
 	SceUInt32 remainingCapacity;  //!< Initial remaining capacity in mAh. See ::kscePowerSetBatteryFakeStatus.
-	SceUInt32 fullCapacity;       //!< Full capacity in mAh; zero is normalized to 2000.
-	SceUInt32 dischargeTime;      //!< Simulated discharge duration in microseconds, or zero for no decay.
+	SceUInt32 fullCapacity;       //!< Full capacity in mAh; 0 is treated as 2000.
+	SceUInt32 dischargeTime;      //!< Simulated discharge duration in microseconds, or zero to keep the capacity constant.
 } ScePowerBatteryFakeStatus;
 VITASDK_BUILD_ASSERT_EQ(0x10, ScePowerBatteryFakeStatus); // size is from FW 3.60
 
 /**
- * Idle callback invoked by ScePower's periodic idle worker.
+ * Idle callback called by ScePower's periodic idle worker.
  *
  * @param[in] index Idle-callback slot from 0 through 7.
  * @param[in] idleTime Number of elapsed microseconds, truncated to 32 bits.
@@ -259,7 +259,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, ScePowerBatteryFakeStatus); // size is from FW 3.6
 typedef void (*ScePowerIdleCallback)(SceUInt32 index, SceUInt32 idleTime, void *userData);
 
 /**
- * Process-idle callback invoked by ScePower's periodic idle worker.
+ * Process-idle callback called by ScePower's periodic idle worker.
  *
  * @param[in] pid Process whose idle state changed.
  * @param[in] idleTime Number of elapsed microseconds, truncated to 32 bits.
@@ -269,7 +269,7 @@ typedef void (*ScePowerIdleCallback)(SceUInt32 index, SceUInt32 idleTime, void *
 typedef void (*ScePowerProcessIdleCallback)(ScePID pid, SceUInt32 idleTime, void *userData);
 
 /**
- * Disable the USB-charging request maintained by ScePower.
+ * Clear ScePower's USB-charging request.
  *
  * This clears the software request and wakes the battery worker. It does not
  * issue the separate immediate-stop Syscon command used by
@@ -280,7 +280,7 @@ typedef void (*ScePowerProcessIdleCallback)(ScePID pid, SceUInt32 idleTime, void
 int kscePowerBatteryDisableUsbCharging(void);
 
 /**
- * Enable the USB-charging request maintained by ScePower.
+ * Enable ScePower's USB-charging request.
  *
  * @return The previous request state (0 or 1), or 0 while battery polling is
  *         suspended.
@@ -288,7 +288,7 @@ int kscePowerBatteryDisableUsbCharging(void);
 int kscePowerBatteryEnableUsbCharging(void);
 
 /**
- * Increment the charging-forbid reference count.
+ * Increment the reference count that prevents charging.
  *
  * The first forbid request cancels a pending re-enable timer and wakes the
  * battery worker.
@@ -298,7 +298,7 @@ int kscePowerBatteryEnableUsbCharging(void);
 int kscePowerBatteryForbidCharging(void);
 
 /**
- * Decrement the charging-forbid reference count if it is nonzero.
+ * Decrement the reference count that prevents charging, if it is nonzero.
  *
  * Releasing the last forbid request schedules charging to be reconsidered
  * after five seconds.
@@ -308,7 +308,7 @@ int kscePowerBatteryForbidCharging(void);
 int kscePowerBatteryPermitCharging(void);
 
 /**
- * Sets the USB device state reported to Syscon.
+ * Set the USB device state reported to Syscon.
  *
  * @param[in] usbStatus USB device state. Normally one of
  * ::ScePowerBatteryUsbStatus. Only the low eight bits are sent to Syscon; the
@@ -353,8 +353,8 @@ int kscePowerGetBusClockFrequencyProc(ScePID pid);
 /**
  * Get the applied camera-bus clock frequency.
  *
- * @return The quantized frequency in MHz, or zero for the released/default
- *         state.
+ * @return The frequency in MHz, rounded up to a supported level, or zero for
+ *         the released/default state.
  */
 int kscePowerGetCameraBusClockFrequency(void);
 
@@ -371,7 +371,8 @@ int kscePowerGetCompatClockFrequency(void);
 /**
  * Get the applied DMAC5 clock frequency.
  *
- * @return The quantized frequency in MHz, or zero while DMAC5 is disabled.
+ * @return The frequency in MHz, rounded up to a supported level, or zero while
+ *         DMAC5 is disabled.
  */
 int kscePowerGetDmac5ClockFrequency(void);
 
@@ -433,7 +434,7 @@ int kscePowerGetVipClockFrequency(void);
 /**
  * Get the wakeup factor captured during the most recent resume sequence.
  *
- * Consumers on FW 3.60 interpret the low seven bits as the wake-reason value.
+ * Callers on FW 3.60 interpret the low seven bits as the wake-reason value.
  * The remaining bits are returned unchanged.
  *
  * @return The raw wakeup factor.
@@ -527,9 +528,9 @@ int kscePowerSetCameraBusClockFrequency(int frequency);
  *
  * The meaningful requests are 0, 222, and 333 MHz. Zero releases the override,
  * 222 selects the low compatibility selector, and 333 selects the high
- * selector. FW 3.60 actually accepts every other signed value below 334 except
+ * selector. FW 3.60 accepts every other signed value below 334 except
  * 222, including negative values, but all of them select the same hardware
- * mode as 333 while the getter merely echoes the supplied value.
+ * mode as 333 while the getter returns the supplied value.
  *
  * @param[in] frequency Requested frequency in MHz.
  *
@@ -539,12 +540,11 @@ int kscePowerSetCameraBusClockFrequency(int frequency);
 int kscePowerSetCompatClockFrequency(int frequency);
 
 /**
- * Sets the maximum display brightness.
+ * Set the maximum display brightness.
  *
- * @param[in] maxBrightness Maximum brightness in the internal scale. FW 3.60
- * uses 0x10000 as the normal full-scale ceiling and 0xC4EC as a reduced
- * high-GPU-clock ceiling. A value of 1 is normalized to 2; other values are
- * not range-checked.
+ * @param[in] maxBrightness Brightness limit in internal units. FW 3.60
+ * normally uses 0x10000, or 0xC4EC when reducing brightness at high GPU clock
+ * speeds. A value of 1 is treated as 2. Other values are not checked.
  *
  * @return Always 0.
  */
@@ -567,9 +567,9 @@ int kscePowerSetDmac5ClockFrequency(int frequency);
  * Set the GPU core and MP clocks directly.
  *
  * Supplying zero for both frequencies disables the pair. Otherwise each value
- * is rounded upward to 41, 55, 83, 111, 166, or 222 MHz; a zero member is
- * consequently treated as a request at or below 41 MHz. The resulting core
- * frequency must not exceed the resulting MP frequency. During an actual
+ * is rounded upward to 41, 55, 83, 111, 166, or 222 MHz; a zero value is
+ * treated as a request at or below 41 MHz. The resulting core frequency must
+ * not exceed the resulting MP frequency. During an actual
  * selector change FW 3.60 quiesces Grab clients 8 through 11, waits at least
  * three microseconds, programs the clock, and releases those clients.
  *
@@ -616,7 +616,7 @@ int kscePowerSetGpuXbarClockFrequencyProc(ScePID pid, int frequency);
  * FW 3.60 stores only the low 16 bits of \a flags. Bit 0x200 makes the slot's
  * activity timestamp reset only when its corresponding explicit tick bit is
  * supplied. Bit 0x400 makes resets conditional on the current display/input
- * policy. The purpose of other flag bits is unknown. The callback is invoked
+ * policy. The purpose of other flag bits is unknown. The callback is called
  * once after \a duration expires and again with an idle time of zero if later
  * activity resets the expired slot.
  *
@@ -677,7 +677,7 @@ int kscePowerSetPowerSwMode2(int mode);
 int kscePowerSetProcessIdleCallback(ScePowerProcessIdleCallback callback, void *userData);
 
 /**
- * Sets the PS button hold threshold.
+ * Set the PS button hold threshold.
  *
  * @param[in] pushTimeUs Hold threshold in microseconds. FW 3.60 defaults to
  * 1000000 microseconds and does not range-check this value.
@@ -687,7 +687,7 @@ int kscePowerSetProcessIdleCallback(ScePowerProcessIdleCallback callback, void *
 int kscePowerSetPsButtonPushTime(int pushTimeUs);
 
 /**
- * Sets the standby/power button hold threshold.
+ * Set the standby/power button hold threshold.
  *
  * @param[in] pushTimeUs Hold threshold in microseconds. FW 3.60 defaults to
  * 2000000 microseconds, or 4000000 in the special Sysroot mode selected during

@@ -13,17 +13,16 @@ extern "C" {
 #endif
 
 /**
- * Coredump handler invoked as a normal Vita thread entry point.
+ * Coredump handler invoked on a dedicated user thread.
  *
- * FW 3.60 starts the handler with \p args equal to 8 and \p argp pointing to a
- * transient two-word block containing `{handler, handler_arg}`. The second word
- * is the argument registered with ::sceCoredumpRegisterCoredumpHandler.
+ * The internal thread entry point calls this handler with the registered
+ * \p handler_arg.
  *
- * @param[in] args Size of the transient argument block; 8 on FW 3.60.
- * @param[in] argp Pointer to the transient argument block described above.
- * @return The thread-entry return value; ignored by the coredump path.
+ * @param[in] handler_arg Argument registered with
+ * ::sceCoredumpRegisterCoredumpHandler.
+ * @return The return value is ignored by the coredump path on FW 3.60.
  */
-typedef int (*SceCoredumpHandler)(SceSize args, void *argp);
+typedef int (*SceCoredumpHandler)(void *handler_arg);
 
 /**
  * Registers a callback that can append application-specific data to a coredump.
@@ -31,14 +30,14 @@ typedef int (*SceCoredumpHandler)(SceSize args, void *argp);
  * The callback runs on a dedicated user thread whose stack has the requested
  * size. FW 3.60 waits up to three seconds for the callback. The target process
  * is suspended while it runs, so the callback must not issue ordinary system
- * calls; it should use ::sceCoredumpWriteUserData to contribute data.
+ * calls; it should use ::sceCoredumpWriteUserData to append data.
  *
  * @param[in] handler Pointer to a ::SceCoredumpHandler function.
  * @param[in] stack_size Stack size of the thread used to invoke the handler.
  * Must be at least 0x1000 bytes on FW 3.60.
- * @param[in] handler_arg Argument stored in the handler's transient argument
- * block. When non-NULL, FW 3.60 probes exactly 4 readable bytes at registration
- * time. It must remain valid until the handler is unregistered.
+ * @param[in] handler_arg Argument passed to the handler. When non-NULL,
+ * FW 3.60 probes exactly 4 readable bytes at registration time. It must remain
+ * valid until the handler is unregistered.
  *
  * @retval 0 Success.
  * @retval 0x800A0000 Invalid handler, stack size, or handler argument, or

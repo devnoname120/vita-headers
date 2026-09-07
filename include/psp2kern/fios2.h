@@ -48,9 +48,10 @@ int ksceFiosKernelOverlayRemoveForProcess(SceUID pid, SceFiosOverlayID id);
 /**
  * Resolves a path synchronously through a process's overlays.
  *
- * @p maxPath must be between 1 and 0x400. The input must terminate within that
- * limit and @p outPath must provide at least @p maxPath bytes. When application
- * overlays are suppressed for the current thread, orders below 0x80 are skipped.
+ * @p maxPath must be from 1 through 0x400, inclusive. The input's NUL terminator
+ * must fall within that many bytes, and @p outPath must provide at least
+ * @p maxPath bytes. When application overlays are disabled for the current
+ * thread, orders below 0x80 are skipped.
  *
  * @param[in]  pid             - Process whose overlays are used.
  * @param[in]  resolveForWrite - Must be 0 for read resolution or 1 for write resolution.
@@ -76,8 +77,9 @@ int ksceFiosKernelOverlayGetInfo(SceFiosOverlayID id, SceFiosOverlay *outOverlay
 /**
  * Gets an overlay from a process's table.
  *
- * The complete 0x258-byte overlay is copied to @p outOverlay. The pointer is
- * not retained and access to another process's table is privilege-checked.
+ * Copies the complete 0x258-byte overlay to @p outOverlay. The output buffer
+ * must remain valid until this function returns; it is not used afterwards.
+ * Access to another process's table requires the appropriate privileges.
  *
  * @param[in]  pid        - Process whose overlay table is queried.
  * @param[in]  id         - Overlay identifier.
@@ -88,16 +90,17 @@ int ksceFiosKernelOverlayGetInfo(SceFiosOverlayID id, SceFiosOverlay *outOverlay
 int ksceFiosKernelOverlayGetInfoForProcess(SceUID pid, SceFiosOverlayID id, SceFiosOverlay *outOverlay);
 
 /**
- * Gets the overlay IDs in an inclusive order range.
+ * Gets the IDs of overlays whose order is from @p minOrder through @p maxOrder,
+ * inclusive.
  *
  * @param[in]  pid           - Process whose overlays are enumerated.
  * @param[in]  minOrder      - Minimum value of an overlay's order field to include.
  * @param[in]  maxOrder      - Maximum value of an overlay's order field to include.
  * @param[out] outIDs        - Overlay ID output buffer, or NULL when @p maxIDs is zero.
  * @param[in]  maxIDs        - Maximum number of overlay IDs to write.
- * @param[out] actualIDs     - Optional pointer receiving the total match count, including entries beyond @p maxIDs.
+ * @param[out] actualIDs     - Optional pointer receiving the total number of matching overlays, including those beyond @p maxIDs.
  *
- * @return Error code or zero on success.
+ * @return 0 on success, or an error code.
  */
 int ksceFiosKernelOverlayGetList(SceUID pid, SceUInt8 minOrder, SceUInt8 maxOrder, SceFiosOverlayID *outIDs, SceSize maxIDs, SceSize *actualIDs);
 
@@ -115,8 +118,8 @@ int ksceFiosKernelOverlayGetRecommendedScheduler(int schedulerCount, const char 
 /**
  * Replaces an overlay in the calling process's table.
  *
- * The provider validates and copies @p newValue synchronously. It preserves
- * the process and overlay IDs and recomputes both path lengths.
+ * Validates and copies @p newValue before returning. Keeps the process and
+ * overlay IDs and recalculates both path lengths.
  *
  * @param[in] id       - Overlay identifier.
  * @param[in] newValue - Replacement overlay configuration.
@@ -128,8 +131,9 @@ int ksceFiosKernelOverlayModify(SceFiosOverlayID id, const SceFiosOverlay *newVa
 /**
  * Replaces an overlay in a process's table.
  *
- * The input is copied and never retained. Access to another process's table is
- * privilege-checked.
+ * Copies @p newValue before returning. Keep it valid until this function
+ * returns; it is not used afterwards. Access to another process's table
+ * requires the appropriate privileges.
  *
  * @param[in] pid      - Process whose overlay is replaced.
  * @param[in] id       - Overlay identifier.
@@ -147,12 +151,13 @@ int ksceFiosKernelOverlayModifyForProcess(SceUID pid, SceFiosOverlayID id, const
 int ksceFiosKernelOverlayRemove(SceFiosOverlayID id);
 
 /**
- * Resolves a path through overlays within an inclusive order range.
+ * Resolves a path through overlays whose order is from @p minOrder through
+ * @p maxOrder, inclusive.
  *
- * @p maxPath must be between 1 and 0x400. The input must terminate within that
- * limit and @p outPath must provide at least @p maxPath bytes. If application
- * overlays are suppressed for the current thread, the supplied @p minOrder is
- * replaced with 0x80.
+ * @p maxPath must be from 1 through 0x400, inclusive. The input's NUL terminator
+ * must fall within that many bytes, and @p outPath must provide at least
+ * @p maxPath bytes. If application overlays are disabled for the current
+ * thread, the supplied @p minOrder is replaced with 0x80.
  *
  * @param[in]  pid             - Process whose overlays are used.
  * @param[in]  resolveForWrite - Must be 0 for read resolution or 1 for write resolution.
@@ -162,12 +167,12 @@ int ksceFiosKernelOverlayRemove(SceFiosOverlayID id);
  * @param[in]  minOrder        - Minimum value of an overlay's order field to include.
  * @param[in]  maxOrder        - Maximum value of an overlay's order field to include.
  *
- * @return Error code or zero on success.
+ * @return 0 on success, or an error code.
  */
 int ksceFiosKernelOverlayResolveWithRangeSync(SceUID pid, int resolveForWrite, const char *inPath, char *outPath, SceSize maxPath, SceUInt8 minOrder, SceUInt8 maxOrder);
 
 /**
- * Returns the current thread's application-overlay suppression state.
+ * Returns whether application overlays are disabled for the current thread.
  *
  * A nonzero state skips orders 0x00 through 0x7F. Privileged overlays
  * with orders 0x80 through 0xFF remain active.
@@ -177,13 +182,13 @@ int ksceFiosKernelOverlayResolveWithRangeSync(SceUID pid, int resolveForWrite, c
 int ksceFiosKernelOverlayThreadIsDisabled(void);
 
 /**
- * Sets the current thread's application-overlay suppression state.
+ * Enables or disables application overlays for the current thread.
  *
- * Any nonzero value suppresses orders 0x00 through 0x7F until this function is
+ * Any nonzero value skips orders 0x00 through 0x7F until this function is
  * called with zero or the thread exits. Privileged orders 0x80 through 0xFF
  * remain active.
  *
- * @param[in] disabled - Zero to enable application overlays, or any nonzero value to suppress them.
+ * @param[in] disabled - Zero to enable application overlays, or any nonzero value to disable them.
  *
  * @return 0 on success, or -1 if the thread-local state is unavailable.
  */

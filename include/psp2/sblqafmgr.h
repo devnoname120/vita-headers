@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-/** Clear header and encrypted payload stored in the first 0x80 token bytes. */
+/** Unencrypted header and encrypted payload in the first 0x80 token bytes. */
 typedef struct SceQafTokenEnc {
 	char magic[4];           //!< Token magic.
 	SceUInt32 qaf_version;   //!< QAF token version; FW 3.60 uses its second byte as the version counter.
@@ -34,18 +34,18 @@ typedef struct SceQafTokenEx {
 VITASDK_BUILD_ASSERT_EQ(0x180, SceQafTokenEx); // size is from FW 3.60
 
 /**
- * FW 3.60 stub for deleting a legacy QAF token.
+ * Does nothing on FW 3.60; does not delete a legacy QAF token.
  *
- * @return `0x80010058` on FW 3.60.
+ * @return Always `0x80010058` on FW 3.60.
  */
 int sceSblQafManagerDeleteQafTokenForUser(void);
 
 /**
  * Copy up to 0x18 bytes of the active QAF profile name to user memory.
  *
- * The calling process must be a system program. The provider reads and writes
+ * The calling process must be a system program. The function reads and writes
  * the selected portion of \a buffer, so it must be both readable and writable.
- * Values larger than 0x18 are clamped to 0x18.
+ * Values of \a maxLength above 0x18 are treated as 0x18.
  *
  * @param[in,out] buffer - Required profile-name buffer.
  * @param[in] maxLength - Number of bytes available in \a buffer; must be
@@ -86,8 +86,8 @@ int sceSblQafMgrGetQafName(char *buffer, SceSize maxLength);
  *
  * The calling process must be a system program. When the NVS empty flag is
  * clear, the first 0x80 bytes and the 0x100-byte signature are read from NVS.
- * Otherwise a zero-initialized object is used. qaf_sm command 13 then
- * transforms the complete object before it is copied to user memory.
+ * Otherwise a token filled with zeros is used. qaf_sm command 13 then
+ * transforms the complete token before it is copied to user memory.
  *
  * @param[out] qaf_token - Required output token.
  *
@@ -131,9 +131,9 @@ int sceSblQafMgrIsAllowScreenShotAlways(void);
  * Validate and install an extended QAF token.
  *
  * The calling process must be a system program. qaf_sm command 12 validates
- * the 0x180-byte object, the secure version counter is initialized or advanced
- * from byte 5, and the token is enabled before it is written to NVS and read
- * back for verification.
+ * the 0x180-byte token. The secure version counter is then initialized or
+ * advanced from byte 5. The token is enabled before it is written to NVS and
+ * read back for verification.
  *
  * @param[in] qaf_token - Required encrypted token and signature.
  *

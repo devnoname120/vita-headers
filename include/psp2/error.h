@@ -19,7 +19,7 @@ typedef struct SceErrorStrings {
 VITASDK_BUILD_ASSERT_EQ(0x10, SceErrorStrings); // size is from FW 3.60
 
 /**
- * Convert an internal error code to its external representation.
+ * Convert an internal error code to its formatted external error code.
  *
  * Known public errors use `PREFIX-number-checkdigit`. Unknown errors use
  * `E-xxxxxxxx`, and known non-public errors use `*-xxxxxxxx`. Hexadecimal
@@ -34,22 +34,22 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceErrorStrings); // size is from FW 3.60
 int _sceErrorGetExternalString(char *error_string, int error_code);
 
 typedef struct SceErrorDefaultFormat {
-	SceInt32 networkStatus; //!< Unchecked default status; Settings maps 3..5 to NAT types 1..3.
+	SceInt32 networkStatus; //!< Default network status; not validated. Settings maps 3..5 to NAT types 1..3.
 	SceInt32 enable; //!< Must be exactly 1. The default remains enabled until SceError is reloaded.
 } SceErrorDefaultFormat;
 VITASDK_BUILD_ASSERT_EQ(8, SceErrorDefaultFormat); // size is from FW 3.60
 
 typedef struct SceErrorHistoryPostInfo {
 	char error_message[0x100]; //!< NUL-terminated diagnostic message. Termination is not validated on FW 3.60.
-	SceUInt32 suggestedActions[15]; //!< Suggested-action IDs consumed by the Settings UI.
+	SceUInt32 suggestedActions[15]; //!< Suggested-action IDs used by the Settings UI.
 	SceUInt8 reserved0[2]; //!< Reserved; copied into history unchanged.
-	SceUInt8 suggestedActionCount; //!< Valid action count; must be <= 15 but is unchecked on FW 3.60.
+	SceUInt8 suggestedActionCount; //!< Number of valid actions; must be <= 15. FW 3.60 does not check it.
 	SceUInt8 reserved1; //!< Reserved; copied into history unchanged.
 	int error_code_hex; //!< Internal error code.
 	SceUInt32 applicationCode; //!< Application error number displayed as XX-XXX-XXX.
 	SceUInt version; //!< Set by SceError from ::SceKernelSystemSwVersion::version; the caller-provided value is ignored.
 	SceInt32 networkStatus; //!< Unchecked unless overridden; Settings maps 3..5 to NAT types 1..3.
-	char titleid[0xC]; //!< NUL-terminated title ID; unchecked. Duplicates compare its first 10 bytes.
+	char titleid[0xC]; //!< NUL-terminated title ID; not validated. Duplicate checks use its first 10 bytes.
 	SceUInt32 systemSoftwareVersionUnk24; //!< Set from ::SceKernelSystemSwVersion::unk_24; input is ignored.
 	SceUInt8 reserved2[0x20]; //!< Cleared by SceError before the entry is stored.
 } SceErrorHistoryPostInfo;
@@ -111,8 +111,8 @@ int _sceErrorHistoryGetError(SceUInt32 error_idx, SceErrorHistoryInfo *info);
  * fields, conditionally replaces \a networkStatus with the registered default,
  * clears \a reserved2, assigns the RTC timestamp and sequence ID, and generates
  * the external error string. A prior entry with the same internal error code,
- * application code, and first 10 title-ID bytes is removed. Persistence is
- * deferred until a suspend event.
+ * application code, and first 10 title-ID bytes is removed. The history is
+ * not written to storage until a suspend event.
  *
  * @param[in] info - Error information to post.
  *
@@ -122,8 +122,7 @@ int _sceErrorHistoryGetError(SceUInt32 error_idx, SceErrorHistoryInfo *info);
 int _sceErrorHistoryPostError(const SceErrorHistoryPostInfo *info);
 
 /**
- * Set the default network status applied to subsequently posted error-history
- * entries.
+ * Set the default network status for error-history entries posted later.
  *
  * FW 3.60 provides no call to disable the default once enabled.
  *

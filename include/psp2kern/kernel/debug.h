@@ -288,11 +288,11 @@ typedef struct SceKernelDebugEventLog {
 VITASDK_BUILD_ASSERT_EQ(0x54 + 0x40, SceKernelDebugEventLog);
 
 /**
- * @brief Get event log info
+ * @brief Copy event-log records to a buffer.
  *
- * @param[out] buf         - The ::SceKernelDebugEventLog buffer list. Must not be NULL.
- * @param[in]  buf_size    - The buf size
- * @param[out] read_blocks - Optional output for the number of event logs copied
+ * @param[out] buf         - Buffer that receives ::SceKernelDebugEventLog records. Must not be NULL.
+ * @param[in]  buf_size    - Size of \p buf.
+ * @param[out] read_blocks - Optional output for the number of event-log records copied.
  *
  * @return Number of bytes copied on success, < 0 on error.
  */
@@ -329,13 +329,13 @@ int ksceKernelGetTtyInfo(char *buf, SceSize buf_size);
 
 
 /**
- * Writes an event-log record for the current kernel thread.
+ * Write an event-log record for the current kernel thread.
  *
  * @param[in] eventId Event identifier. FW 3.60 stores its low 16 bits.
  * @param[in] index Event index. FW 3.60 stores its low 16 bits.
  * @param[in] value Event value.
- * @param[in] pBuf Optional payload buffer. The function does not modify it;
- * it may be NULL only when \p bufSize is zero.
+ * @param[in] pBuf Payload buffer. May be NULL only when \p bufSize is zero.
+ *                 The function does not modify the buffer.
  * @param[in] bufSize Payload size, at most 0x80 bytes.
  *
  * @return 0 on success, < 0 on error.
@@ -343,15 +343,15 @@ int ksceKernelGetTtyInfo(char *buf, SceSize buf_size);
 int ksceEventLogPutForCurrentThread(SceUInt16 eventId, SceUInt16 index, SceInt32 value, const void *pBuf, SceSize bufSize);
 
 /**
- * Writes an event-log record with explicit process and thread identifiers.
+ * Write an event-log record with the given process and thread IDs.
  *
- * @param[in] sourcePid Process identifier, with ::ScePID semantics.
- * @param[in] threadId Thread identifier, with ::SceUID semantics.
+ * @param[in] sourcePid Process ID; see ::ScePID.
+ * @param[in] threadId Thread ID; see ::SceUID.
  * @param[in] eventId Event identifier. FW 3.60 stores its low 16 bits.
  * @param[in] index Event index. FW 3.60 stores its low 16 bits.
  * @param[in] value Event value.
- * @param[in] pBuf Optional payload buffer. The function does not modify it;
- * it may be NULL only when \p bufSize is zero.
+ * @param[in] pBuf Payload buffer. May be NULL only when \p bufSize is zero.
+ *                 The function does not modify the buffer.
  * @param[in] bufSize Payload size, at most 0x80 bytes.
  *
  * @return 0 on success, < 0 on error.

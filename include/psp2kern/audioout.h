@@ -64,8 +64,8 @@ int ksceAudioOutMonitorSetSampleRate(int sampleRate);
 /**
  * Set the global SrcMix1 master gain.
  *
- * SceAVConfig uses this control for PS TV master volume. The same gain is
- * programmed for the left and right channels.
+ * SceAVConfig uses this control for PS TV master volume. It sets the same gain
+ * for the left and right channels.
  *
  * @param[in] gain - Q15 gain from 0 through ::SCE_AUDIO_OUT_MAX_VOL.
  *
@@ -88,23 +88,22 @@ int ksceAudioOutSetAlcMode(SceAudioOutAlcMode mode);
  * Configure one SrcMix block's input and output sample rates.
  *
  * A positive input rate may be any ::SceAudioOutSampleRate value. For each rate
- * argument, a negative value preserves the existing configuration and zero
- * disables that input or output. FW 3.60 accepts positive output rates 8000,
- * 12000, 16000, 22050, 24000, 32000, 44100, and 48000 Hz. An initial command
- * encoder recognizes the literal value 11050, but the downstream rate
- * validator rejects it; neither 11050 nor 11025 is a usable output rate.
+ * argument, a negative value leaves the setting unchanged and zero disables
+ * that input or output. FW 3.60 accepts positive output rates 8000, 12000,
+ * 16000, 22050, 24000, 32000, 44100, and 48000 Hz. The command encoder
+ * recognizes 11050, but a later rate check rejects it; neither 11050 nor 11025
+ * is a usable output rate.
  * FW 3.60 does not validate @p srcMixIndex; callers must use 0 through 2.
  *
  * @param[in] srcMixIndex - SrcMix block index from 0 through 2.
  * @param[in] input0Rate - Input-0 ::SceAudioOutSampleRate value, zero to
- *                         disable the input, or a negative value to preserve
- *                         its existing configuration.
+ *                         disable the input, or a negative value to leave it
+ *                         unchanged.
  * @param[in] input1Rate - Input-1 ::SceAudioOutSampleRate value, zero to
- *                         disable the input, or a negative value to preserve
- *                         its existing configuration.
+ *                         disable the input, or a negative value to leave it
+ *                         unchanged.
  * @param[in] outputRate - Output rate listed above, zero to disable output, or
- *                         a negative value to preserve its existing
- *                         configuration.
+ *                         a negative value to leave it unchanged.
  *
  * @return 0 on success, or a negative error.
  */
@@ -128,10 +127,12 @@ int ksceAudioOutSetAdoptForPid(ScePID processId, SceAudioOutPortType type, SceBo
 /**
  * Capture the I2S0 transmit FIFO into RAM.
  *
- * The result is interleaved stereo signed 16-bit PCM. Non-NULL calls form a
- * two-entry pipeline and may return while the supplied destination is still
- * being filled. A destination becomes reusable after the next non-NULL call
- * returns, or after a call with a NULL destination drains the pipeline.
+ * The result is interleaved stereo signed 16-bit PCM. Calls with a non-NULL
+ * destination form a two-entry pipeline and may return while the destination
+ * is still being filled. You may reuse the destination buffer after the next
+ * call with a non-NULL destination returns. A call with a NULL destination
+ * waits for all queued captures to complete, after which you may reuse their
+ * buffers.
  *
  * @param[out] dest - 128-byte-aligned destination, or NULL.
  * @param[in] frameCount - At least 64 frames and a multiple of 32. FW 3.60
@@ -143,7 +144,7 @@ int ksceAudioI2s0CaptureTx(SceInt16 *dest, SceSize frameCount);
 
 /**
  * Apply a private gain ramp to selected output profiles of a process.
- * A zero mask is a no-op, and FW 3.60 ignores mask bits not defined by
+ * A zero mask does nothing, and FW 3.60 ignores mask bits not defined by
  * ::SceAudioOutPortMask.
  *
  * @param[in] processId - Process whose output state is changed.
@@ -157,14 +158,14 @@ int ksceAudioI2s0CaptureTx(SceInt16 *dest, SceSize frameCount);
 int ksceAudioOutSetPortVolumeForPid(ScePID processId, int portMask, SceUInt32 volume, int rampLength);
 
 /**
- * Submit RAM-backed PCM to SrcMix2 input 0.
+ * Submit PCM from RAM to SrcMix2 input 0.
  *
  * ::SCE_AUDIO_OUT_SRCMIX2_INPUT0_SOURCE_PCM must be selected first. The input
  * is interleaved stereo signed 16-bit PCM.
  *
  * @param[in] src - Source PCM buffer. The caller must keep it readable until
- *                  the queued DMA transfer has consumed it; this API does not
- *                  provide a completion callback.
+ *                  the queued DMA transfer has finished reading it; this
+ *                  function does not provide a completion callback.
  * @param[in] frameCount - More than 4 frames and a multiple of 4.
  *
  * @return 0 on success, or a negative error.
@@ -174,13 +175,13 @@ int ksceAudioSrcMix2SubmitInput0Pcm(const SceInt16 *src, SceSize frameCount);
 /**
  * Queue capture of SrcMix2's main output into RAM.
  *
- * Non-NULL calls form a two-entry pipeline and may return while the supplied
- * destination is still being filled. A destination becomes reusable after the
- * next non-NULL call returns. Passing NULL waits until all already queued
- * captures complete.
+ * Calls with a non-NULL destination form a two-entry pipeline and may return
+ * while the destination is still being filled. You may reuse the destination
+ * buffer after the next call with a non-NULL destination returns. Passing NULL
+ * waits until all already queued captures complete.
  *
  * @param[out] dest - 16-byte-aligned destination for interleaved stereo signed
- *                    16-bit PCM, or NULL to drain queued captures.
+ *                    16-bit PCM, or NULL to wait for queued captures to finish.
  * @param[in] frameCount - More than 4 frames and a multiple of 4; ignored when
  *                         @p dest is NULL.
  *
@@ -250,9 +251,9 @@ int ksceAudioOutSetI2sOutputIndex(int i2sIndex);
 /**
  * Select the output mode of a mixed-output monitor path.
  *
- * FW 3.60's provider accidentally admits path value 2 in this setter, but that
- * value indexes beyond the two intended monitor contexts and is rejected by
- * ::ksceAudioOutMonitorRead. It must not be used. The provider does not
+ * On FW 3.60 this function accepts path value 2, but that value indexes beyond
+ * the two intended monitor contexts and is rejected by
+ * ::ksceAudioOutMonitorRead. Do not use it. This function does not
  * validate @p mode; values outside ::SceAudioOutMonitorPathMode are stored but
  * do not select a usable output path.
  *

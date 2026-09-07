@@ -88,7 +88,7 @@ int ksceRtcFormatRFC3339(char *dateTime, const SceRtcTick *utc, int timeZoneMinu
  *
  * FW 3.60 combines the current kernel system time with RTC/Syscon baselines so
  * wall-clock adjustments and system-time rebasing do not reset this counter.
- * The function has no error return; before RTC initialization it reduces to
+ * The function has no error return. Before RTC initialization, it returns
  * the current kernel system time.
  */
 SceULong64 ksceRtcGetAccumulativeTime(void);

@@ -65,7 +65,8 @@ int sceAudioOutReleasePort(int port);
  * waits until the port's previously queued audio has finished playing.
  *
  * @param[in] port - Open port handle.
- * @param[in] buf - Interleaved signed 16-bit PCM, or NULL to drain the port.
+ * @param[in] buf - Interleaved signed 16-bit PCM, or NULL to wait for queued
+ *                  audio to finish playing.
  *
  * @return 0 on success, or a negative ::SceAudioOutErrorCode value.
  */
@@ -90,22 +91,22 @@ int sceAudioOutSetVolume(int port, int ch, const int *vol);
 /**
  * Change an output port's configuration.
  *
- * A negative value for @p len, @p freq, or @p mode preserves the corresponding
- * property.
+ * A negative value for @p len, @p freq, or @p mode leaves that setting
+ * unchanged.
  *
  * For a BGM port, the low byte of @p mode contains one of ::SceAudioOutMode,
  * while its high byte contains one of ::SceAudioOutEffectType.
  *
  * @param[in] port - Open port handle.
- * @param[in] len - New frame count, or a negative value to preserve it.
+ * @param[in] len - New frame count, or a negative value to leave it unchanged.
  * @param[in] freq - New ::SceAudioOutSampleRate value accepted by the output
- *                   profile, or a negative value to preserve it.
+ *                   profile, or a negative value to leave it unchanged.
  * @param[in] mode - New channel mode and optional BGM effect preset, or a
- *                   negative value to preserve them.
+ *                   negative value to leave them unchanged.
  *
  * @par Example:
- * Configure stereo output with the Heavy equalizer preset while preserving
- * the current frame count and sample rate:
+ * Configure stereo output with the Heavy equalizer preset without changing
+ * the frame count or sample rate:
  * @code
  * int mode = SCE_AUDIO_OUT_MODE_STEREO |
  *            (SCE_AUDIO_OUT_EFFECT_TYPE_HEAVY << 8);
@@ -187,7 +188,7 @@ int sceAudioOutSetAdopt_forUser(SceAudioOutPortType type, SceBool adopt, int ram
  * Apply a private gain ramp to selected output profiles of the calling process.
  *
  * This 0..256 gain is separate from the Q15 per-channel volume configured by
- * ::sceAudioOutSetVolume. A zero mask is a no-op, and FW 3.60 ignores mask
+ * ::sceAudioOutSetVolume. A zero mask does nothing, and FW 3.60 ignores mask
  * bits not defined by ::SceAudioOutPortMask.
  *
  * @param[in] portMask - Bitwise OR of ::SceAudioOutPortMask values.

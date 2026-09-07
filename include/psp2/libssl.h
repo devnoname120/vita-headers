@@ -44,12 +44,11 @@ typedef void SceSslCert;
 typedef void SceSslCertName;
 
 /**
- * Certificate list node constructed inside the caller-provided output buffer.
+ * Certificate list node stored inside the caller's output buffer.
  *
- * Both this node and the string referenced by
- * ::SceSslCertificateAuthorityEntry::pemCertificate remain owned by the caller
- * and are valid for as long as the output buffer remains valid. No separate
- * list cleanup is required.
+ * The caller owns both this node and the string referenced by
+ * ::SceSslCertificateAuthorityEntry::pemCertificate. They remain valid for as
+ * long as the output buffer remains valid. No separate list cleanup is needed.
  */
 typedef struct SceSslCertificateAuthorityEntry {
 	char *pemCertificate; //!< NUL-terminated PEM certificate stored in the caller's buffer.
@@ -84,23 +83,23 @@ SceSslCertName *sceSslGetIssuerName (SceSslCert *sslCert);
 int sceSslFreeSslCertName(SceSslCertName* certName);
 
 /**
- * Retrieve built-in certificate-authority certificates.
+ * Get built-in certificate-authority certificates.
  *
  * The certificates are loaded from `vs0:/data/external/cert/CA_LIST.cer`. In
  * output mode, every loaded certificate is checked against a built-in SHA-1
  * digest before it is returned.
  *
  * If either \p certificateList or \p buffer is NULL, the function only
- * computes the required storage size and ignores \p bufferSize. Output mode is
- * used only when both are supplied. The required size includes every
+ * calculates the required storage size and ignores \p bufferSize. Output mode
+ * requires both pointers to be non-NULL. The required size includes every
  * NUL-terminated PEM string, alignment padding, and one embedded
  * ::SceSslCertificateAuthorityEntry per certificate.
  *
  * In output mode, \p certificateList receives a linked list whose nodes and
  * PEM strings point into \p buffer. The function does not allocate output
  * memory. Callers should first query the size, allocate one buffer of that
- * size, and then call the function again to populate it. If output mode fails
- * after processing has begun, the buffer and list may contain partial data and
+ * size, and then call the function again to fill it. If output mode fails
+ * after processing begins, the buffer and list may contain partial data and
  * should be discarded.
  *
  * @param[in] issuerId - One of ::SceSslCertIssuer.
@@ -115,8 +114,10 @@ int sceSslFreeSslCertName(SceSslCertName* certName);
  * @param[out] certificateList - Receives the first list node in output mode.
  * @param[out] buffer - Caller-owned buffer receiving PEM strings and list nodes.
  * @param[in] bufferSize - Size of \a buffer in bytes.
- * @param[out] resultSize - Optional total storage required or used on success.
- *                          Set to zero before validation and left zero on error.
+ * @param[out] resultSize - Optional pointer receiving the total storage required
+ *                          or used on success. If non-NULL, the function sets
+ *                          the output to zero before validation and leaves it
+ *                          zero on error.
  *
  * @return Number of selected certificates on success, including zero when the
  *         mask selects none. Returns `0x80010086` for an invalid issuer or

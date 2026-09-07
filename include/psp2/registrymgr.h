@@ -191,7 +191,7 @@ int sceRegMgrSetKeys(const char* category, char* buf, const int elements_number)
 /**
  * Get a system param key's information by id
  *
- * @param id - One of ::SceRegMgrSystemParam.
+ * @param id - A ::SceRegMgrSystemParam ID.
  * @param buf[out] - Pointer to an int to hold the value
  *
  * @return 0 on success, < 0 on error
@@ -201,7 +201,7 @@ int sceRegMgrSystemParamGetInt(const int id, int* buf);
 /**
  * Get a system param key's information by id
  *
- * @param id - One of ::SceRegMgrSystemParam.
+ * @param id - A ::SceRegMgrSystemParam ID.
  * @param buf[out] - Pointer to a char buffer to hold the value
  * @param size - The size of the buffer
  *
@@ -221,9 +221,10 @@ int sceRegMgrGetRegVersion(void);
 /**
  * Gets a system parameter as binary data.
  *
- * FW 3.60 resolves @p id through its fixed ::SceRegMgrSystemParam table and
- * copies exactly `min(bufSize, 0x800)` bytes to @p buf on success. The pointer
- * is not retained. Supplying an unknown ID or a NULL buffer returns 0x800D0004.
+ * FW 3.60 looks up @p id in its fixed ::SceRegMgrSystemParam table and
+ * copies exactly `min(bufSize, 0x800)` bytes to @p buf on success. The buffer
+ * is not used after this function returns. An unknown ID or a NULL buffer
+ * returns 0x800D0004.
  *
  * @param[in]  id      - System-parameter ID.
  * @param[out] buf     - Destination buffer.
@@ -237,8 +238,9 @@ SceInt32 sceRegMgrSystemParamGetBin(SceRegMgrSystemParam id, void *buf, SceSize 
  * Sets a writable system parameter from binary data.
  *
  * FW 3.60 requires a non-NULL buffer and @p bufSize no greater than 0x7C0.
- * It synchronously copies exactly @p bufSize bytes to kernel memory and does
- * not retain the pointer. The selected registry key must have binary type.
+ * It copies exactly @p bufSize bytes to kernel memory before returning and
+ * does not use the buffer afterwards. The selected registry key must have
+ * binary type.
  * Unknown IDs return 0x800D0004 and known read-only IDs return 0x800D0015.
  *
  * @param[in] id      - Writable system-parameter ID.
@@ -265,13 +267,13 @@ SceInt32 sceRegMgrSystemParamSetInt(SceRegMgrSystemParam id, SceInt32 value);
  * Sets a writable string system parameter.
  *
  * FW 3.60 requires a non-NULL buffer and @p bufSize no greater than 0x7C0.
- * It copies exactly @p bufSize bytes and neither appends nor validates a NUL
- * terminator, so callers must include it when required by the selected key.
- * The pointer is not retained. Unknown IDs return 0x800D0004 and known
- * read-only IDs return 0x800D0015.
+ * It copies exactly @p bufSize bytes without adding or checking for a NUL
+ * terminator. Include the terminator when the selected key requires it.
+ * The buffer is not used after this function returns. Unknown IDs return
+ * 0x800D0004 and known read-only IDs return 0x800D0015.
  *
  * @param[in] id      - Writable system-parameter ID whose registry key is a string.
- * @param[in] buf     - Source character sequence.
+ * @param[in] buf     - Characters to copy.
  * @param[in] bufSize - Number of bytes to copy and store.
  *
  * @return 0 on success, or a negative error code.

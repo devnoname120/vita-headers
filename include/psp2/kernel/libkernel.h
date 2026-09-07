@@ -56,11 +56,11 @@ SceInt32 sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffe
 SceInt32 sceKernelBacktraceSelf(SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, SceUInt32 *pNumReturn, SceInt32 mode);
 
 /**
- * Disarms a timer event and cancels all threads waiting on the timer.
+ * Disarms a timer event and cancels all waits on the timer.
  *
  * @param[in] timerId Timer identifier.
  * @param[out] numWaitThreads Optional pointer that receives the number of
- * canceled waiters.
+ * threads whose waits were canceled.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -70,9 +70,8 @@ int sceKernelCancelTimer(SceUID timerId, SceUInt32 *numWaitThreads);
  * Gets a timer's reference process time.
  *
  * @param[in] timerId Timer identifier.
- * @param[out] baseTime Required pointer that receives 0 while the timer is
- * stopped, or its reference process time with ::SceKernelSysClock semantics
- * while it is active.
+ * @param[out] baseTime Must be non-NULL. Receives 0 while the timer is stopped,
+ * or its reference process time as a ::SceKernelSysClock value while it is active.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -82,20 +81,20 @@ int sceKernelGetTimerBase(SceUID timerId, SceKernelSysClock *baseTime);
  * Gets the remaining duration before an armed timer event.
  *
  * @param[in] timerId Timer identifier.
- * @param[out] remainingTime Required pointer that receives a value with
- * ::SceKernelSysClock semantics.
+ * @param[out] remainingTime Must be non-NULL. Receives the remaining duration
+ * as a ::SceKernelSysClock value.
  *
  * @return 0 on success, or < 0 on error.
  */
 int sceKernelGetTimerEventRemainingTime(SceUID timerId, SceKernelSysClock *remainingTime);
 
 /**
- * Gets size-prefixed timer information.
+ * Gets timer information.
  *
  * @param[in] timerId Timer identifier.
- * @param[in,out] pInfo Required pointer to a ::SceKernelTimerInfo structure.
- * Its leading size field selects the exact number of bytes copied to and from
- * the structure, up to the complete 0x60-byte FW 3.60 layout.
+ * @param[in,out] pInfo Must point to a ::SceKernelTimerInfo structure.
+ * Its first field, \c size, sets the exact number of bytes copied to and from
+ * the structure, up to the full 0x60-byte structure on FW 3.60.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -105,8 +104,8 @@ int sceKernelGetTimerInfo(SceUID timerId, SceKernelTimerInfo *pInfo);
  * Gets the current timer time.
  *
  * @param[in] timerId Timer identifier.
- * @param[out] timerTime Required pointer that receives a value with
- * ::SceKernelSysClock semantics.
+ * @param[out] timerTime Must be non-NULL. Receives the current timer time
+ * as a ::SceKernelSysClock value.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -115,7 +114,7 @@ int sceKernelGetTimerTime(SceUID timerId, SceKernelSysClock *timerTime);
 /**
  * Prints call frames for the current process.
  *
- * @param[in] pCallFrame Required call frames to print, even when
+ * @param[in] pCallFrame Call frames to print. Must be non-NULL even when
  *                       \a numFrames is 0.
  * @param[in] numFrames Number of entries in pCallFrame.
  *
@@ -128,8 +127,8 @@ SceInt32 sceKernelPrintBacktrace(const SceKernelCallFrame *pCallFrame, SceUInt32
  *
  * @param[in] timerId Timer identifier.
  * @param[in] type Notification behavior selected from ::SceKernelTimerType.
- * @param[in] interval Required relative interval with ::SceKernelSysClock
- * semantics.
+ * @param[in] interval Must be non-NULL. Points to the relative interval
+ * expressed as a ::SceKernelSysClock value.
  * @param[in] repeat Nonzero to rearm the event periodically.
  *
  * @return 0 on success, or < 0 on error.
@@ -140,17 +139,17 @@ int sceKernelSetTimerEvent(SceUID timerId, SceKernelTimerType type, const SceKer
  * Sets the current timer time.
  *
  * @param[in] timerId Timer identifier.
- * @param[in,out] timerTime Required pointer containing the new timer time with
- * ::SceKernelSysClock semantics. For callers targeting SDK version 2.00 or
- * newer, it receives the previous timer time on return; older target SDK
- * versions do not receive that value.
+ * @param[in,out] timerTime Must be non-NULL. Contains the new timer time as a
+ * ::SceKernelSysClock value. For callers targeting SDK version 2.00 or newer,
+ * it receives the previous timer time on return; older target SDK versions do
+ * not receive that value.
  *
  * @return 0 on success, or < 0 on error.
  */
 int sceKernelSetTimerTime(SceUID timerId, SceKernelSysClock *timerTime);
 
 /**
- * Get the 0x20-byte type 01 media ID produced by the game-card authentication state.
+ * Gets the 0x20-byte type 01 media ID produced by the game-card authentication state.
  *
  * @param[out] pMediaId - Output media ID.
  *
@@ -159,7 +158,7 @@ int sceKernelSetTimerTime(SceUID timerId, SceKernelSysClock *timerTime);
 int sceSblGcAuthMgrGetMediaIdType01(SceMediaIdType01 *pMediaId);
 
 /**
- * Install PC activation data.
+ * Installs PC activation data.
  *
  * The key envelope is verified against the saved challenge state before the
  * trailing 0x1040-byte activation payload is written.
@@ -172,21 +171,21 @@ int sceSblGcAuthMgrGetMediaIdType01(SceMediaIdType01 *pMediaId);
 int sceSblGcAuthMgrPcactActivation(const ScePcactActivationData *act_data, SceSize act_data_size);
 
 /**
- * Create a PC activation challenge.
+ * Creates a PC activation challenge.
  *
  * @param[in] mode - Challenge mode. Mode 0 is rejected until the previously
- *                   recorded expiration tick has elapsed. Mode 1 requires
+ *                   recorded expiration tick has passed. Mode 1 requires
  *                   that no readable activation data exists and records a
  *                   new expiration. Mode 2 bypasses the expiration check.
- * @param[in] epassword - Pointer to a 0x20-byte input.
- * @param[out] challenge - Pointer to a 0x80-byte output.
+ * @param[in] epassword - Pointer to a 0x20-byte input buffer.
+ * @param[out] challenge - Receives the 0x80-byte challenge.
  *
  * @return 0 on success, < 0 on error.
  */
 int sceSblGcAuthMgrPcactGetChallenge(SceUInt32 mode, const SceUInt8 *epassword, ScePcactChallenge *challenge);
 
 /**
- * Verify a package ECDSA-160 signature.
+ * Verifies a package ECDSA-160 signature.
  *
  * @param[in] pHash - Pointer to a 0x14-byte SHA-1 digest.
  * @param[in] pSig - Pointer to a 0x28-byte ECDSA signature.

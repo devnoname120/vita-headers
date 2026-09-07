@@ -119,7 +119,7 @@ SceInt64 ksceKernelAtomicDecIfPositive64(SceInt64 *store);
 
 
 /**
- * Atomically updates a signed 16-bit value when \p val compares greater.
+ * Atomically store \p val if it is greater than the current signed 16-bit value.
  *
  * @param[in,out] addr Address updated with an exclusive 16-bit load/store.
  * @param[in] val - Candidate value. Only its low 16 bits are stored.
@@ -129,7 +129,8 @@ SceInt64 ksceKernelAtomicDecIfPositive64(SceInt64 *store);
 SceInt16 ksceKernelAtomicSetIfGreaterGet16(SceInt16 *addr, SceInt16 val);
 
 /**
- * Atomically stores \p val when it is greater under a signed 32-bit comparison.
+ * Atomically store \p val if it is greater than the current value under a
+ * signed 32-bit comparison.
  *
  * @param[in,out] addr Address updated with an exclusive 32-bit load/store.
  * @param[in] val - Candidate value.
@@ -139,7 +140,7 @@ SceInt16 ksceKernelAtomicSetIfGreaterGet16(SceInt16 *addr, SceInt16 val);
 SceInt32 ksceKernelAtomicSetIfGreaterGet32(SceInt32 *addr, SceInt32 val);
 
 /**
- * Atomically updates a signed 8-bit value when \p val compares greater.
+ * Atomically store \p val if it is greater than the current signed 8-bit value.
  *
  * @param[in,out] addr Address updated with an exclusive 8-bit load/store.
  * @param[in] val - Candidate value. Only its low 8 bits are stored.

@@ -73,13 +73,13 @@ VITASDK_BUILD_ASSERT_EQ(4, SceDisplayFrameBufFlag);
 /**
  * Extended framebuffer descriptor accepted by FW 3.60.
  *
- * The ordinary ::SceDisplayFrameBuf remains 0x18 bytes for backwards
- * compatibility. The raw and internal framebuffer APIs also accept this 0x1C
- * layout, selected by setting \a size to `sizeof(SceDisplayFrameBufExt)`.
- * FW 3.60 permits only bits in mask 0x001F0000 in \a flags. The purposes of
+ * ::SceDisplayFrameBuf remains 0x18 bytes for backwards compatibility. The
+ * raw and internal framebuffer APIs also accept this 0x1C-byte structure.
+ * To use it, set \a size to `sizeof(SceDisplayFrameBufExt)`.
+ * FW 3.60 permits only bits in the mask 0x001F0000 in \a flags. The purposes of
  * bits 0x00020000 and 0x00080000 are unknown.
- * A 0x18 descriptor is internally assigned
- * ::SCE_DISPLAY_FRAMEBUF_FLAG_BILINEAR.
+ * For a 0x18-byte structure, the driver sets
+ * ::SCE_DISPLAY_FRAMEBUF_FLAG_BILINEAR internally.
  */
 typedef struct SceDisplayFrameBufExt {
 	SceSize size; //!< Must be set to sizeof(SceDisplayFrameBufExt).
@@ -109,7 +109,7 @@ VITASDK_BUILD_ASSERT_EQ(1, SceDisplayHead);
 /**
  * Complete screen-mode identifiers accepted by the FW 3.60 DSI driver.
  *
- * These are constrained identifiers, not freely composable flags. For example,
+ * Use these IDs as listed; do not combine them as flags. For example,
  * 1080p at 24 Hz is 0x8730; ORing 0x0700 with 0x0020 produces 0x0720, which
  * FW 3.60 rejects.
  */
@@ -145,7 +145,7 @@ VITASDK_BUILD_ASSERT_EQ(1, SceDisplayScanMode);
 /**
  * Framebuffer capture destination.
  *
- * The DMAC capture functions treat \a width and \a height as upper bounds,
+ * The DMAC capture functions use \a width and \a height as maximum dimensions,
  * ignore the input \a pixelformat, and replace all three fields with the copied
  * source values. The IFTU capture functions instead use all three fields as
  * destination parameters and leave the structure unchanged.

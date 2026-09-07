@@ -121,8 +121,8 @@ int ksceSblACMgrIsDevelopmentMode(void);
  * Media types produced by the FW 3.60 path classifier.
  *
  * In the path patterns below, `[n]` means zero or more decimal unit digits.
- * The provider accepts both forms such as `os:` and the normal `os0:` form.
- * Its path table does not produce media types 8, 9, 10, or 26.
+ * For example, both `os:` and the normal `os0:` form are accepted.
+ * The path table does not produce media types 8, 9, 10, or 26.
  */
 typedef enum SceSblACMgrMediaType {
 	SCE_SBL_ACMGR_MEDIA_TYPE_UX_USER   = 0,  //!< `ux[n]:user` or `ux[n]:/user`.
@@ -154,11 +154,11 @@ typedef enum SceSblACMgrMediaType {
 /** Filesystem-attribute conversion request. */
 typedef struct SceSblACMgrFsAttrInfo {
 	int operation;         //!< Values 1-5 select ordinary filesystem attributes; 6 selects a PFS
-	                       //!< attribute; 7-8 are unsupported by the mode-conversion exports.
-	void *attribute;       //!< Caller-owned pointer to a ::SceUInt8 or ::SceUInt16 scalar,
+	                       //!< attribute; 7-8 are unsupported by the mode-conversion functions.
+	void *attribute;       //!< Caller-owned pointer to a ::SceUInt8 or ::SceUInt16 value,
 	                       //!< selected by ::SceSblACMgrFsAttrInfo::attributeSize.
-	SceSize attributeSize; //!< Scalar size. Use 1 or 2; other values can make FW 3.60 return
-	                       //!< success without writing anything.
+	SceSize attributeSize; //!< Attribute size in bytes. Use 1 or 2; other values can make FW 3.60
+	                       //!< return success without writing anything.
 } SceSblACMgrFsAttrInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceSblACMgrFsAttrInfo); // size is from FW 3.60
 
@@ -174,12 +174,12 @@ VITASDK_BUILD_ASSERT_EQ(0xC, SceSblACMgrFsAttrInfo); // size is from FW 3.60
  * target processes whose first capability word is 0x10 or 0x20, and the
  * privileged mapping for 0x40 or 0x80. Modes 0x00100000 and 0x00200000 are
  * accepted only by the privileged mapping and produce PFS attribute bits
- * 0x4000 and 0x2000 respectively. Use a two-byte scalar to preserve those
+ * 0x4000 and 0x2000 respectively. Use a two-byte value to preserve those
  * high PFS bits. Operations 7 and 8 return 0x800F0925.
  *
- * @param[in]     pid   - Process ID value of type ::ScePID.
+ * @param[in]     pid   - Target process ID (::ScePID).
  * @param[in,out] pInfo - Attribute operation and output buffer.
- * @param[in]     mode  - Value of type ::SceMode.
+ * @param[in]     mode  - File mode (::SceMode).
  *
  * @return SCE_OK on success; 0x800F0902 when an operation-6 mode has no
  *         mapping; 0x800F0903 if process authentication information is
@@ -194,7 +194,7 @@ int ksceSblACMgrConvertModeToFsAttribute2(SceUID pid, SceSblACMgrFsAttrInfo *pIn
 /**
  * Check capability bit 1 (system-program privilege).
  *
- * @param[in] pid - Process ID value of type ::ScePID.
+ * @param[in] pid - Target process ID (::ScePID).
  *
  * @return 1 if the capability is present, otherwise 0.
  */
@@ -213,9 +213,9 @@ int ksceSblACMgrIsSystemProgram2(SceUID pid);
 int ksceSblACMgrGetMediaType2(const char *path, SceUInt32 *mediaType);
 
 /**
- * Get the program authority ID from the process self-authentication info.
+ * Get the program authority ID from the process self-authentication information.
  *
- * @param[in]  pid   - Process ID value of type ::ScePID.
+ * @param[in]  pid   - Target process ID (::ScePID).
  * @param[out] pPaid - Program authority ID.
  *
  * @return SCE_OK on success, or 0x800F0916 if \a pPaid is NULL or the
@@ -236,7 +236,7 @@ int ksceSblACMgrGetPaid2(SceUID pid, SceUInt64 *pPaid);
  * 133 (force-open message pipe), 134 (PlayReady system data), and 135
  * (system data).
  *
- * @param[in] pid           - Process ID value of type ::ScePID.
+ * @param[in] pid           - Target process ID (::ScePID).
  * @param[in] capabilityBit - Capability bit number.
  *
  * @return 1 if the capability is present, otherwise 0. Failure to obtain the

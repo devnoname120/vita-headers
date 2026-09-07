@@ -15,9 +15,9 @@ extern "C" {
 /**
  * Append at most \p count characters from one string to another.
  *
- * The destination is always terminated with a NUL after the copied suffix.
- * The function does not know the destination capacity and performs no overlap
- * or overflow check.
+ * A NUL is always written after the appended characters. The function does
+ * not know the destination capacity and does not check for overlapping buffers
+ * or writes past the end of the destination buffer.
  *
  * @param[in,out] dest NUL-terminated destination string.
  * @param[in] src NUL-terminated source string.
@@ -32,13 +32,14 @@ char *strncat(char *dest, const char *src, size_t count);
  * Copy at most \p count characters with runtime-constraint checks.
  *
  * On success, FW 3.60 copies `strnlen_s(src, count)` characters and appends a
- * NUL. The destination capacity must be greater than that bounded length, and
- * the source characters must not overlap the complete destination range.
+ * NUL. The destination capacity must be greater than the number of characters
+ * copied, and the source characters must not overlap any part of the
+ * destination buffer.
  *
  * A NULL destination, zero destination capacity, or capacity greater than
- * `INT_MAX` invokes the runtime constraint handler without writing the
+ * `INT_MAX` calls the runtime constraint handler without writing the
  * destination. A NULL source, count greater than `INT_MAX`, insufficient
- * capacity, or overlap first sets `dest[0]` to NUL and then invokes the
+ * capacity, or overlap first sets `dest[0]` to NUL and then calls the
  * handler.
  *
  * This four-argument SceLibc export is ABI-incompatible with the distinct

@@ -16,7 +16,7 @@ extern "C" {
 /**
  * LiveArea frame database layer.
  *
- * The source directory is provided independently to the update function. The
+ * Pass the source directory separately to the update function. The
  * paths below are the conventional source locations. Retail frames take
  * precedence over normal frames when both variants of the same frame exist.
  */
@@ -29,17 +29,18 @@ typedef enum SceLiveAreaTargetType {
  * Poll an asynchronous LiveArea operation.
  *
  * Only one LiveArea operation can be pending in a process at a time.
- * The SceShell worker progresses independently; this function only retrieves
- * its current or terminal result. Retrieving a terminal result clears the
- * process-local pending request, so a subsequent call reports no request.
+ * SceShell runs the operation independently; this function only checks whether
+ * it has finished and returns its result. The final result is returned once,
+ * then the pending request is cleared for the process. Later calls report no
+ * request until another operation is submitted.
  *
  * @retval 1 The operation is still pending.
- * @retval 0 The operation completed successfully. This consumes the terminal
- * result and clears the pending request.
+ * @retval 0 The operation completed successfully. The pending request is
+ * cleared.
  * @retval 0x80104001 No operation is pending. This is also returned after a
- * terminal result has already been consumed.
- * @return Another negative value is the terminal result returned by SceShell;
- * retrieving it also clears the pending request.
+ * final result has already been returned.
+ * @return Another negative value is the final error returned by SceShell;
+ * returning it also clears the pending request.
  */
 int sceLiveAreaGetStatus(void);
 
@@ -47,7 +48,7 @@ int sceLiveAreaGetStatus(void);
  * Replace all LiveArea data for the calling title synchronously.
  *
  * Normally the target is the title associated with the calling process. After
- * ::sceLiveAreaEnableBgAppMode is called, an implicit target is instead read
+ * ::sceLiveAreaEnableBgAppMode is called, the target title is instead read
  * from the caller's `_fg_title_id` LSDB property.
  *
  * @param[in] contentsPath - Directory containing the replacement LiveArea data.
@@ -74,7 +75,7 @@ int sceLiveAreaReplaceAllSync(const char *contentsPath);
  * Replace all LiveArea data for the calling title asynchronously.
  *
  * Normally the target is the title associated with the calling process. After
- * ::sceLiveAreaEnableBgAppMode is called, an implicit target is instead read
+ * ::sceLiveAreaEnableBgAppMode is called, the target title is instead read
  * from the caller's `_fg_title_id` LSDB property.
  *
  * Poll ::sceLiveAreaGetStatus to obtain the final result.
@@ -85,8 +86,8 @@ int sceLiveAreaReplaceAllSync(const char *contentsPath);
  * @note The source-path restrictions documented for
  * ::sceLiveAreaReplaceAllSync also apply to this function.
  *
- * SceLiveAreaUtil serializes \a contentsPath before returning; the caller does
- * not need to retain it while the asynchronous operation is pending.
+ * You may reuse or free the \a contentsPath string after this function returns,
+ * even if the operation is still running.
  *
  * @retval 0 The operation was submitted.
  * @retval 0x80104001 Another asynchronous operation is still pending.
@@ -100,12 +101,13 @@ int sceLiveAreaReplaceAllAsync(const char *contentsPath);
  *
  * @param[in] contentsPath - Directory containing the replacement LiveArea data.
  * The path must contain at most 255 characters.
- * @param[in] titleId - Target title ID. If NULL or empty, SceShell resolves an
- * implicit target from the calling process, or from its `_fg_title_id` LSDB
- * property after ::sceLiveAreaEnableBgAppMode is called.
+ * @param[in] titleId - Target title ID. If NULL or empty, SceShell normally
+ * uses the calling process's title. After ::sceLiveAreaEnableBgAppMode is called,
+ * a NULL or empty value instead selects the title in the caller's `_fg_title_id`
+ * LSDB property.
  * @param[in] lastModified - Modification time to store with the LiveArea data,
- * or NULL to store a zero tick. Exactly eight bytes are serialized during the
- * call.
+ * or NULL to store a zero tick. Exactly eight bytes are copied into the request
+ * during the call.
  *
  * @note On FW 3.60, selecting the ForTitle export bypasses the implicit
  * `app0:`/`savedata0:` source allowlist, independently of whether \a titleId is
@@ -127,17 +129,19 @@ int sceLiveAreaReplaceAllForTitleSync(const char *contentsPath, const char *titl
  *
  * @param[in] contentsPath - Directory containing the replacement LiveArea data.
  * The path must contain at most 255 characters.
- * @param[in] titleId - Target title ID. If NULL or empty, SceShell resolves an
- * implicit target from the calling process, or from its `_fg_title_id` LSDB
- * property after ::sceLiveAreaEnableBgAppMode is called.
+ * @param[in] titleId - Target title ID. If NULL or empty, SceShell normally
+ * uses the calling process's title. After ::sceLiveAreaEnableBgAppMode is called,
+ * a NULL or empty value instead selects the title in the caller's `_fg_title_id`
+ * LSDB property.
  * @param[in] lastModified - Modification time to store with the LiveArea data,
- * or NULL to store a zero tick. Exactly eight bytes are serialized during the
- * call.
+ * or NULL to store a zero tick. Exactly eight bytes are copied into the request
+ * during the call.
  *
  * @note The source-path and title-resolution behavior documented for
  * ::sceLiveAreaReplaceAllForTitleSync also applies to this function.
  *
- * All pointed-to input data is serialized before this function returns.
+ * You may reuse or free all input buffers after this function returns, even if
+ * the operation is still running.
  *
  * @retval 0 The operation was submitted.
  * @retval 0x80104001 Another asynchronous operation is still pending.
@@ -150,7 +154,7 @@ int sceLiveAreaReplaceAllForTitleAsync(const char *contentsPath, const char *tit
  * Update one LiveArea frame for the calling title synchronously.
  *
  * The frame ID and frame contents are read from the XML document.
- * After ::sceLiveAreaEnableBgAppMode is called, the implicit target is read
+ * After ::sceLiveAreaEnableBgAppMode is called, the target title is read
  * from the caller's `_fg_title_id` LSDB property.
  *
  * @param[in] formatVersion - LiveArea XML format version. Must be `"01.00"`.
@@ -180,7 +184,7 @@ int sceLiveAreaUpdateFrameSync(const char *formatVersion, const char *frameXml, 
  *
  * The frame ID and frame contents are read from the XML document. Poll
  * ::sceLiveAreaGetStatus to obtain the final result.
- * After ::sceLiveAreaEnableBgAppMode is called, the implicit target is read
+ * After ::sceLiveAreaEnableBgAppMode is called, the target title is read
  * from the caller's `_fg_title_id` LSDB property.
  *
  * @param[in] formatVersion - LiveArea XML format version. Must be `"01.00"`.
@@ -194,9 +198,8 @@ int sceLiveAreaUpdateFrameSync(const char *formatVersion, const char *frameXml, 
  * @note The implicit-title source-path policy documented for
  * ::sceLiveAreaReplaceAllSync also applies to frame updates.
  *
- * SceLiveAreaUtil serializes the XML, path, and other pointed-to input before
- * returning; the caller does not need to retain them while the operation is
- * pending.
+ * You may reuse or free the XML, path, and other input buffers after this
+ * function returns, even if the operation is still running.
  *
  * @retval 0 The operation was submitted.
  * @retval 0x80104001 Another asynchronous operation is still pending.
@@ -219,9 +222,10 @@ int sceLiveAreaUpdateFrameAsync(const char *formatVersion, const char *frameXml,
  * @param[in] contentsPath - Directory containing assets referenced by the XML.
  * The path must contain at most 255 characters.
  * @param[in] targetType - One of ::SceLiveAreaTargetType.
- * @param[in] titleId - Target title ID. If NULL or empty, SceShell resolves an
- * implicit target from the calling process, or from its `_fg_title_id` LSDB
- * property after ::sceLiveAreaEnableBgAppMode is called.
+ * @param[in] titleId - Target title ID. If NULL or empty, SceShell normally
+ * uses the calling process's title. After ::sceLiveAreaEnableBgAppMode is called,
+ * a NULL or empty value instead selects the title in the caller's `_fg_title_id`
+ * LSDB property.
  *
  * @note Selecting the ForTitle export bypasses the implicit
  * `app0:`/`savedata0:` source allowlist, even when \a titleId is NULL or empty.
@@ -248,14 +252,16 @@ int sceLiveAreaUpdateFrameForTitleSync(const char *formatVersion, const char *fr
  * @param[in] contentsPath - Directory containing assets referenced by the XML.
  * The path must contain at most 255 characters.
  * @param[in] targetType - One of ::SceLiveAreaTargetType.
- * @param[in] titleId - Target title ID. If NULL or empty, SceShell resolves an
- * implicit target from the calling process, or from its `_fg_title_id` LSDB
- * property after ::sceLiveAreaEnableBgAppMode is called.
+ * @param[in] titleId - Target title ID. If NULL or empty, SceShell normally
+ * uses the calling process's title. After ::sceLiveAreaEnableBgAppMode is called,
+ * a NULL or empty value instead selects the title in the caller's `_fg_title_id`
+ * LSDB property.
  *
  * @note Selecting the ForTitle export bypasses the implicit
  * `app0:`/`savedata0:` source allowlist, even when \a titleId is NULL or empty.
  *
- * All pointed-to input data is serialized before this function returns.
+ * You may reuse or free all input buffers after this function returns, even if
+ * the operation is still running.
  *
  * @retval 0 The operation was submitted.
  * @retval 0x80104001 Another asynchronous operation is still pending.
@@ -271,8 +277,8 @@ int sceLiveAreaUpdateFrameForTitleAsync(const char *formatVersion, const char *f
  *
  * @param[in] formatVersion - LiveArea XML format version. Must be `"01.00"`.
  * @param[in] frameXmlArray - Array of NUL-terminated frame XML documents.
- * Every entry must be non-NULL; FW 3.60 computes each string length without a
- * bound.
+ * Every entry must be non-NULL; FW 3.60 reads each string until its NUL
+ * terminator, without a length limit.
  * @param[in] frameCount - Number of entries in \a frameXmlArray. Must be nonzero.
  * @param[in] contentsPath - Directory containing assets referenced by the XML.
  * The path must contain at most 255 characters.
@@ -303,8 +309,8 @@ int sceLiveAreaUpdateFramesForTitleSync(const char *formatVersion, const char *c
  *
  * @param[in] formatVersion - LiveArea XML format version. Must be `"01.00"`.
  * @param[in] frameXmlArray - Array of NUL-terminated frame XML documents.
- * Every entry must be non-NULL; FW 3.60 computes each string length without a
- * bound.
+ * Every entry must be non-NULL; FW 3.60 reads each string until its NUL
+ * terminator, without a length limit.
  * @param[in] frameCount - Number of entries in \a frameXmlArray. Must be nonzero.
  * @param[in] contentsPath - Directory containing assets referenced by the XML.
  * The path must contain at most 255 characters.
@@ -317,9 +323,8 @@ int sceLiveAreaUpdateFramesForTitleSync(const char *formatVersion, const char *c
  * when \a titleId is NULL or empty. The 0x3F00-byte serialized-request limit
  * documented for ::sceLiveAreaUpdateFramesForTitleSync also applies.
  *
- * The pointer array and every XML string are serialized before this function
- * returns; the caller does not need to retain them while the operation is
- * pending.
+ * You may reuse or free the pointer array and every XML string after this
+ * function returns, even if the operation is still running.
  *
  * @retval 0 The operation was submitted.
  * @retval 0x80104001 Another asynchronous operation is still pending.
@@ -334,10 +339,10 @@ int sceLiveAreaUpdateFramesForTitleAsync(const char *formatVersion, const char *
  * Get the overall LiveArea content revision for the calling title.
  *
  * FW 3.60 queries the LiveArea object currently loaded by SceShell rather than
- * reading the database directly. Background-application mode does not retarget
- * this operation; SceShell always uses the calling application's title. A
- * temporarily unavailable object is retried every 16 milliseconds for up to
- * approximately 10 seconds.
+ * reading the database directly. Background-application mode does not change
+ * the target; SceShell always uses the calling application's title. If the
+ * object is temporarily unavailable, the query is retried every 16 milliseconds
+ * for up to approximately 10 seconds.
  *
  * @param[out] revision - Receives the revision.
  *
@@ -353,10 +358,10 @@ int sceLiveAreaGetRevision(SceUInt64 *revision);
  *
  * If normal and retail variants exist, the retail frame revision is returned.
  * FW 3.60 queries the LiveArea object currently loaded by SceShell rather than
- * reading the database directly. Background-application mode does not retarget
- * this operation; SceShell always uses the calling application's title. A
- * temporarily unavailable object is retried every 16 milliseconds for up to
- * approximately 10 seconds.
+ * reading the database directly. Background-application mode does not change
+ * the target; SceShell always uses the calling application's title. If the
+ * object is temporarily unavailable, the query is retried every 16 milliseconds
+ * for up to approximately 10 seconds.
  *
  * @param[in] frameId - Non-empty frame ID.
  * @param[out] revision - Receives the revision.
@@ -378,7 +383,7 @@ int sceLiveAreaGetFrameRevision(const char *frameId, SceUInt64 *revision);
  * The result is NUL-terminated. At most
  * `min(bufferSize, 1024) - 1` data bytes are returned; FW 3.60 caps a larger
  * requested transfer to 1024 bytes including the terminator.
- * After ::sceLiveAreaEnableBgAppMode is called, the implicit target is read
+ * After ::sceLiveAreaEnableBgAppMode is called, the target title is read
  * from the caller's `_fg_title_id` LSDB property.
  *
  * @param[in] frameId - Frame ID. A NULL pointer is invalid; an empty string
@@ -394,7 +399,7 @@ int sceLiveAreaGetFrameRevision(const char *frameId, SceUInt64 *revision);
 int sceLiveAreaGetFrameUserData(const char *frameId, char *buffer, SceSize bufferSize);
 
 /**
- * Enable foreground-title resolution for a background companion application.
+ * Enable foreground-title selection for a background companion application.
  *
  * By default, an operation without an explicit title ID targets the title
  * associated with the calling process. After this function is called, FW 3.60
@@ -402,10 +407,11 @@ int sceLiveAreaGetFrameUserData(const char *frameId, char *buffer, SceSize buffe
  * title from the caller's `_fg_title_id` LSDB property. If that lookup does not
  * produce a title ID, an affected operation can fail with `0x801040FF`.
  *
- * This sets a process-global flag to 1. There is no corresponding function to
- * disable it. On FW 3.60 it retargets replace-all, single-frame, and frame
- * user-data operations. Revision requests transmit the byte but SceShell
- * ignores it, and multi-frame updates do not transmit it.
+ * This sets a flag shared by all threads in the process to 1. There is no
+ * corresponding function to disable it. On FW 3.60 it changes the target for
+ * replace-all, single-frame, and frame user-data operations. Revision requests
+ * transmit the flag byte but SceShell ignores it, and multi-frame updates do
+ * not transmit it.
  *
  * @warning This does not put the calling application into the background,
  * register an `_fg_title_id` relationship, grant additional privileges, or

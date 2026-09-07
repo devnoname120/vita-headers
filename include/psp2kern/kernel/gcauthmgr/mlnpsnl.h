@@ -15,12 +15,12 @@ extern "C" {
 #endif
 
 /**
- * Performs the first MLNPSNL authentication phase.
+ * Perform the first MLNPSNL authentication phase.
  *
- * All pointers are required. The function consumes each input synchronously,
- * clears both output structures before cryptographic processing, and retains no
- * caller pointer after returning. Do not use either output unless the function
- * returns success.
+ * All pointers must be non-NULL. The input buffers must remain valid until this
+ * function returns; they are not used afterwards. The function clears both
+ * output structures before cryptographic processing and retains no caller
+ * pointer after returning. Do not use either output unless the function succeeds.
  *
  * @param[in] request - Complete 0x20-byte phase-one request.
  * @param[in] secureTick - Complete current secure tick.

@@ -20,8 +20,8 @@ extern "C" {
  *
  * @param[in] resume - Zero while suspending, or one while resuming.
  * @param[in] eventId - Event identifier.
- * @param[in] eventParam - Dispatch-specific event data.
- * @param[in] args - Private argument supplied when the handler was registered.
+ * @param[in] eventParam - Event data supplied to ::ksceKernelSysEventDispatch.
+ * @param[in] args - Private argument supplied when registering the handler.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -49,23 +49,24 @@ int ksceKernelPowerTick(SceKernelPowerTickType type);
 int ksceKernelRegisterSysEventHandler(const char *name, SceSysEventHandler handler, void *args);
 
 /**
- * Dispatches a suspend or resume event to all registered handlers.
+ * Call registered handlers for a suspend or resume event.
  *
- * If a handler fails and \p failedHandlerId is non-NULL, dispatch stops and the
- * failing handler UID is returned through it. If \p failedHandlerId is NULL,
- * dispatch continues after handler failures and returns the last handler result.
+ * If a handler fails and \p failedHandlerId is non-NULL, stop calling handlers
+ * and write the failing handler's UID to *failedHandlerId. If \p failedHandlerId
+ * is NULL, continue calling handlers after failures and return the last
+ * handler's result.
  *
  * @param[in] resume - Zero while suspending, or one while resuming.
  * @param[in] eventId - Event identifier.
- * @param[in] eventParam - Dispatch-specific event data forwarded to each handler.
+ * @param[in] eventParam - Event data passed to each handler that is called.
  * @param[out] failedHandlerId - Optional output for the first failing handler UID.
  *
- * @return The last invoked handler result, or 0 when no handler is registered.
+ * @return The result from the last handler called, or 0 when no handler is registered.
  */
 int ksceKernelSysEventDispatch(SceBool resume, SceUInt32 eventId, void *eventParam, SceUID *failedHandlerId);
 
 /**
- * Unregisters a system event handler.
+ * Unregister a system event handler.
  *
  * @param[in] handlerId - UID returned by ::ksceKernelRegisterSysEventHandler.
  *

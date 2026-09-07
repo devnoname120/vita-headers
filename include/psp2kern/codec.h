@@ -3,8 +3,8 @@
  * \usage{psp2kern/codec.h,SceCodecForDriver_stub}
  *
  * On handheld FW 3.60 systems, this library controls the external WM audio
- * codec. On Vita TV, no backend is installed: these exports return 0 and
- * output pointers are left untouched.
+ * codec. On Vita TV, no codec driver is installed: these functions return 0
+ * and do not write to output pointers.
  */
 
 #ifndef _PSP2KERN_CODEC_H_
@@ -19,10 +19,10 @@ extern "C" {
 /**
  * Complete output-route configurations used by SceAVConfig on FW 3.60.
  *
- * These entries identify complete endpoint configurations, not individual
- * endpoint flags. The WM backend independently decodes mask bits 0x0100,
+ * Each value specifies a complete output-route configuration, not an individual
+ * output flag. The WM driver independently checks mask bits 0x0100,
  * 0x0400, and 0x1000; all other bits are ignored. Other combinations of the
- * three decoded bits are accepted but are not used by FW 3.60 SceAVConfig.
+ * three bits are accepted but are not used by FW 3.60 SceAVConfig.
  */
 typedef enum SceCodecOutputRoute {
 	SCE_CODEC_OUTPUT_ROUTE_NONE      = 0x0000, //!< Disable all local codec outputs.
@@ -34,8 +34,8 @@ typedef enum SceCodecOutputRoute {
 /**
  * External-codec audio-output profiles used by SceAudio.
  *
- * The FW 3.60 WM backend examines only bits 8 through 15. Any value whose
- * high byte is neither 0x01 nor 0x02 leaves the current profile unchanged.
+ * The FW 3.60 WM driver examines only bits 8 through 15. If that byte is
+ * neither 0x01 nor 0x02, the current profile is left unchanged.
  */
 typedef enum SceCodecAudioOutMode {
 	SCE_CODEC_AUDIO_OUT_MODE_COMPRESSED = 0x0100, //!< Compressed SceAudio output profile.
@@ -49,15 +49,15 @@ typedef enum SceCodecAudioInputMode {
 	SCE_CODEC_AUDIO_INPUT_MODE_INACTIVE    = -1, //!< Inactive WM register profile.
 	SCE_CODEC_AUDIO_INPUT_MODE_BUILTIN_MIC = 0,  //!< Handheld built-in microphone.
 	SCE_CODEC_AUDIO_INPUT_MODE_HEADSET_MIC = 1,  //!< Wired headset microphone.
-	SCE_CODEC_AUDIO_INPUT_MODE_UNK_2       = 2   //!< WM profile not used by a first-party FW 3.60 caller.
+	SCE_CODEC_AUDIO_INPUT_MODE_UNK_2       = 2   //!< WM profile with no known first-party FW 3.60 caller.
 } SceCodecAudioInputMode;
 
 /**
  * Read a raw register from the external audio codec.
  *
- * The FW 3.60 WM backend sends the low 16 bits of the address as a big-endian
- * word to I2C bus 0, device address 0x34. This raw entry point does not acquire
- * the codec mutex and therefore must not race another codec operation.
+ * The FW 3.60 WM driver sends the low 16 bits of the address as a big-endian
+ * word to I2C bus 0, device address 0x34. This function does not lock the codec
+ * mutex. Do not call it concurrently with another codec operation.
  *
  * @param[in] reg - Register address; only the low 16 bits are used.
  *
@@ -68,11 +68,11 @@ int ksceCodecReadRegister(SceUInt32 reg);
 /**
  * Write a raw register in the external audio codec.
  *
- * The FW 3.60 WM backend sends the address and value as big-endian 16-bit
+ * The FW 3.60 WM driver sends the address and value as big-endian 16-bit
  * words to I2C bus 0, device address 0x34. It waits for a preceding special
  * register write to complete and retries a failed transfer up to three times.
- * This raw entry point does not acquire the codec mutex and therefore must not
- * race another codec operation.
+ * This function does not lock the codec mutex. Do not call it concurrently
+ * with another codec operation.
  *
  * @param[in] reg - Register address; only the low 16 bits are used.
  * @param[in] value - Register value; only the low 16 bits are used.
@@ -84,14 +84,14 @@ int ksceCodecWriteRegister(SceUInt32 reg, SceUInt32 value);
 /**
  * Get the current external-codec output state.
  *
- * @param[out] speaker_gain_db - Optional pointer that receives the cached
- *                               speaker gain in dB. Receives -121 while the
- *                               speaker route is inactive on FW 3.60.
- * @param[out] headphone_gain_db - Optional pointer that receives the cached
- *                                 headphone gain in dB.
+ * @param[out] speaker_gain_db - Receives the cached speaker gain in dB, or -121
+ *                               while the speaker route is inactive on FW 3.60.
+ *                               May be NULL.
+ * @param[out] headphone_gain_db - Receives the cached headphone gain in dB.
+ *                                 May be NULL.
  *
- * @return The current absolute output-route mask composed of bits 0x0100,
- *         0x0400, and 0x1000; known endpoint configurations are listed in
+ * @return The complete current output-route mask composed of bits 0x0100,
+ *         0x0400, and 0x1000; known route configurations are listed in
  *         ::SceCodecOutputRoute. Returns a negative mutex error on failure.
  */
 int ksceCodecGetOutputState(SceInt32 *speaker_gain_db, SceInt32 *headphone_gain_db);
@@ -99,10 +99,10 @@ int ksceCodecGetOutputState(SceInt32 *speaker_gain_db, SceInt32 *headphone_gain_
 /**
  * Set the external-codec output route.
  *
- * The route is an absolute mask. The FW 3.60 WM backend independently enables
- * or disables the paths selected by bits 0x0100, 0x0400, and 0x1000 and
- * ignores all other bits. Known complete endpoint configurations are listed
- * in ::SceCodecOutputRoute.
+ * The new mask replaces the route configuration; it is not ORed with the
+ * current mask. The FW 3.60 WM driver independently enables or disables the
+ * paths selected by bits 0x0100, 0x0400, and 0x1000 and ignores all other bits.
+ * Known complete route configurations are listed in ::SceCodecOutputRoute.
  *
  * @param[in] output_mask - New output-route mask.
  *
@@ -119,7 +119,7 @@ int ksceCodecSetOutputRoute(SceUInt32 output_mask);
  * @return 0 on success, 0x80261000 when \a volume_level is greater than 30,
  *         a negative mutex or I2C error for a headphone-path failure, or 1
  *         for a speaker-path lock or programming failure on the FW 3.60 WM
- *         backend.
+ *         driver.
  */
 int ksceCodecSetVolume(SceUInt32 volume_level);
 
@@ -128,7 +128,7 @@ int ksceCodecSetVolume(SceUInt32 volume_level);
  *
  * FW 3.60 SceAVConfig selects the built-in-microphone profile at handheld
  * initialization and changes to the headset-microphone profile when a wired
- * headset microphone is selected. The WM backend also implements mode 2, but
+ * headset microphone is selected. The WM driver also implements mode 2, but
  * no first-party FW 3.60 caller was found that selects it. Other signed values
  * return 0x80261000.
  *
@@ -143,9 +143,9 @@ int ksceCodecSetAudioInputMode(SceCodecAudioInputMode mode);
  * Select the external-codec audio-output mode used by SceAudio.
  *
  * If the speaker path is active, changing profiles temporarily disables that
- * path, reconfigures the codec, and restores it. On the FW 3.60 WM backend a
+ * path, reconfigures the codec, and restores it. On the FW 3.60 WM driver a
  * compressed-profile request made while the speaker path is inactive is not
- * retained.
+ * saved.
  *
  * @param[in] mode - One of ::SceCodecAudioOutMode.
  *
@@ -156,7 +156,7 @@ int ksceCodecSetAudioOutMode(SceCodecAudioOutMode mode);
 /**
  * Get the headset-microphone detection state.
  *
- * The FW 3.60 WM backend returns codec register 0x30 bit 7. After microphone
+ * The FW 3.60 WM driver returns codec register 0x30 bit 7. After microphone
  * detection power is enabled, SceHpremote interprets 0 as microphone present
  * and every nonzero result as microphone absent.
  *

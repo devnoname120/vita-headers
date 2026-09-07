@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 typedef struct SceSblSealedKey {
-	char magic[8];                  //!< Magic value that needs to be set to "pfsSKKey".
+	char magic[8];                  //!< Must be "pfsSKKey".
 	SceUInt8 major_version;         //!< Set to 2 when generated; legacy values 0 and 1 are also accepted.
 	SceUInt8 minor_version;         //!< Must be 0 for the supported versions.
 	SceUInt8 reserved[6];           //!< Set to 0 by ::ksceSblPostSsMgrEncryptSealedkey.
@@ -26,7 +26,7 @@ typedef struct SceSblSealedKey {
 VITASDK_BUILD_ASSERT_EQ(0x50, SceSblSealedKey); // size is from FW 3.60
 
 typedef struct SceSblKeystone {
-	char magic[8];                  //!< Magic value that needs to be set to "keystone".
+	char magic[8];                  //!< Must be "keystone".
 	SceUInt16 type;                 //!< Must be 2.
 	SceUInt16 version;              //!< Supported values are 0 and 1.
 	SceUInt8 reserved[0x14];        //!< Included in the keystone HMAC.
@@ -36,7 +36,7 @@ typedef struct SceSblKeystone {
 VITASDK_BUILD_ASSERT_EQ(0x60, SceSblKeystone); // size is from FW 3.60
 
 typedef struct SceSblDebugKeystone {
-	char magic[8];                  //!< Magic value that needs to be set to "keystone".
+	char magic[8];                  //!< Must be "keystone".
 	SceUInt16 type;                 //!< Must be 1.
 	SceUInt16 version;              //!< Set to 0 when encrypted and ignored when decrypted.
 	SceUInt8 reserved[4];           //!< Set to 0 when encrypted and ignored when decrypted.
@@ -49,14 +49,14 @@ typedef struct SceSblCloudDataKeyRing {
 	char magic[8];                  //!< Magic value "CloudBU" followed by a NUL byte.
 	SceUInt32 version;              //!< Supported values are 0 and 1.
 	SceUInt8 opaque_header_data[4]; //!< Copied unchanged; not interpreted by the
-	                               //!< FW 3.60 provider or known importer.
+	                               //!< FW 3.60 implementation or known importer.
 	SceUInt8 p[0x80];               //!< RSA prime p.
 	SceUInt8 q[0x80];               //!< RSA prime q.
 	SceUInt8 dp[0x80];              //!< d mod (p - 1).
 	SceUInt8 dq[0x80];              //!< d mod (q - 1).
 	SceUInt8 qp[0x80];              //!< q^-1 mod p.
 	SceUInt8 opaque_trailer_data[0x10]; //!< Copied unchanged; not interpreted by the
-	                                   //!< FW 3.60 provider or known importer.
+	                                   //!< FW 3.60 implementation or known importer.
 } SceSblCloudDataKeyRing;
 VITASDK_BUILD_ASSERT_EQ(0x2A0, SceSblCloudDataKeyRing); // size is from FW 3.60
 
@@ -111,8 +111,8 @@ typedef enum SceSblRsaHashType {
  * @param[out] rsa_signature - Receives a 0x100-byte signature.
  * @param[in] hash - Hash to sign.
  * @param[in] private_key - RSA private key.
- * @param[in] type - One of ::SceSblRsaHashType. The argument remains declared
- *                   as an integer for backwards compatibility.
+ * @param[in] type - One of ::SceSblRsaHashType. Declared as an integer for
+ *                   backwards compatibility.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -124,8 +124,8 @@ int ksceSblRSA2048CreateSignature(SceSblRsaDataParam *rsa_signature, SceSblRsaDa
  * @param[in] rsa_signature - 0x100-byte signature.
  * @param[in] hash - Hash to verify.
  * @param[in] public_key - RSA modulus and exponent.
- * @param[in] type - One of ::SceSblRsaHashType. The argument remains declared
- *                   as an integer for backwards compatibility.
+ * @param[in] type - One of ::SceSblRsaHashType. Declared as an integer for
+ *                   backwards compatibility.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -199,9 +199,8 @@ int ksceSblPostSsMgrDebugEncryptKeystone(const SceUInt8 *secret, SceSblDebugKeys
 /**
  * Validate the header and decrypt a debug keystone.
  *
- * Unlike ::ksceSblPostSsMgrVerifyKeystone, this operation does not
- * authenticate the encrypted payload and does not inspect the version or
- * reserved fields.
+ * Unlike ::ksceSblPostSsMgrVerifyKeystone, this function does not
+ * authenticate the encrypted data or check the version or reserved fields.
  *
  * @param[in] keystone - Debug keystone to decrypt.
  * @param[out] secret - Receives exactly 0x20 bytes.
@@ -271,8 +270,8 @@ int ksceSblSsMgrCloudDataStop(void);
  * Load an authenticated firmware image.
  *
  * Call ::ksceSblFwLoaderLock first and ::ksceSblFwLoaderUnlock afterward.
- * FW 3.60 consumes the locked path state after one load attempt, so another
- * image requires a new lock/load/unlock sequence.
+ * On FW 3.60, the saved path can be used for only one load attempt. To load
+ * another image, repeat the lock/load/unlock sequence.
  *
  * @param[in] e_phnum - Must be 1 on FW 3.60.
  * @param[out] destination - Destination buffer.
@@ -286,7 +285,7 @@ int ksceSblFwLoaderLoad(int e_phnum, void *destination, SceSize max_size, SceSiz
 /**
  * Lock and authenticate a firmware image.
  *
- * This function acquires a module-global lock that is held until
+ * This function acquires the module's shared lock, which is held until
  * ::ksceSblFwLoaderUnlock is called.
  *
  * @param[in] path - NUL-terminated firmware SELF path of at most 255 bytes.
@@ -297,7 +296,7 @@ int ksceSblFwLoaderLoad(int e_phnum, void *destination, SceSize max_size, SceSiz
 int ksceSblFwLoaderLock(const char *path, int reserved);
 
 /**
- * Release the firmware-loader lock and its retained path state.
+ * Release the firmware-loader lock and discard the saved path.
  *
  * @return SCE_OK on success, < 0 if no load sequence is active.
  */
@@ -401,7 +400,7 @@ int ksceSblRtcMgrSetCpRtcPhysical(int rtc);
  *
  * @note FW 3.60 does not implement this operation and returns 0x800F1025.
  *
- * @return 0x800F1025 on FW 3.60.
+ * @return Always 0x800F1025 on FW 3.60.
  */
 int ksceSblRtcMgrSetCpRtcLogical(int rtc);
 
@@ -452,8 +451,8 @@ int ksceSblSpsfoMgrClose(SceSblSpsfoContext *context);
  *
  * The returned payload points inside the context's mapped memory and remains
  * valid only until ::ksceSblSpsfoMgrClose is called.
- * AuthMgr requires the mapped base to be 0x20-byte aligned and verifies the
- * file through secure command 8 before the payload is returned.
+ * AuthMgr requires the mapped base address to be 0x20-byte aligned. It verifies
+ * the file through secure command 8 before the payload is returned.
  *
  * @param[in] context - Context returned by ::ksceSblSpsfoMgrOpen.
  * @param[out] payload - Receives the verified payload address.
@@ -464,10 +463,10 @@ int ksceSblSpsfoMgrClose(SceSblSpsfoContext *context);
 int ksceSblSpsfoMgrVerify(SceSblSpsfoContext *context, void **payload, SceSize *payload_size);
 
 /**
- * Verify and persist an encrypted Utoken.
+ * Verify an encrypted Utoken and write it to storage.
  *
  * @param[in] utoken - Encrypted Utoken.
- * @param[in] size - Must be at least 0x800; exactly 0x800 bytes are consumed.
+ * @param[in] size - Must be at least 0x800; exactly 0x800 bytes are used.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -502,7 +501,7 @@ int ksceSblUtMgrHasNpTestFlag(void);
 /**
  * Check whether Utoken flag bit 4 enables Store-mode policy.
  *
- * Consumers use this for Store-specific DRM/save-data policy, privileged
+ * Callers use this flag for Store-specific DRM/save-data policy, privileged
  * update authorization, and the alternate advertisement-network clock.
  */
 int ksceSblUtMgrHasStoreFlag(void);
@@ -527,7 +526,7 @@ int ksceSblUtMgrHasFlag6(void);
 /**
  * Get Utoken flag bit 7.
  *
- * AppMgr uses this flag to permit its save-data mount flow to continue when
+ * AppMgr uses this flag to allow save-data mounting to continue when
  * keystone verification fails.
  */
 int ksceSblUtMgrHasFlag7(void);
@@ -568,7 +567,7 @@ SceBool ksceSblUtMgrIsAllowComTest(SceUID pid);
 SceBool ksceSblUtMgrIsAllowProgramDebug(SceUInt64 program_authority_id);
 
 /**
- * Overwrite and remove the persisted Utoken file.
+ * Overwrite and remove the stored Utoken file.
  *
  * Already parsed Utoken flags remain cached on FW 3.60 until the module is
  * reinitialized.

@@ -314,8 +314,8 @@ int sceCompatGetCurrentSecureTick(SceRtcTick *tick);
  * @param[in] offset - Byte offset in the cached activation data. Must be less
  *                     than 0x1038.
  * @param[out] buffer - Buffer that receives the requested bytes.
- * @param[in] size - Number of bytes to read. The range from \a offset through
- *                   \a offset + \a size must fit within 0x1038 bytes.
+ * @param[in] size - Number of bytes to read. The requested range must fit
+ *                   within the 0x1038-byte activation data.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -325,10 +325,10 @@ int sceCompatDatRead(SceUInt32 index, SceUInt32 offset, void *buffer, SceSize si
  * Read a PSP IdStorage leaf.
  *
  * FW 3.60 accepts PSP keys from 0x100 through 0x13F and maps them to Vita
- * IdStorage keys 0x0000 through 0x003F. Offsets address the resulting
- * 0x200-byte leaf. A \a size of at least 0x200 is clamped to 0x200 before
- * validating the requested range. This function only succeeds for the
- * PSPEmu process associated with the active SceCompat instance.
+ * IdStorage keys 0x0000 through 0x003F. The offset is within the resulting
+ * 0x200-byte leaf. A \a size of 0x200 or greater is treated as 0x200 before
+ * the requested range is checked. This function only succeeds for the PSPEmu
+ * process associated with the active SceCompat instance.
  *
  * @param[in] key - PSP IdStorage key from 0x100 through 0x13F.
  * @param[in] offset - Byte offset within the 0x200-byte leaf.

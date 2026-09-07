@@ -13,36 +13,36 @@ extern "C" {
 #endif
 
 /**
- * Invokes debug LED handler 0 if one is registered.
+ * Call debug LED handler 0 if one is registered.
  *
- * @param[in] arg0 - First opaque handler argument.
- * @param[in] arg1 - Second opaque handler argument.
- * @param[in] arg2 - Third opaque handler argument.
- * @param[in] arg3 - Fourth opaque handler argument.
+ * @param[in] arg0 - First handler argument; meaning unspecified.
+ * @param[in] arg1 - Second handler argument; meaning unspecified.
+ * @param[in] arg2 - Third handler argument; meaning unspecified.
+ * @param[in] arg3 - Fourth handler argument; meaning unspecified.
  */
 void sceDebugLedInvokeHandle0(int arg0, int arg1, int arg2, int arg3);
 
 /**
- * Invokes debug LED handler 1 if one is registered.
+ * Call debug LED handler 1 if one is registered.
  *
- * @param[in] arg0 - First opaque handler argument.
- * @param[in] arg1 - Second opaque handler argument.
- * @param[in] arg2 - Third opaque handler argument.
- * @param[in] arg3 - Fourth opaque handler argument.
+ * @param[in] arg0 - First handler argument; meaning unspecified.
+ * @param[in] arg1 - Second handler argument; meaning unspecified.
+ * @param[in] arg2 - Third handler argument; meaning unspecified.
+ * @param[in] arg3 - Fourth handler argument; meaning unspecified.
  */
 void sceDebugLedInvokeHandle1(int arg0, int arg1, int arg2, int arg3);
 
 /**
- * Gets the current general-purpose input bitfield.
+ * Get the current general-purpose input bitfield.
  *
  * @return The current GPI bitfield.
  */
 SceUInt32 sceKernelGetGPI(void);
 
 /**
- * Sets the general-purpose output bitfield.
+ * Set the general-purpose output bitfield.
  *
- * The full value is retained. On PDEL units, bits 0 through 7 control the
+ * The full value is saved. On PDEL units, bits 0 through 7 control the
  * debug LED display.
  *
  * @param[in] uiBits - Output bitfield.

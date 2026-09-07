@@ -14,13 +14,13 @@
 extern "C" {
 #endif
 
-typedef SceUInt32 SceNgsHRack; //!< Opaque process-local rack token.
+typedef SceUInt32 SceNgsHRack; //!< Opaque rack handle valid only in the calling process.
 VITASDK_BUILD_ASSERT_EQ(4, SceNgsHRack);
-typedef SceUInt32 SceNgsHPatch; //!< Opaque process-local patch token.
+typedef SceUInt32 SceNgsHPatch; //!< Opaque patch handle valid only in the calling process.
 VITASDK_BUILD_ASSERT_EQ(4, SceNgsHPatch);
-typedef SceUInt32 SceNgsHSynSystem; //!< Opaque process-local system token.
+typedef SceUInt32 SceNgsHSynSystem; //!< Opaque system handle valid only in the calling process.
 VITASDK_BUILD_ASSERT_EQ(4, SceNgsHSynSystem);
-typedef SceUInt32 SceNgsHVoice; //!< Opaque process-local voice token.
+typedef SceUInt32 SceNgsHVoice; //!< Opaque voice handle valid only in the calling process.
 VITASDK_BUILD_ASSERT_EQ(4, SceNgsHVoice);
 typedef SceUInt32 SulphaNgsModuleQueryType;
 VITASDK_BUILD_ASSERT_EQ(4, SulphaNgsModuleQueryType);
@@ -49,7 +49,7 @@ typedef SceNgsCallbackFunc SceNgsParamsErrorCallbackFunc;
 
 typedef struct SceNgsCallbackListInfo {
 	SceNgsCallbackFunc callback;
-	const SceNgsCallbackInfo *callbackInfo; //!< Event information copied into user memory for immediate dispatch.
+	const SceNgsCallbackInfo *callbackInfo; //!< Event information copied into user memory for an immediate callback.
 } SceNgsCallbackListInfo;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceNgsCallbackListInfo); // size is from FW 3.60
 

@@ -17,8 +17,8 @@ extern "C" {
 
 typedef struct SceDrmBridgeMlnpsnlAuth1Opt {
 	SceSblGcAuthMgrMlnpsnlSessionData *sessionData; //!< Destination for the phase-one session data.
-	SceSize requestSize; //!< Must be 0x20; smaller copies leave provider input bytes uninitialized.
-	SceSize secureTickSize; //!< Must be 8; smaller copies leave provider input bytes uninitialized.
+	SceSize requestSize; //!< Must be 0x20; smaller copies leave some authentication input bytes uninitialized.
+	SceSize secureTickSize; //!< Must be 8; smaller copies leave some authentication input bytes uninitialized.
 	SceSize responseSize; //!< Number of response bytes to copy, at most 0x80.
 	SceSize sessionDataSize; //!< Number of session-data bytes to copy, at most 0x40.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
@@ -37,20 +37,18 @@ SceBool _sceDrmBridgeIsAllowRemotePlayDebug(void);
 /**
  * Performs the first MLNPSNL authentication phase.
  *
- * The SceDriverUser wrapper supplies the maximum copy sizes and exposes this as
- * a four-buffer operation. The returned session data must be retained unchanged
- * for the second authentication phase. All pointers are required. Both output
- * structures are generated in zero-initialized kernel buffers and the requested
- * byte counts are copied back even when the authentication provider reports an
- * error; no caller pointer is retained after the function returns.
+ * The SceDriverUser wrapper takes four buffers and sets all copy sizes to their
+ * maximum values. Keep the returned session data unchanged for the second
+ * authentication phase. All pointers must be non-NULL. Both output structures
+ * are built in zero-initialized kernel buffers. The requested byte counts are
+ * copied back even when authentication reports an error. This function does
+ * not use any caller buffer after it returns.
  *
- * @param[in] request - Required phase-one request. requestSize must be exactly
- *                      0x20.
- * @param[in] secureTick - Required secure tick. secureTickSize must be exactly
- *                         8.
- * @param[out] response - Required phase-one response. responseSize must be at most
- *                        0x80; the system wrapper requests the complete structure.
- * @param[in] opt - Required copy sizes and required session-data destination.
+ * @param[in] request - Phase-one request. Set \c opt->requestSize to exactly 0x20.
+ * @param[in] secureTick - Secure tick. Set \c opt->secureTickSize to exactly 8.
+ * @param[out] response - Receives the phase-one response. \c opt->responseSize
+ * must be at most 0x80; the system wrapper requests the complete structure.
+ * @param[in] opt - Copy sizes and session-data destination.
  *
  * @note The calling process must be authorized as a system program.
  *

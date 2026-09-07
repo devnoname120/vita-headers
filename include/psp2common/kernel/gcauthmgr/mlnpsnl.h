@@ -16,7 +16,7 @@ extern "C" {
 /**
  * MLNPSNL phase-one request.
  *
- * FW 3.60 incorporates all 0x20 bytes into the protected response. Observed
+ * FW 3.60 uses all 0x20 bytes when generating the protected response. Observed
  * system callers zero the structure and set \a mode to 0, 0x10, or 0x11.
  */
 typedef struct SceSblGcAuthMgrMlnpsnlAuth1Request {
@@ -39,12 +39,12 @@ VITASDK_BUILD_ASSERT_EQ(0x80, SceSblGcAuthMgrMlnpsnlAuth1Response); // size is f
 /**
  * Caller-owned state linking MLNPSNL authentication phases one and two.
  *
- * Retain this structure unchanged until phase two completes. The provider does
- * not retain its address after the phase-one call returns.
+ * Keep this structure unchanged until phase two completes. The phase-one
+ * function does not retain its address after returning.
  */
 typedef struct SceSblGcAuthMgrMlnpsnlSessionData {
 	SceUInt8 sessionKey[0x10]; //!< Candidate key copied to the final output only after phase-two verification.
-	SceUInt8 bindingData[0x10]; //!< Value against which the decrypted phase-two response is bound.
+	SceUInt8 bindingData[0x10]; //!< Value used to bind the decrypted phase-two response to this session.
 	SceUInt8 phaseOnePacketSize; //!< Set to 0x80 and required in the phase-two header.
 	SceUInt8 reserved[0x1F]; //!< Set to zero.
 } SceSblGcAuthMgrMlnpsnlSessionData;

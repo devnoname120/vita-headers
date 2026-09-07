@@ -22,10 +22,10 @@ VITASDK_BUILD_ASSERT_EQ(8, SceKernelGetRandomNumberParam); // size is from FW 3.
 /**
  * Generate up to 0x40 bytes using SceSblRng's pseudorandom generator.
  *
- * The provider first generates \a length bytes, then copies the number in
- * ::SceKernelGetRandomNumberParam::dstSize to \a pDst. Bytes between those
- * two sizes are zero if the destination size is larger than \a length. The
- * public ::sceKernelGetRandomNumber wrapper sets both sizes to the same value.
+ * The function first generates \a length bytes, then copies
+ * ::SceKernelGetRandomNumberParam::dstSize bytes to \a pDst. If this count is
+ * larger than \a length, the extra bytes are zero. The public
+ * ::sceKernelGetRandomNumber wrapper sets both sizes to the same value.
  *
  * @param[out] pDst - Required destination buffer.
  * @param[in] length - Number of random bytes to generate; must be at most 0x40.

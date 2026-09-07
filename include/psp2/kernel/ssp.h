@@ -15,8 +15,8 @@ extern "C" {
 /**
  * Raises breakpoint 0x81 and does not return.
  *
- * This is the ::SceLibSsp alias of ::__stack_chk_fail; both exports resolve
- * to the same FW 3.60 entry point.
+ * This is the ::SceLibSsp alias of ::__stack_chk_fail. Both names use the same
+ * entry point on FW 3.60.
  */
 __attribute__((__noreturn__))
 void sceLibSspStackChkFail(void);

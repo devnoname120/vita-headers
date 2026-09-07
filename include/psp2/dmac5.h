@@ -16,29 +16,30 @@ extern "C" {
 
 
 typedef struct SceSblDmac5EncDecParam { // size is 0x18-bytes
-	const void *src; //!< The operation input buffer
-	void *dst;       //!< The operation output buffer
-	SceSize length;  //!< The src data length
-	const void *key; //!< The key data
-	SceSize keysize; //!< The key size in bits
-	void *iv;        //!< The initialization vector
+	const void *src; //!< Input buffer.
+	void *dst;       //!< Output buffer.
+	SceSize length;  //!< Length of the input data.
+	const void *key; //!< Key data.
+	SceSize keysize; //!< Key size in bits.
+	void *iv;        //!< Initialization vector.
 } SceSblDmac5EncDecParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSblDmac5EncDecParam);
 
 typedef struct SceSblDmac5HashTransformParam { // size is 0x18-bytes
-	const void *src; //!< The operation input buffer
-	void *dst;       //!< The operation output buffer
-	SceSize length;  //!< The src data length
-	const void *key; //!< The key data
-	SceSize keysize; //!< The key size in bits
-	void *ctx;       //!< A pointer to a ::SceSblDmac5HashTransformContext, or a ::SceSblDmac5AesCmacContext for AES-CMAC.
+	const void *src; //!< Input buffer.
+	void *dst;       //!< Output buffer.
+	SceSize length;  //!< Length of the input data.
+	const void *key; //!< Key data.
+	SceSize keysize; //!< Key size in bits.
+	void *ctx;       //!< Pointer to a ::SceSblDmac5HashTransformContext, or a ::SceSblDmac5AesCmacContext for AES-CMAC.
 } SceSblDmac5HashTransformParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSblDmac5HashTransformParam);
 
 /**
  * @brief Execute DMAC5 encdec command
  *
- * @param[in]     param  - Operation parameters; referenced destination and IV buffers are written.
+ * @param[in]     param  - Operation parameters. The destination and IV buffers
+ *                         they point to are written.
  * @param[in]    command - The DMAC5 encdec command.
  *
  * @return 0 on success, else < 0.
@@ -54,8 +55,8 @@ int sceSblDmac5EncDec(const SceSblDmac5EncDecParam *param, SceUInt32 command);
  * 16-byte IV from ::SceSblDmac5EncDecParam::iv and replace it with the updated
  * IV.
  *
- * @param[in] param - Required operation parameters. The structure itself is
- *                    only read; the referenced destination and IV are written.
+ * @param[in] param - Required operation parameters. The structure is only read;
+ *                    the destination and IV buffers it points to are written.
  * @param[in] key_id - AuthMgr key identifier.
  * @param[in] command - DMAC5 cipher command word.
  *
@@ -67,7 +68,8 @@ int sceSblDmac5EncDecKeyGen(const SceSblDmac5EncDecParam *param, SceUInt32 key_i
 /**
  * @brief Execute DMAC5 hash transform command
  *
- * @param[in]     param  - Operation parameters; referenced destination and context buffers may be written.
+ * @param[in]     param  - Operation parameters. The destination and context
+ *                         buffers they point to may be written.
  * @param[in]    command - The DMAC5 hash base command.
  * @param[in]    flags   - Bitwise OR of ::SceSblDmac5HashFlag values. Use 0
  *                         for a complete one-shot operation, 0x400 for the
@@ -87,8 +89,8 @@ int sceSblDmac5HashTransform(const SceSblDmac5HashTransformParam *param, SceUInt
  * ::SceSblDmac5HashTransformContext; AES-CMAC uses a 0x10-byte
  * ::SceSblDmac5AesCmacContext.
  *
- * @param[in] param - Required operation parameters. The structure itself is
- *                    only read; referenced output/context buffers may be written.
+ * @param[in] param - Required operation parameters. The structure is only read;
+ *                    the output and context buffers it points to may be written.
  * @param[in] key_id - AuthMgr key identifier.
  * @param[in] command - DMAC5 hash or MAC command word.
  * @param[in] flags - Bitwise OR of ::SceSblDmac5HashFlag values.

@@ -26,26 +26,26 @@ typedef enum SceMsifErrorCode {
 VITASDK_BUILD_ASSERT_EQ(4, SceMsifErrorCode); // size is from FW 3.60
 
 /**
- * Disable slow-card transfer pacing.
+ * Disable slow-card mode.
  *
  * Slow-card mode does not change the MSIF controller clock. It adds minimum
  * completion delays after successful sector reads and writes, including
  * periodic 350 or 400 ms pauses.
  *
- * @return 0.
+ * @return Always 0.
  */
 int ksceMsifDisableSlowCardMode(void);
 
 /**
- * Enable slow-card transfer pacing.
+ * Enable slow-card mode.
  *
- * @return 0.
+ * @return Always 0.
  * @see ::ksceMsifDisableSlowCardMode
  */
 int ksceMsifEnableSlowCardMode(void);
 
 /**
- * Get the slow-card transfer-pacing state.
+ * Check whether slow-card mode is enabled.
  *
  * @return ::SCE_TRUE when enabled, or ::SCE_FALSE when disabled.
  */

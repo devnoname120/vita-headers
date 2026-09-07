@@ -15,11 +15,10 @@ extern "C" {
 /**
  * Commands accepted by ::ksceWlanBtSetConfiguration.
  *
- * These are mutually exclusive command selectors, not flags. The WLAN and
- * Bluetooth firmware-reload commands form a two-party handshake around a
- * reload of the shared Marvell Robin firmware. The retention commands select
- * which Robin function is restored across the shared device power-state
- * transition.
+ * Pass one command; do not combine commands with `|`. The WLAN and Bluetooth
+ * drivers must coordinate before and after reloading their shared Marvell
+ * Robin firmware. The retention commands select which Robin function is
+ * restored across the shared device power-state transition.
  */
 typedef enum SceWlanBtConfig {
 	SCE_WLANBT_CONFIG_INITIALIZE           = 1,  //!< Initialize the shared Robin WLAN/Bluetooth firmware.
@@ -44,9 +43,8 @@ typedef enum SceWlanBtConfig {
  * Configure the shared WLAN/Bluetooth device.
  *
  * The WLAN and Bluetooth functions share one Marvell Robin device and firmware
- * image. Commands 7/10 and 8/11 must therefore be coordinated by the two
- * drivers. FW 3.60 treats unimplemented selector values, including 0, 9, and
- * 12, as successful no-ops.
+ * image. The two drivers must coordinate commands 7/10 and 8/11. On FW 3.60,
+ * unimplemented commands, including 0, 9, and 12, do nothing and return success.
  *
  * @param[in] config - Configuration command.
  *

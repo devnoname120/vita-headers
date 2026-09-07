@@ -70,7 +70,7 @@ VITASDK_BUILD_ASSERT_EQ(4, SceKernelProcessType);
 /** Used by the kernel process object; rejected by the FW 3.60 create/spawn APIs. */
 #define SCE_KERNEL_PROCESS_TYPE_KERNEL             (0x05000000U)
 
-/** Selects the debug-suspended start path; OR into the type passed to a spawn function. */
+/** Requests a debug-suspended start; OR into the type passed to a spawn function. */
 #define SCE_KERNEL_PROCESS_START_FLAG_DEBUG        (0x80000000U)
 
 /** Select the calling process's built-in game or system-application budget. */
@@ -80,7 +80,7 @@ VITASDK_BUILD_ASSERT_EQ(4, SceKernelProcessType);
 /** Select the built-in system-application process budget. */
 #define SCE_KERNEL_PROCESS_SYSTEM_APPLICATION_PROCESS_BUDGET (3)
 
-/** Known option bits interpreted from ::SceKernelProcessOpt2::attr on FW 3.60. */
+/** Known option bits used in ::SceKernelProcessOpt2::attr on FW 3.60. */
 typedef enum SceKernelProcessOptAttribute {
 	SCE_KERNEL_PROCESS_OPT_ATTR_CPU_AFFINITY_MASK            = 0x00001000, //!< Use ::SceKernelProcessOpt2::cpuAffinityMask.
 	SCE_KERNEL_PROCESS_OPT_ATTR_BUDGET_ID                    = 0x00004000, //!< Use ::SceKernelProcessOpt2::budgetId.
@@ -108,12 +108,12 @@ typedef enum SceKernelProcessExitSpawnMode {
 typedef struct SceKernelProcessOpt2 {
 	SceSize size; //!< Must be 0x40 on FW 3.60.
 	SceUInt32 attr; //!< Bitwise OR of ::SceKernelProcessOptAttribute values. FW 3.60 does not reject unlisted bits, whose purpose is unknown.
-	SceUInt32 cpuAffinityMask; //!< One nibble in bits 0-3 or bits 16-19; zero selects the default and the two encodings cannot be combined.
+	SceUInt32 cpuAffinityMask; //!< Four-bit mask in bits 0-3 or bits 16-19; 0 selects the default. Do not combine the two encodings.
 	SceInt32 initPriority; //!< Initial main-thread priority when selected; otherwise the process-image value or 0x10000100 is used.
 	SceSize stackSize; //!< Main-thread stack size when selected; otherwise the process-image value or 0x40000 is used.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 	SceUID budgetId; //!< Budget selector or process-budget UID; the default selector is ::SCE_KERNEL_PROCESS_FULL_GAME_PROCESS_BUDGET.
-	ScePID parentPid; //!< Parent process ID; the calling PID is used when this field is not selected.
+	ScePID parentPid; //!< Parent process ID; the calling process's ID is used when this field is not selected.
 	SceKernelProcessExitSpawnMode processExitSpawnMode; //!< Exit-spawn handling mode when selected.
 	ScePID processExitSpawnPid; //!< Pending exit-spawn PID to reuse in enabled mode; zero allocates a new object.
 	const void *klicensee; //!< Pointer to a 16-byte klicensee when selected.
@@ -133,13 +133,13 @@ VITASDK_BUILD_ASSERT_EQ(0x40, SceKernelProcessOpt2); // size is from FW 3.60
  * selects the built-in full-game budget and the documented field defaults.
  * Creation is rejected in interrupt context and when either the global or
  * selected-budget process count has already reached 16.
- * The option block and its klicensee bytes are consumed synchronously and are
- * not retained after the call returns.
+ * The option block and its klicensee bytes must remain valid until this
+ * function returns; they are not used afterwards.
  *
- * @param[in] name Required process name.
+ * @param[in] name Non-NULL process name.
  * @param[in] type Process type. Bit 31 is discarded by this function; use a
  *                 spawn or start function to request debug suspension.
- * @param[in] path Required process-image path.
+ * @param[in] path Non-NULL process-image path.
  * @param[in] opt Optional FW 3.60 process options. NULL uses defaults.
  *
  * @return Process ID on success, or < 0 on error.
@@ -205,7 +205,7 @@ SceClass *ksceKernelGetUIDProcessClass(void);
 /**
  * Gets the current process's elapsed time in microseconds.
  *
- * @param[out] pTime Required output.
+ * @param[out] pTime Non-NULL output for the elapsed time.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -218,7 +218,7 @@ SceUInt32 ksceKernelGetProcessTimeLowCore(void);
  * Gets a process's running elapsed time or stored final time in microseconds.
  *
  * @param[in] pid Process ID, or 0 for the current process.
- * @param[out] pTime Required output.
+ * @param[out] pTime Non-NULL output for the elapsed time.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -250,14 +250,15 @@ int ksceKernelKillProcess(ScePID pid, SceInt32 option);
  * Creates and starts a process. A failure while starting automatically kills
  * the newly created process.
  *
- * A normal start consumes the argument block before this function returns. In
- * the debug-suspended path, the preload thread retains its pointer until the
+ * For a normal start, the argument block must remain valid until this function
+ * returns; it is not used afterwards. For a debug-suspended start, the preload
+ * thread keeps the pointer, so the argument block must remain valid until the
  * process is resumed and the main thread is started.
  *
- * @param[in] name Required process name.
+ * @param[in] name Non-NULL process name.
  * @param[in] type Process type, optionally ORed with
  *                 ::SCE_KERNEL_PROCESS_START_FLAG_DEBUG.
- * @param[in] path Required process-image path.
+ * @param[in] path Non-NULL process-image path.
  * @param[in] argSize Argument-block size.
  * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
  * @param[in] pOpt Optional FW 3.60 process options. NULL uses defaults.
@@ -269,10 +270,10 @@ ScePID ksceKernelSpawnProcess(const char *name, SceKernelProcessType type, const
 /**
  * Extended form of ::ksceKernelSpawnProcess.
  *
- * @param[in] name Required process name.
+ * @param[in] name Non-NULL process name.
  * @param[in] type Process type, optionally ORed with
  *                 ::SCE_KERNEL_PROCESS_START_FLAG_DEBUG.
- * @param[in] path Required process-image path.
+ * @param[in] path Non-NULL process-image path.
  * @param[in] argSize Argument-block size.
  * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
  * @param[in] pOpt Optional FW 3.60 process options. NULL uses defaults.
@@ -288,11 +289,12 @@ ScePID ksceKernelSpawnProcessExt(const char *name, SceKernelProcessType type, co
 /**
  * Starts a dormant process.
  *
- * Only bit 31 of startFlags affects FW 3.60 and selects the
- * debug-suspended start path. This form passes zero preloading flags.
- * A normal start consumes the argument block before returning. A
- * debug-suspended start retains its pointer until the process is resumed and
- * the main thread is started.
+ * On FW 3.60, only bit 31 of startFlags has an effect: it requests a start
+ * suspended for debugging. This form passes zero preloading flags.
+ * For a normal start, the argument block must remain valid until this function
+ * returns; it is not used afterwards. For a debug-suspended start, the pointer
+ * is kept, so the argument block must remain valid until the process is resumed
+ * and the main thread is started.
  *
  * @param[in] pid Dormant process ID.
  * @param[in] startFlags Start flags.

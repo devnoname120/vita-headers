@@ -45,7 +45,7 @@ SceUID sceSharedFbOpen(int index)
 
 typedef struct SceSharedFbCreate {
 	SceSize allocMemSize; //!< Size in bytes of the CDRAM allocation.
-	SceUInt32 reserved0; //!< Retained by the object but otherwise ignored on FW 3.60.
+	SceUInt32 reserved0; //!< Stored in the object but otherwise ignored on FW 3.60.
 	SceUInt32 reserved[4]; //!< Ignored on FW 3.60.
 } SceSharedFbCreate;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSharedFbCreate); // size is from FW 3.60
@@ -66,9 +66,9 @@ typedef struct SceSharedFbRenderInfo {
 VITASDK_BUILD_ASSERT_EQ(0x40, SceSharedFbRenderInfo); // size is from FW 3.60
 
 /**
- * Creates a shared-framebuffer object.
+ * Create a shared-framebuffer object.
  *
- * FW 3.60 supports two simultaneously created objects. PAF creates index 1.
+ * FW 3.60 supports two objects at a time. PAF creates index 1.
  * The calling process must be a system program.
  *
  * @param[in] index Non-negative shared-framebuffer index.
@@ -79,17 +79,18 @@ VITASDK_BUILD_ASSERT_EQ(0x40, SceSharedFbRenderInfo); // size is from FW 3.60
 SceUID sceSharedFbCreate(int index, const SceSharedFbCreate *createParam);
 
 /**
- * Gets the current shell render port.
+ * Get the current shell render port.
  *
  * @return 0 or 1 on success, or a negative error code.
  */
 int sceSharedFbGetShellRenderPort(void);
 
 /**
- * Performs one process handoff after ::sceSharedFbUpdateProcessBegin.
+ * Perform one process handoff after ::sceSharedFbUpdateProcessBegin.
  *
- * Call this function exactly the number of times returned by
- * ::sceSharedFbUpdateProcessBegin, then call ::sceSharedFbUpdateProcessEnd.
+ * Call this function exactly the number of times specified by the
+ * `updateCount` output of ::sceSharedFbUpdateProcessBegin, then call
+ * ::sceSharedFbUpdateProcessEnd.
  *
  * @return 1 when the selected process is marked for rendering, 0 otherwise,
  * or a negative error code.
@@ -97,23 +98,23 @@ int sceSharedFbGetShellRenderPort(void);
 int sceSharedFbUpdateProcess(void);
 
 /**
- * Begins a shared-framebuffer update.
+ * Begin a shared-framebuffer update.
  *
- * Both pointers are required on FW 3.60. The calling process must be a
+ * Both pointers must be non-NULL on FW 3.60. The calling process must be a
  * system program and \a sharedFbId must identify one of the two created shared
  * framebuffers.
  *
  * @param[in] sharedFbId Shared-framebuffer ID.
  * @param[in] renderInfo Rendering information copied into the shared framebuffer.
- * @param[out] updateCount A pointer to the 32-bit number of subsequent
- * ::sceSharedFbUpdateProcess calls required.
+ * @param[out] updateCount Receives the 32-bit number of required
+ *                         ::sceSharedFbUpdateProcess calls.
  *
  * @return 0 on success, or a negative error code.
  */
 int sceSharedFbUpdateProcessBegin(SceUID sharedFbId, const SceSharedFbRenderInfo *renderInfo, SceUInt32 *updateCount);
 
 /**
- * Completes a process handoff sequence begun by
+ * Complete a process handoff sequence begun by
  * ::sceSharedFbUpdateProcessBegin.
  *
  * This function takes no arguments and must be called after the corresponding

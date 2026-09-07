@@ -27,8 +27,8 @@ int sceSblPmMgrAuthEtoI(void);
  *
  * This operation is restricted to system programs.
  *
- * @param[out] result - Receives one byte through the existing wider pointer
- *                      type. The byte is one of ::SceSblProductMode.
+ * @param[out] result - Only one byte is written through this int pointer.
+ *                      The byte is a ::SceSblProductMode value.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -39,8 +39,8 @@ int sceSblPmMgrGetCurrentMode(int *result);
  *
  * This operation is restricted to system programs.
  *
- * @param[out] result - Receives one byte through the existing wider pointer
- *                      type. The byte is one of ::SceSblProductMode.
+ * @param[out] result - Only one byte is written through this int pointer.
+ *                      The byte is a ::SceSblProductMode value.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -51,9 +51,8 @@ int sceSblPmMgrGetProductModeForUser(int *result);
  *
  * This operation is restricted to system programs.
  *
- * @param[out] product_mode - Receives the raw NVS byte. Values written by the
- *                            FW 3.60 product-mode operations correspond to
- *                            ::SceSblProductMode.
+ * @param[out] product_mode - Receives the raw NVS byte. The FW 3.60 product-mode
+ *                            operations write ::SceSblProductMode values.
  *
  * @return SCE_OK on success, < 0 on error.
  */
@@ -63,7 +62,7 @@ int sceSblPmMgrGetProductModeFromNVS(SceUInt8 *product_mode);
  * Leave manufacturing mode and disable SD mode.
  *
  * This operation is restricted to system programs.
- * ::sceSblPmMgrGetCurrentMode continues to report the boot-time cached value
+ * ::sceSblPmMgrGetCurrentMode continues to report the value cached at boot
  * until the system restarts.
  *
  * @return SCE_OK on success, < 0 on error.

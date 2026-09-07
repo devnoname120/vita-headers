@@ -57,9 +57,9 @@ int ksceDisplaySetFrameBufInternal(int head, int index, const SceDisplayFrameBuf
  *
  * @param[out] pParam - Pointer to a ::SceDisplayFrameBuf structure
  * which will receive framebuffer parameters.
- * @warning FW 3.60 writes 0x1C bytes even when the leading size is 0x18.
- *          Allocate a ::SceDisplayFrameBufExt-sized object and cast its
- *          address when calling this backwards-compatible prototype.
+ * @warning FW 3.60 writes 0x1C bytes even when the size member is 0x18.
+ *          Allocate a ::SceDisplayFrameBufExt object and cast its address to
+ *          ::SceDisplayFrameBuf * when calling this backwards-compatible prototype.
  *
  * @param[in] sync - One of ::SceDisplaySetBufSync
  *
@@ -277,9 +277,9 @@ VITASDK_BUILD_ASSERT_EQ(1, SceDisplayColorSpaceMode);
 /**
  * Capture the current process's primary GAME_APP framebuffer through DMAC.
  *
- * The destination base must be aligned to 0x100 bytes. Pitch must be a
+ * The destination address must be aligned to 0x100 bytes. Pitch must be a
  * multiple of 64 pixels and at least the requested width. On success, FW 3.60
- * replaces the descriptor's width, height, and pixel format with the actual
+ * replaces the structure's width, height, and pixel format with the actual
  * copied source values.
  *
  * @param[in] pid - Source process ID, or 0 for the calling process.
@@ -295,8 +295,8 @@ SceInt32 ksceDisplayCaptureFrameBufDMAC(SceUID pid, SceDisplayCaptureFrameBuf *p
  * @param[in] pid - Source process ID, or 0 for the calling process.
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pCaptureFrameBuf - Capture destination and resulting format;
- *                                   subject to the same constraints as
+ * @param[in,out] pCaptureFrameBuf - Capture destination and resulting format.
+ *                                   The same rules apply as for
  *                                   ::ksceDisplayCaptureFrameBufDMAC.
  *
  * @return 0 on success, or a negative error code.
@@ -307,7 +307,7 @@ SceInt32 ksceDisplayCaptureFrameBufDMACInternal(SceUID pid, SceDisplayHead head,
  * Convert and capture the current process's primary GAME_APP framebuffer
  * through IFTU.
  *
- * The destination base must be aligned to 0x100 bytes. FW 3.60 accepts pixel
+ * The destination address must be aligned to 0x100 bytes. FW 3.60 accepts pixel
  * format values 0x00000000, 0x00008000, 0x00100000, 0x00108000, 0x60800000,
  * 0x60808000, 0x60900000, and 0x60908000. The destination buffer must contain
  * at least pitch * height * 4 bytes.
@@ -325,8 +325,8 @@ SceInt32 ksceDisplayCaptureFrameBufIFTU(SceUID pid, const SceDisplayCaptureFrame
  * @param[in] pid - Source process ID, or 0 for the calling process.
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in] pCaptureFrameBuf - Capture destination description; subject to
- *                               the same constraints as
+ * @param[in] pCaptureFrameBuf - Capture destination description. The same
+ *                               rules apply as for
  *                               ::ksceDisplayCaptureFrameBufIFTU.
  *
  * @return 0 on success, or a negative error code.
@@ -354,12 +354,13 @@ int ksceDisplayEnableHead(SceDisplayHead head);
 /**
  * Get the effective viewport for a framebuffer slot.
  *
- * The output must be non-NULL with size 0x14. FW 3.60 returns zero for all
- * geometry fields when the slot has no owner or active framebuffer.
+ * The output must be non-NULL with its size member set to 0x14. FW 3.60
+ * returns zero for x, y, width, and height when the slot has no owner or
+ * active framebuffer.
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pViewportConf - Size-initialized viewport output.
+ * @param[in,out] pViewportConf - Receives the viewport; set its size member first.
  *
  * @return 0 on success, or a negative error code.
  */
@@ -382,13 +383,14 @@ int ksceDisplayGetDeviceType(SceDisplayHead head, SceUInt32 *pDeviceInfo);
 /**
  * Get one current process framebuffer slot.
  *
- * FW 3.60 always writes 0x1C bytes. Although it accepts a leading size of
- * either 0x18 or 0x1C, callers must provide storage for the complete extended
- * descriptor.
+ * FW 3.60 always writes 0x1C bytes. Although the size member may be 0x18 or
+ * 0x1C, callers must provide storage for the complete extended framebuffer
+ * structure.
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pFrameBuf - Size-initialized extended framebuffer output.
+ * @param[in,out] pFrameBuf - Receives the extended framebuffer information;
+ *                            set its size member first.
  * @param[in] iUpdateTimingMode - One of ::SceDisplaySetBufSync. FW 3.60
  *                                validates but otherwise ignores this value.
  *
@@ -397,7 +399,7 @@ int ksceDisplayGetDeviceType(SceDisplayHead head, SceUInt32 *pDeviceInfo);
 int ksceDisplayGetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayFrameBufExt *pFrameBuf, SceDisplaySetBufSync iUpdateTimingMode);
 
 /**
- * Get the configured screen-mode ID and output-format word for a head.
+ * Get the configured screen-mode ID and output-format value for a head.
  *
  * @param[in] head - Display head.
  * @param[out] pScreenMode - Optional complete screen-mode ID output.
@@ -427,7 +429,7 @@ SceInt32 ksceDisplayGetRefreshRateInternal(SceDisplayHead head, float *pFps, Sce
  * Get complete resolution and output-mode information for a head.
  *
  * @param[in] head - Display head.
- * @param[in,out] pInfo - Output initialized with size 0x1C.
+ * @param[in,out] pInfo - Receives the information; set its size member to 0x1C.
  *
  * @return 0 on success, or a negative error code.
  */
@@ -436,10 +438,10 @@ int ksceDisplayGetResolutionInfoInternal(SceDisplayHead head, SceDisplayResoluti
 /**
  * Set display brightness.
  *
- * The main-panel path passes values through 0x10000 to the active OLED or LCD
- * driver. For HDMI, zero remains zero, one becomes 0x8000, and values from two
- * through 0x10000 become `0x8000 + (brightness >> 1)` before being applied to
- * the IFTU color-conversion matrices.
+ * For the main panel, values from 0 through 0x10000 are passed to the active
+ * OLED or LCD driver. For HDMI, zero remains zero, one becomes 0x8000, and
+ * values from two through 0x10000 become `0x8000 + (brightness >> 1)` before
+ * being applied to the IFTU color-conversion matrices.
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] brightness - Brightness value from zero through 0x10000.
@@ -461,7 +463,7 @@ int ksceDisplaySetColorSpaceMode(SceDisplayHead head, SceUInt32 mode);
 /**
  * Configure overlay-plane blending for a head.
  *
- * The control value is forwarded verbatim to IFTU. Value 0x80 disables
+ * The control value is passed unchanged to IFTU. Value 0x80 disables
  * blending; every other value enables blending. FW 3.60 performs no other
  * validation of this value.
  *
@@ -474,18 +476,17 @@ int ksceDisplaySetColorSpaceMode(SceDisplayHead head, SceUInt32 mode);
 int ksceDisplaySetMergeConf(SceDisplayHead head, int control, SceUInt32 alpha);
 
 /**
- * Set a head's complete screen-mode ID and output-format word.
+ * Set a head's complete screen-mode ID and output-format value.
  *
- * The output-format word combines a pixel-format encoding with RGB-range bit
+ * The output-format value combines a pixel-format encoding with RGB-range bit
  * 0 where supported. For the main head, FW 3.60 accepts values 0x00000000,
  * 0x00100000, 0x60800000, and 0x60900000. For HDMI it additionally accepts
  * values 0x00000001, 0x00008000, 0x00100001, 0x00108000, 0x60800001,
  * 0x60808000, 0x60900001, and 0x60908000.
  *
  * @param[in] head - Main or HDMI display head.
- * @param[in] screenMode - One of ::SceDisplayScreenModeId. The values are
- *                         constrained complete identifiers, not freely
- *                         composable flags.
+ * @param[in] screenMode - One of ::SceDisplayScreenModeId. Use these IDs as
+ *                         listed; do not combine them as flags.
  * @param[in] outputFormat - Combined pixel-format and RGB-range encoding.
  *
  * @return 0 on success, or a negative error code.
@@ -493,12 +494,12 @@ int ksceDisplaySetMergeConf(SceDisplayHead head, int control, SceUInt32 alpha);
 int ksceDisplaySetOutputMode(SceDisplayHead head, SceDisplayScreenMode screenMode, SceUInt32 outputFormat);
 
 /**
- * Set per-head, per-framebuffer scaling state.
+ * Set scaling for a display head's framebuffer slot.
  *
- * FW 3.60 requires a zero scale when bit 0 of a scaling is clear. When bit 0
- * is set, bits 6 and 7 must be clear and a scale must be between 0.8 and 1.2,
- * inclusive. Observed callers also use scaling values 0x40 and 0x80 with a
- * zero scale.
+ * On FW 3.60, \a scale must be 0 when bit 0 of \a scaling is clear. When bit
+ * 0 is set, bits 6 and 7 must be clear and \a scale must be between 0.8 and
+ * 1.2, inclusive. Observed callers also use \a scaling values 0x40 and 0x80
+ * with a zero scale.
  *
  * @param[in] scale - Per-slot scale factor.
  * @param[in] head - Main or HDMI display head.
@@ -515,9 +516,9 @@ int ksceDisplaySetScaleConf(float scale, SceDisplayHead head, SceDisplayFrameBuf
 /**
  * Set viewport scaling for a framebuffer slot.
  *
- * NULL or {0, 0, 960, 544} selects the default full viewport. A non-NULL
- * structure must have size 0x14; FW 3.60 rejects x values above 640 and y
- * values above 364.
+ * NULL, or x = 0, y = 0, width = 960, and height = 544, selects the default
+ * full viewport. A non-NULL structure must have its size member set to 0x14;
+ * FW 3.60 rejects x values above 640 and y values above 364.
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.

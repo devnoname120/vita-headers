@@ -33,12 +33,12 @@ typedef struct SceConsoleId {
 	SceUInt16 product_sub_code;
 	union {
 		struct {
-			SceUInt8 unk2: 2; //!< Not interpreted by observed FW 3.60 importers.
+			SceUInt8 unk2: 2; //!< Not interpreted by the FW 3.60 callers examined.
 			SceUInt8 factory_code: 6;
 		};
 		SceUInt8 chassis_check;
 	};
-	SceUInt8 unk3[7]; //!< Its purpose is unknown; these bytes are consumed as part of the complete identifier.
+	SceUInt8 unk3[7]; //!< Its purpose is unknown; these bytes are used as part of the complete identifier.
 } SceConsoleId;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceConsoleId); // size is from FW 3.60
 
@@ -66,7 +66,7 @@ typedef struct SceSblSsCreatePassPhraseParam {
 } SceSblSsCreatePassPhraseParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSblSsCreatePassPhraseParam); // size is from FW 3.60
 
-/** Fixed NVS values exposed by the SceSblSsMgr convenience accessors. */
+/** NVS values supported by ::ksceSblSsGetNvsData and ::ksceSblSsSetNvsData. */
 typedef enum SceSblSsNvsDataType {
 	SCE_SBL_SS_NVS_DATA_SYSTEM_LANGUAGE      = 0, //!< Four-byte system-language value at NVS offset 0x4A4.
 	SCE_SBL_SS_NVS_DATA_WLAN_BT_AVAILABILITY = 1, //!< One-byte WLAN/Bluetooth availability value at NVS offset 0x500.
@@ -76,7 +76,7 @@ typedef enum SceSblSsNvsDataType {
 	SCE_SBL_SS_NVS_DATA_UNK_486              = 5  //!< One-byte value at NVS offset 0x486; AppMgr uses bit 0 to select a cloud-data storage location.
 } SceSblSsNvsDataType;
 
-/** Context transport flags accepted by the DMAC5 hash-family operations. */
+/** Flags for supplying or returning a context in DMAC5 hash operations. */
 typedef enum SceSblDmac5HashFlag {
 	SCE_SBL_DMAC5_HASH_FLAG_OUTPUT_CONTEXT = 0x00000400, //!< Return an updated context instead of a digest.
 	SCE_SBL_DMAC5_HASH_FLAG_INPUT_CONTEXT  = 0x00000800  //!< Continue from the supplied context.
@@ -101,7 +101,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceSblDmac5AesCmacContext); // size is from FW 3.6
  */
 typedef struct SceSblDmac5HashTransformContext {
 	SceUInt32 state[8]; //!< Intermediate hash state.
-	SceUInt64 length;   //!< Processed-input length maintained by DMAC5.
+	SceUInt64 length;   //!< Length of input processed so far, maintained by DMAC5.
 } SceSblDmac5HashTransformContext;
 VITASDK_BUILD_ASSERT_EQ(0x28, SceSblDmac5HashTransformContext); // size is from FW 3.60
 

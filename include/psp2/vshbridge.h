@@ -151,7 +151,7 @@ int _vshNpDrmEbootSigVerify(const char *eboot_pbp_path, const char *eboot_signat
 */
 int _vshNpDrmPspEbootVerify(const char *eboot_pbp_path, const char *eboot_signature, char** eboot_signature_header);
 
-/** FW 3.60 copies this complete option block but does not interpret its words. */
+/** FW 3.60 copies the entire option block but ignores its contents. */
 typedef struct SceVshNpDrmEbootSigOpt {
 	SceUInt32 reserved[2];
 } SceVshNpDrmEbootSigOpt;
@@ -253,7 +253,7 @@ typedef struct SceVshAppMgrCheckPfsMountedOpt {
 VITASDK_BUILD_ASSERT_EQ(8, SceVshAppMgrCheckPfsMountedOpt); // size is from FW 3.60
 
 typedef struct SceVshAppMgrBgdlQueueStatusEntry {
-	SceUInt32 downloadStatus; //!< Derived from the SceShell state nibble: 7 maps to 2, 8 to 1,
+	SceUInt32 downloadStatus; //!< Set from SceShell's 4-bit state: 7 maps to 2, 8 to 1,
 	                          //!< 9 to 3, 0xC to 4, and every other value to 0.
 	SceBool unknownBoolean; //!< Set for SceShell state 9, or when an unidentified source word is zero,
 	                        //!< flags 0x300 are clear, and flag 0x40000 is set. AppMgr
@@ -286,7 +286,7 @@ typedef struct SceVshSblSsCreatePassPhraseOpt {
 VITASDK_BUILD_ASSERT_EQ(8, SceVshSblSsCreatePassPhraseOpt); // size is from FW 3.60
 
 /**
- * Obtains add-on-content installation data.
+ * Get add-on-content installation data.
  *
  * @param[in] titleId - Pointer to a 0x10-byte buffer containing a NUL-terminated, nine-character title ID.
  * @param[in] addcontId - Pointer to a 0x14-byte buffer containing a NUL-terminated, 16-character add-on-content ID.
@@ -303,12 +303,12 @@ VITASDK_BUILD_ASSERT_EQ(8, SceVshSblSsCreatePassPhraseOpt); // size is from FW 3
 int _vshAppMgrAcInstGetAcdirParam(const char titleId[0x10], const char addcontId[0x14], SceAppMgrAcInstResult *result);
 
 /**
- * Updates the background-download queue status table.
+ * Update the background-download queue status table.
  *
  * @param[in] queueStatus - Pointer to a ::SceVshAppMgrBgdlQueueStatus structure.
  *
- * The provider synchronously copies all 0x700 bytes; the caller retains
- * ownership of the structure.
+ * All 0x700 bytes are copied before this function returns. The caller still
+ * owns the structure.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -317,7 +317,7 @@ int _vshAppMgrAcInstGetAcdirParam(const char titleId[0x10], const char addcontId
 int _vshAppMgrBgdlSetQueueStatus(const SceVshAppMgrBgdlQueueStatus *queueStatus);
 
 /**
- * Checks whether a PFS path is mounted.
+ * Check whether a PFS path is mounted.
  *
  * @param[in] path - NUL-terminated `ux0:` path shorter than 0x124 bytes.
  * @param[in] opt - Required 8-byte structure whose contents are ignored on FW 3.60.
@@ -329,7 +329,7 @@ int _vshAppMgrBgdlSetQueueStatus(const SceVshAppMgrBgdlQueueStatus *queueStatus)
 int _vshAppMgrCheckPfsMounted(const char *path, const SceVshAppMgrCheckPfsMountedOpt *opt);
 
 /**
- * Creates and signs a cloud-data header.
+ * Create and sign a cloud-data header.
  *
  * @param[in] setupKey - 0x18-byte setup-key buffer. Its first 0x10 bytes contain the ASCII account ID.
  * @param[in] dataSize - Size of the cloud-data payload, at most 0x40000000 bytes.
@@ -348,11 +348,11 @@ int _vshAppMgrCheckPfsMounted(const char *path, const SceVshAppMgrCheckPfsMounte
 int _vshAppMgrCloudDataCreateHeader(const SceUInt8 setupKey[0x18], SceSize dataSize, const SceUInt8 digest[0x20], SceUInt8 header[0x170]);
 
 /**
- * Changes selected attributes of a path.
+ * Change selected attributes of a path.
  *
  * @param[in] file - NUL-terminated path of at most 0x3FF characters.
  * @param[in] stat - Input ::SceIoStat structure.
- * @param[in] bits - Attribute-selection mask.
+ * @param[in] bits - Bitmask selecting which attributes to change.
  * @param[in] opt - Required 8-byte structure whose contents are ignored on FW 3.60.
  *
  * @note The calling process must be authorized as a system program.
@@ -362,13 +362,13 @@ int _vshAppMgrCloudDataCreateHeader(const SceUInt8 setupKey[0x18], SceSize dataS
 int _vshIoChstat(const char *file, const SceIoStat *stat, unsigned int bits, const sceIoChstatOpt *opt);
 
 /**
- * Reads the next directory entry.
+ * Read the next directory entry.
  *
  * @param[in] fd - Directory descriptor.
- * @param[in,out] dir - ::SceIoDirent structure copied both to and from the provider.
+ * @param[in,out] dir - ::SceIoDirent structure copied from the caller to the kernel and back.
  *
- * The descriptor is a caller-process PUID and is converted to its kernel GUID
- * before the read operation.
+ * The descriptor is a PUID in the calling process. It is converted to its
+ * kernel GUID before reading the directory.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -377,7 +377,7 @@ int _vshIoChstat(const char *file, const SceIoStat *stat, unsigned int bits, con
 int _vshIoDread(SceUID fd, SceIoDirent *dir);
 
 /**
- * Gets path metadata.
+ * Get path metadata.
  *
  * @param[in] file - NUL-terminated path of at most 0x3FF characters.
  * @param[out] stat - Output ::SceIoStat structure.
@@ -390,10 +390,10 @@ int _vshIoDread(SceUID fd, SceIoDirent *dir);
 int _vshIoGetstat(const char *file, SceIoStat *stat, const sceIoGetstatOpt *opt);
 
 /**
- * Gets the compiled SDK version of a process.
+ * Get the compiled SDK version of a process.
  *
  * @param[in] pid - Process ID.
- * @param[out] sdkVersion - Result value of type ::SceUInt32.
+ * @param[out] sdkVersion - Receives the compiled SDK version as a ::SceUInt32.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -402,16 +402,16 @@ int _vshIoGetstat(const char *file, SceIoStat *stat, const sceIoGetstatOpt *opt)
 int _vshKernelGetCompiledSdkVersionByPid(ScePID pid, SceUInt32 *sdkVersion);
 
 /**
- * Derives the 16-byte key for a legacy document.
+ * Derive the 16-byte key for a legacy document.
  *
  * @param[in] rifData - Optional 0x200-byte RIF data buffer. Some PSPEDAT
  *                      document modes require it.
  * @param[in] documentData - PSPEDAT document data, at least 0x90 bytes.
  * @param[in] documentDataSize - Size of documentData in bytes; must match opt->documentDataSize.
- * @param[in] opt - Required copy-size and document-key output parameters.
+ * @param[in] opt - Required structure specifying the document-data copy size and key output buffer.
  *
- * The raw bridge can copy at most 0x200 document bytes. The caller owns every
- * buffer, and the provider synchronously writes exactly 16 key bytes.
+ * The bridge can copy at most 0x200 bytes of document data. The caller owns
+ * every buffer. Exactly 16 key bytes are written before this function returns.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -420,7 +420,7 @@ int _vshKernelGetCompiledSdkVersionByPid(ScePID pid, SceUInt32 *sdkVersion);
 int _vshNpDrmGetLegacyDocKey(const SceUInt8 rifData[0x200], const void *documentData, SceSize documentDataSize, const SceVshNpDrmGetLegacyDocKeyOpt *opt);
 
 /**
- * Gets the primary platform security code.
+ * Get the primary platform security code.
  *
  * @param[out] pscode - Output ::ScePsCode structure.
  *
@@ -431,11 +431,11 @@ int _vshNpDrmGetLegacyDocKey(const SceUInt8 rifData[0x200], const void *document
 int _vshSblAimgrGetPscode(ScePsCode *pscode);
 
 /**
- * Gets the secondary platform security code.
+ * Get the secondary platform security code.
  *
  * @param[out] pscode - Output ::ScePsCode structure.
  *
- * This variant obtains the value from the secure module instead of the cached
+ * This variant gets the value from the secure module instead of the cached
  * primary value and is available only while product mode is enabled.
  *
  * @note The calling process must be authorized as a system program.
@@ -445,7 +445,7 @@ int _vshSblAimgrGetPscode(ScePsCode *pscode);
 int _vshSblAimgrGetPscode2(ScePsCode *pscode);
 
 /**
- * Gets the 0x20-byte visible ID when the system is in product mode.
+ * Get the 0x20-byte visible ID when the system is in product mode.
  *
  * @param[out] visibleId - Output ::SceVisibleId structure.
  *
@@ -457,7 +457,7 @@ int _vshSblAimgrGetPscode2(ScePsCode *pscode);
 int _vshSblAimgrGetVisibleId(SceVisibleId *visibleId);
 
 /**
- * Verifies a signed PARAM.SFO file and copies its embedded payload.
+ * Verify a signed PARAM.SFO file and copy its embedded payload.
  *
  * @param[in] path - NUL-terminated path to the signed PARAM.SFO file, at most
  *                   0xFF characters.
@@ -465,8 +465,8 @@ int _vshSblAimgrGetVisibleId(SceVisibleId *visibleId);
  * @param[in] verifiedDataCapacity - Capacity of verifiedData in bytes.
  * @param[in] opt - Required 8-byte structure whose contents are ignored on FW 3.60.
  *
- * The verified embedded payload must be nonempty and fit completely in
- * verifiedData; partial copies are not performed.
+ * The verified embedded payload must not be empty and must fit completely in
+ * verifiedData. The function does not copy part of a payload.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -475,15 +475,15 @@ int _vshSblAimgrGetVisibleId(SceVisibleId *visibleId);
 int _vshSblAuthMgrVerifySpsfo(const char *path, void *verifiedData, SceSize verifiedDataCapacity, const SceVshSblAuthMgrVerifySpsfoOpt *opt);
 
 /**
- * Creates a 0x200-byte account pass phrase.
+ * Create a 0x200-byte account pass phrase.
  *
  * @param[in] args - Pass-phrase input parameters.
  * @param[out] passPhrase - Output pass-phrase buffer.
- * @param[in] opt - Required output-copy parameters.
+ * @param[in] opt - Required structure specifying how many pass-phrase bytes to copy.
  *
  * SceSblSsMgr always creates 0x200 bytes internally. The bridge copies the
- * first opt->passPhraseSize bytes, which must not exceed 0x200. All pointers
- * remain owned by the caller.
+ * first opt->passPhraseSize bytes to passPhrase; this size must not exceed
+ * 0x200. The caller owns all buffers.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -492,12 +492,12 @@ int _vshSblAuthMgrVerifySpsfo(const char *path, void *verifiedData, SceSize veri
 int _vshSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *args, void *passPhrase, const SceVshSblSsCreatePassPhraseOpt *opt);
 
 /**
- * Gets the manufacturing-status word.
+ * Get the manufacturing-status value.
  *
- * @param[out] manufacturingStatus - Result value of type ::SceUInt32.
+ * @param[out] manufacturingStatus - Receives the manufacturing status as a ::SceUInt32.
  *
  * FW 3.60 returns the four-byte response to Syscon command 0x15. No observed
- * importer interprets its individual bits, so their purposes are unknown.
+ * caller interprets its individual bits, so their purposes are unknown.
  *
  * @note Product mode must be enabled and the calling process must be authorized
  *       as a system program.
@@ -507,7 +507,7 @@ int _vshSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *args, void *p
 int _vshSysconGetManufacturesStatus(SceUInt32 *manufacturingStatus);
 
 /**
- * Creates a mount event.
+ * Create a mount event.
  *
  * @param[in] mountId - One of ::SceVshMountId.
  * @param[in] eventBits - Bitwise OR of ::SceIoMountEvent values. FW 3.60
@@ -523,9 +523,9 @@ int _vshSysconGetManufacturesStatus(SceUInt32 *manufacturingStatus);
 SceUID vshIoCreateMountEvent(SceVshMountId mountId, SceUInt32 eventBits);
 
 /**
- * Notifies the kernel that SceShell is ready.
+ * Notify the kernel that SceShell is ready.
  *
- * @param[in] eventId - Event ID. FW 3.60 accepts only 0, denoting that SceShell
+ * @param[in] eventId - Event ID. FW 3.60 accepts only 0, meaning that SceShell
  *                      is ready.
  *
  * The notification is sent to SceSysroot only on the first successful call;
@@ -538,7 +538,7 @@ SceUID vshIoCreateMountEvent(SceVshMountId mountId, SceUInt32 eventBits);
 int vshKernelSendSysEvent(SceUInt32 eventId);
 
 /**
- * Reports whether the communication-test flag is set.
+ * Check whether the communication-test flag is set.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -547,7 +547,7 @@ int vshKernelSendSysEvent(SceUInt32 eventId);
 int vshSblUtMgrHasComTestFlag(void);
 
 /**
- * Reports whether the NP-test flag is set.
+ * Check whether the NP-test flag is set.
  *
  * @note The calling process must be authorized as a system program.
  *
@@ -556,7 +556,7 @@ int vshSblUtMgrHasComTestFlag(void);
 int vshSblUtMgrHasNpTestFlag(void);
 
 /**
- * Reports whether the store flag is set.
+ * Check whether the store flag is set.
  *
  * @note The calling process must be authorized as a system program.
  *

@@ -39,11 +39,15 @@ int ksceDsiDcsRead(int head, unsigned short param, void *buff, unsigned int size
 /**
  * Start scanout on a configured DSI head.
  *
- * FW 3.60 accepts start-control values 0 through 4. Value 0 writes hardware
- * start value 1. Value 1 writes 1 for head 0 and 2 for head 1; value 2
- * reverses that pairing. Values 3 and 4 write the corresponding hardware
- * start value. SceDisplay uses values 0 through 3; no loaded FW 3.60 caller
- * uses value 4.
+ * FW 3.60 accepts start-control values 0 through 4 and writes the following
+ * hardware start values:
+ *
+ * - 0: writes 1 for either head.
+ * - 1: writes 1 for head 0 and 2 for head 1.
+ * - 2: writes 2 for head 0 and 1 for head 1.
+ * - 3 or 4: writes the given value.
+ *
+ * SceDisplay uses values 0 through 3; no loaded FW 3.60 caller uses value 4.
  *
  * @param[in] head - One of ::SceDsiHead.
  * @param[in] start_control - DSI start-control value from 0 through 4.

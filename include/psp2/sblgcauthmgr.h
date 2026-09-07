@@ -26,7 +26,7 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceSblGcAuthMgrGetMediaIdType01Opt); // size is fro
 
 /** PC activation challenge modes. */
 typedef enum ScePcactMode {
-	SCE_PCACT_MODE_0 = 0, //!< Requires the previous challenge expiration to have elapsed.
+	SCE_PCACT_MODE_0 = 0, //!< Requires the previous challenge to have expired.
 	SCE_PCACT_MODE_1 = 1, //!< Requires activation data to be absent and records a new expiration.
 	SCE_PCACT_MODE_2 = 2  //!< Bypasses the previous challenge expiration check.
 } ScePcactMode;
@@ -75,8 +75,8 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceSblGcAuthMgrPkgVryInfo); // size is from FW 3.6
 /**
  * Get the type-01 game-card media ID.
  *
- * Both pointers are required. FW 3.60 always obtains the complete 0x20-byte
- * value internally and copies the prefix selected by \a pOpt.
+ * Both pointers must be non-NULL. FW 3.60 always obtains the complete 0x20-byte
+ * value internally and copies its first \c pOpt->mediaIdSize bytes.
  *
  * @param[out] pMediaId - Media-ID output.
  * @param[in] pOpt - Required output size.
@@ -91,9 +91,10 @@ int _sceSblGcAuthMgrGetMediaIdType01(SceMediaIdType01 *pMediaId, const SceSblGcA
  * Validate and install PC activation data.
  *
  * The envelope must match the currently saved challenge state. On success the
- * 0x1040-byte payload is synchronously passed to NPDRM; no user pointer is
- * retained. After any size-valid activation attempt, FW 3.60 clears its saved
- * challenge state even when envelope verification or NPDRM installation fails.
+ * 0x1040-byte payload is passed to NPDRM before this function returns. The input
+ * buffer is not used after this function returns. After any activation attempt
+ * with the correct size, FW 3.60 clears its saved challenge state even when
+ * envelope verification or NPDRM installation fails.
  *
  * @param[in] activationData - Required complete activation object.
  * @param[in] activationDataSize - Must equal 0x1090.
@@ -106,9 +107,9 @@ int _sceSblGcAuthMgrPcactActivation(const ScePcactActivationData *activationData
 /**
  * Create a PC activation challenge.
  *
- * All pointers are required by the provider. It consumes a complete 0x20-byte
- * password block and generates a complete challenge internally; \a pOpt only
- * controls the user-copy lengths.
+ * All pointers must be non-NULL. The function uses a complete 0x20-byte password
+ * block and generates a complete challenge internally; \a pOpt only controls
+ * how many bytes are copied from or to the caller's buffers.
  *
  * @param[in] mode - One of ::ScePcactMode.
  * @param[in] ePassword - Required 0x20-byte password block.
@@ -125,9 +126,9 @@ int _sceSblGcAuthMgrPcactGetChallenge(SceUInt32 mode, const SceUInt8 *ePassword,
 /**
  * Verify a package ECDSA-160 signature.
  *
- * The hash and signature are required. FW 3.60 consumes complete 0x14-byte and
- * 0x28-byte values; smaller copy sizes leave the unread tail unspecified and
- * must not be used for verification.
+ * The hash and signature pointers must be non-NULL. FW 3.60 uses a complete
+ * 0x14-byte hash and 0x28-byte signature. Do not use smaller copy sizes for
+ * verification: they leave the remaining bytes unspecified.
  *
  * @param[in] pHash - SHA-1 digest.
  * @param[in] pSig - Raw ECDSA-160 signature.

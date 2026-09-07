@@ -17,7 +17,7 @@ extern "C" {
 /**
  * Opaque immutable voice definition.
  *
- * FW 3.60 represents a definition as a pointer-typed encoded token. Do not
+ * On FW 3.60, this pointer holds an encoded value, not an address. Do not
  * dereference it; store it in ::SceNgsRackDescription::voiceDefinition.
  */
 typedef struct SceNgsVoiceDefinition SceNgsVoiceDefinition;
@@ -95,7 +95,7 @@ VITASDK_BUILD_ASSERT_EQ(0x1C, SceNgsCallbackInfo); // size is from FW 3.60
 /** Header shared by every module-specific parameter structure. */
 typedef struct SceNgsParamsDescriptor {
 	SceNgsParamsID id;
-	SceSize size; //!< Size beginning at \a id, including this field and the module-specific payload.
+	SceSize size; //!< Size beginning at \a id, including this field and the module-specific data.
 } SceNgsParamsDescriptor;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceNgsParamsDescriptor); // size is from FW 3.60
 
@@ -154,7 +154,7 @@ typedef enum SceNgsModuleBypassFlag {
 	SCE_NGS_MODULE_FLAG_BYPASSED     = 2
 } SceNgsModuleBypassFlag;
 
-/** Byte range and edge skips for decoding a requested ATRAC9 sample interval. */
+/** Byte range and samples to skip at each end when decoding an ATRAC9 sample interval. */
 typedef struct SceNgsAT9SkipBufferInfo {
 	SceInt32 startByteOffset; //!< Byte offset of the first required ATRAC9 packet.
 	SceInt32 numBytes;        //!< Number of bytes to make available to the decoder.
@@ -204,7 +204,8 @@ typedef struct SceSulphaNgsConfig {
 VITASDK_BUILD_ASSERT_EQ(0x8, SceSulphaNgsConfig); // size is from FW 3.60
 
 /**
- * Compute the encoded byte range and edge skips for an ATRAC9 sample range.
+ * Compute the encoded byte range and samples to skip at each end for an ATRAC9
+ * sample range.
  *
  * The output is cleared before validation. FW 3.60 accepts ATRAC9 frame-duration
  * codes 1, 4, and 7 and requires the low byte of \a nConfigData to be 0xFE.
@@ -253,7 +254,7 @@ SceInt32 sceNgsModuleGetPreset(SceNgsHSynSystem hSystemHandle, SceNgsModuleID uM
  *
  * Both voices must belong to the same system. A source sub-index of -1 selects
  * the first free patch slot. The route is initialized with zero gains. NGS
- * rejects a route that would introduce an unschedulable dependency cycle.
+ * rejects a route that would create a dependency cycle it cannot process.
  *
  * @param[in] pPatchInfo - Source and destination endpoints.
  * @param[out] pPatchHandle - Receives the new patch handle.
@@ -305,17 +306,17 @@ SceInt32 sceNgsRackGetRequiredMemorySize(SceNgsHSynSystem hSystemHandle, const S
 SceInt32 sceNgsRackGetVoiceHandle(SceNgsHRack hRackHandle, SceUInt32 uIndex, SceNgsHVoice *pVoiceHandle);
 
 /**
- * Construct a rack and all of its voices in caller-owned memory.
+ * Create a rack and all of its voices in caller-owned memory.
  *
  * The buffer base must be 16-byte aligned and its capacity must be at least the
  * value returned by ::sceNgsRackGetRequiredMemorySize. NGS retains and modifies
- * this memory until the rack has been released. Initialization consumes one
+ * this memory until the rack has been released. Initialization uses one
  * rack slot and ::SceNgsRackDescription::voiceCount voice slots from the
  * system limits.
  *
  * @param[in] hSystemHandle - Owning system handle.
  * @param[in] pRackBuffer - Rack buffer pointer and capacity.
- * @param[in] pRackDesc - Rack topology and allocation description.
+ * @param[in] pRackDesc - Rack configuration and allocation limits.
  * @param[out] pRackHandle - Receives the rack handle.
  *
  * @return 0 on success, or a negative ::SceNgsErrorCode value.
@@ -325,8 +326,8 @@ SceInt32 sceNgsRackInit(SceNgsHSynSystem hSystemHandle, const SceNgsBufferInfo *
 /**
  * Stop every voice, remove every connected patch, and release a rack.
  *
- * With a NULL callback, release is completed synchronously. With a callback,
- * destruction is finalized by a subsequent ::sceNgsSystemUpdate and the
+ * With a NULL callback, the rack is released before this function returns.
+ * With a callback, a later ::sceNgsSystemUpdate completes the release, and the
  * callback receives the rack and ::SceNgsRackDescription::userData.
  *
  * @param[in] hRackHandle - Rack to release.
@@ -379,7 +380,7 @@ SceInt32 sceNgsSystemInit(void *pSynthSysMemory, SceSize uMemSize, const SceNgsS
 /**
  * Lock the system's internal update state.
  *
- * Calls must be balanced with ::sceNgsSystemUnlock.
+ * Pair each call with a call to ::sceNgsSystemUnlock.
  *
  * @param[in] hSystemHandle - System to lock.
  *
@@ -426,7 +427,7 @@ SceInt32 sceNgsSystemSetParamErrorCallback(SceNgsHSynSystem hSystemHandle, SceNg
 SceInt32 sceNgsSystemUnlock(SceNgsHSynSystem hSystemHandle);
 
 /**
- * Process one audio grain and dispatch every queued callback.
+ * Process one audio grain and run every queued callback.
  *
  * Callback functions execute synchronously on the thread calling this function,
  * after the kernel-side processing update has completed.
@@ -502,7 +503,7 @@ const SceNgsVoiceDefinition *sceNgsVoiceDefGetSimpleVoice(void);
 const SceNgsVoiceDefinition *sceNgsVoiceDefGetTemplate1(void);
 
 /**
- * Get one voice's current key state and topology information.
+ * Get one voice's current key state, module counts, and routing information.
  *
  * @param[in] hVoiceHandle - Voice handle.
  * @param[out] pInfo - Receives the voice snapshot.
@@ -642,7 +643,7 @@ SceInt32 sceNgsVoicePatchSetVolume(SceNgsHPatch hPatchHandle, SceInt32 nOutputCh
  *
  * @param[in] hPatchHandle - Patch handle.
  * @param[in] nOutputChannel - Output row to replace.
- * @param[in] pVolumes - Array containing a nVols gains.
+ * @param[in] pVolumes - Array containing \a nVols gains.
  * @param[in] nVols - Number of gains; valid callers use 1 or 2.
  *
  * @return 0 on success, or a negative ::SceNgsErrorCode value.
@@ -652,7 +653,7 @@ SceInt32 sceNgsVoicePatchSetVolumes(SceNgsHPatch hPatchHandle, SceInt32 nOutputC
 /**
  * Replace a patch's complete 2x2 output-to-input gain matrix.
  *
- * A mono source consumes only the first row; a stereo source consumes all four
+ * A mono source uses only the first row; a stereo source uses all four
  * values.
  *
  * @param[in] hPatchHandle - Patch handle.
@@ -706,7 +707,7 @@ SceInt32 sceNgsVoiceResume(SceNgsHVoice hVoiceHandle);
 SceInt32 sceNgsVoiceSetFinishedCallback(SceNgsHVoice hVoiceHandle, SceNgsCallbackFunc callbackFuncPtr, void *pUserData);
 
 /**
- * Set the callback for module-defined events emitted by one module index.
+ * Set the callback for events from the module at a given index.
  *
  * The callback runs from ::sceNgsSystemUpdate. Its reason and data fields are
  * defined by the selected module type.
@@ -729,7 +730,7 @@ SceInt32 sceNgsVoiceSetModuleCallback(SceNgsHVoice hVoiceHandle, SceUInt32 uModu
  * @param[in] hVoiceHandle - Voice handle.
  * @param[in] pParamData - First packed record header. Each header is followed
  *                         by a ::SceNgsParamsDescriptor and its module-specific
- *                         payload.
+ *                         data.
  * @param[in] uSize - Total byte size of the record sequence.
  * @param[out] pnErrorCount - Optional rejected-record count.
  *
@@ -755,7 +756,7 @@ SceInt32 sceNgsVoiceSetPreset(SceNgsHVoice hVoiceHandle, const SceNgsVoicePreset
  * Commit and unlock a module parameter block returned by ::sceNgsVoiceLockParams.
  *
  * When ::SCE_NGS_SYSTEM_FLAG_CHECK_PARAMS is set, invalid values are rejected
- * and the module is not marked dirty for processing.
+ * and the module is not marked as changed for processing.
  *
  * @param[in] hVoiceHandle - Voice handle.
  * @param[in] uModule - Zero-based module index previously locked.
@@ -766,7 +767,8 @@ SceInt32 sceNgsVoiceUnlockParams(SceNgsHVoice hVoiceHandle, SceUInt32 uModule);
 /**
  * Fill a Sulpha NGS configuration with the FW 3.60 defaults.
  *
- * @param[out] config - Receives capacities 1024 and 4096.
+ * @param[out] config - Receives limits of 1024 named sample-memory ranges and a
+ *                      4096-byte API-call trace buffer.
  *
  * @return 0 on success, or a negative Sulpha error code.
  */
@@ -783,11 +785,12 @@ SceInt32 sceSulphaNgsGetDefaultConfig(SceSulphaNgsConfig *config);
 SceInt32 sceSulphaNgsGetNeededMemory(const SceSulphaNgsConfig *config, SceSize *sizeInBytes);
 
 /**
- * Initialize the process-global Sulpha NGS tracing agent.
+ * Initialize Sulpha NGS tracing for the calling process.
  *
+ * All threads in the process share this tracing agent.
  * The supplied memory must remain valid until ::sceSulphaNgsShutdown. Use
  * ::sceSulphaNgsGetNeededMemory rather than relying on the implementation's
- * smaller local minimum-size check.
+ * check, which accepts a smaller minimum size.
  *
  * @param[in] config - Sulpha NGS capacities.
  * @param[in,out] buffer - Caller-owned tracing memory.
@@ -839,7 +842,8 @@ SceInt32 sceSulphaNgsSetSynthName(SceNgsHSynSystem synthHandle, const char *name
 SceInt32 sceSulphaNgsSetVoiceName(SceNgsHVoice voiceHandle, const char *name);
 
 /**
- * Unregister the process-global Sulpha NGS agent and release its registrations.
+ * Unregister the Sulpha NGS agent shared by all threads in the process and
+ * release its registrations.
  *
  * @return 0 on success, or a negative Sulpha error code.
  */

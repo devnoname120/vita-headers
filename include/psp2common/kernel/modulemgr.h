@@ -66,7 +66,7 @@ VITASDK_BUILD_ASSERT_EQ(4, SceKernelPreloadInhibit);
 
 typedef struct SceKernelStartModuleOpt {
 	SceSize size; //!< Size of this structure.
-	SceUInt32 reserved[3]; //!< Copied from user memory but actually unused on FW 3.60; initialize to 0.
+	SceUInt32 reserved[3]; //!< Copied from user memory but unused on FW 3.60; initialize to 0.
 } SceKernelStartModuleOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceKernelStartModuleOpt); // size is from FW 3.60
 
@@ -90,16 +90,16 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceKernelSegmentInfo);
  * Information about a loaded module.
  *
  * The FW 3.60 kernel APIs use this fixed 0x1B8-byte layout, but do not clear
- * the output buffer or write every reserved byte. Kernel callers should zero
- * the complete structure and initialize \a size before calling them. The user
- * ::sceKernelGetModuleInfo entry point performs that initialization internally.
+ * the output buffer or write every reserved byte. Before calling these kernel
+ * APIs, zero the entire structure and initialize \a size. The user function
+ * ::sceKernelGetModuleInfo does this internally.
  */
 typedef struct SceKernelModuleInfo {
 	SceSize size;                       //!< Size of this structure; left unchanged by the FW 3.60 kernel APIs.
 	SceUID modid;                       //!< Module identifier.
 	uint16_t modattr;                   //!< Module attributes.
 	uint8_t  modver[2];                 //!< Module version.
-	char module_name[28];               //!< Module name; zero-initialize the structure to guarantee termination.
+	char module_name[28];               //!< Module name; zero the structure first to ensure NUL termination.
 	SceUInt reserved;                   //!< Left unchanged by the FW 3.60 kernel APIs.
 	void *start_entry;                  //!< Module start entry point.
 	void *stop_entry;                   //!< Module stop entry point.
@@ -154,7 +154,7 @@ typedef struct SceKernelModuleLibraryInfo {
     SceSize number_of_imported; //!< Legacy name for ::client_count.
   };
   union {
-    SceUID owner_module_id; //!< Module that owns the library.
+    SceUID owner_module_id; //!< ID of the module that owns the library.
     SceUID modid2; //!< Legacy name for ::owner_module_id.
   };
 } SceKernelModuleLibraryInfo;

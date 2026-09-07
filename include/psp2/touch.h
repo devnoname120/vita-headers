@@ -151,8 +151,9 @@ int sceTouchDisableTouchForce(SceUInt32 port);
 /**
  * Get touch-panel device information.
  *
- * This system-program-only export retrieves the cached front or back panel
- * identity record. The output is copied only after the kernel getter succeeds.
+ * Only system programs can call this function. It retrieves the cached front
+ * or back panel identity record. The output is copied only after the kernel
+ * getter succeeds.
  *
  * @param[in] panel - One of ::SceTouchPortType.
  * @param[out] pInfo - Receives the complete 0xC-byte device-information record.

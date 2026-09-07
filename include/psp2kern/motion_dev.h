@@ -17,8 +17,8 @@ extern "C" {
  *
  * FW 3.60 always writes the complete 0x2C-byte record. The first four bytes
  * have the same meaning in both device-information response formats. The
- * remaining bytes come directly from the controller response; their layout
- * varies by response format and is not interpreted by this API.
+ * remaining bytes come directly from the controller response. Their layout
+ * depends on the response format; this API does not interpret them.
  */
 typedef struct SceKernelMotionDeviceInfo {
 	SceUInt16 barkleyFirmwareVersion; //!< Barkley motion-controller firmware version.
@@ -30,8 +30,8 @@ VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelMotionDeviceInfo); // size is from FW 3.6
 /**
  * Get the cached motion-controller identity record.
  *
- * The output is copied while CPU interrupts are suspended under the MotionDev
- * state spinlock. On error, \a pInfo is not modified.
+ * MotionDev holds its state spinlock with CPU interrupts suspended while
+ * copying the output. On error, \a pInfo is not modified.
  *
  * @param[out] pInfo - Receives the complete identity record; must not be NULL.
  *

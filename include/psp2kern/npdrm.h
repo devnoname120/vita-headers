@@ -51,7 +51,7 @@ int ksceNpDrmReadActData(SceNpDrmActivationData *act_data);
  * @param[out]  version_flag    - The pointer of version flag output.
  * @param[out]  account_id      - The pointer of activated account id output.
  * @param[out]  act_start_time  - The pointer of activation data start time output.
- * @param[out]  act_end_time    - The pointer of activation data expiration time output.
+ * @param[out]  act_end_time    - Activation data expiration time output.
  *
  * @return 0 on success, < 0 on error.
 */
@@ -93,16 +93,16 @@ int ksceNpDrmGetRifPspKey(const SceNpDrmLicense *license, void *klicense, int *f
  * @param[in]  check_sign      - Set to 1 to check the RIF signature.
  * @param[out] content_id      - Optional 0x30-byte content ID output buffer.
  * @param[out] account_id      - Optional license account ID output.
- * @param[out] license_version - Optional license version output; a value of
- *                               type ::SceUInt32.
- * @param[out] drm_type        - Optional DRM type output; a value of type
- *                               ::SceUInt32.
+ * @param[out] license_version - Optional license version output; receives a
+ *                               ::SceUInt32 value.
+ * @param[out] drm_type        - Optional DRM type output; receives a
+ *                               ::SceUInt32 value.
  * @param[out] flags           - Optional derived license flags output.
  * @param[out] sku_flags       - Optional SKU flags output.
- * @param[out] lic_start_time  - Optional license start time output; a value of
- *                               type ::SceRtcTick.
- * @param[out] lic_exp_time    - Optional license expiration time output; a
- *                               value of type ::SceRtcTick.
+ * @param[out] lic_start_time  - Optional license start time output; receives a
+ *                               ::SceRtcTick value.
+ * @param[out] lic_exp_time    - Optional license expiration time output;
+ *                               receives a ::SceRtcTick value.
  * @param[out] rif_data_0x98   - Optional raw 8-byte RIF field output.
  *
  * @return 0 on success, < 0 on error.
@@ -217,9 +217,9 @@ SceBool ksceNpDrmIsLooseAccountBind(void);
 /**
  * Set whether package game content exists
  *
- * FW 3.60 stores the value verbatim. Observed AppMgr callers use 0 or 1.
+ * FW 3.60 stores the value unchanged. Observed AppMgr callers use 0 or 1.
  *
- * @param[in] game_exists - Package game-content existence value
+ * @param[in] game_exists - Value indicating whether package game content exists
  *
  * @return 0.
  */
@@ -286,7 +286,7 @@ int ksceNpDrmUpdateDebugSettings(void);
 int ksceNpDrmVerifyRif(const SceNpDrmLicense *license, SceSize license_size);
 
 /**
- * Fully validate and normalize a RIF in place.
+ * Fully validate a RIF and update it in place.
  *
  * On FW 3.60, the function may decrypt and move the RIF key and clear the
  * trailing RIF fields on success.
@@ -300,9 +300,9 @@ int ksceNpDrmVerifyRifFull(SceNpDrmLicense *license);
 /**
  * Validate and install NPDRM activation data.
  *
- * @param[in] npdrm_act_data - Activation payload (0x1040 bytes)
+ * @param[in] npdrm_act_data - Activation data (0x1040 bytes)
  * @param[in] aes_dec_key - Optional 0x10-byte AES key used to decrypt the
- *                          payload before validation
+ *                          activation data before validation
  *
  * @return 0 on success, < 0 on error.
  */

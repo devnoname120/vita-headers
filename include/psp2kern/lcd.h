@@ -21,7 +21,7 @@ typedef enum SceLcdErrorCode {
 } SceLcdErrorCode;
 VITASDK_BUILD_ASSERT_EQ(4, SceLcdErrorCode); // size is from FW 3.60
 
-/** LCD color-space modes. Their visual meanings are unknown. */
+/** LCD color-space modes. Their effects on the image are unknown. */
 typedef enum SceLcdColorSpaceMode {
 	SCE_LCD_COLOR_SPACE_MODE_0 = 0,
 	SCE_LCD_COLOR_SPACE_MODE_1 = 1
@@ -34,7 +34,8 @@ VITASDK_BUILD_ASSERT_EQ(1, SceLcdColorSpaceMode); // size is from FW 3.60
  * The sequence sends DCS display-off command 0x28, waits 128 ms, sends
  * sleep-in command 0x10, and waits 96 ms. The cached brightness and target
  * backlight level are set to 0. If the backlight controller is initialized,
- * its update worker is also queued. Per-command SPI errors are not propagated.
+ * an update is also queued for its worker. Errors from individual SPI commands
+ * are not returned.
  *
  * @return 0 on success, ::SCE_LCD_ERROR_INVALID_STATE if another command
  *         sequence is pending, or an error from the backlight work queue.
@@ -48,7 +49,7 @@ int ksceLcdDisplayOff(void);
  * 208 ms, sends panel-specific setup and the cached color-space commands,
  * sends display-on command 0x29, and waits 16 ms. One panel-data path also
  * waits 64 ms immediately before the cached mode commands. It does not restore
- * the cached brightness. Per-command SPI errors are not propagated.
+ * the cached brightness. Errors from individual SPI commands are not returned.
  *
  * @return 0 on success, or ::SCE_LCD_ERROR_INVALID_STATE if another command
  *         sequence is pending.
@@ -80,18 +81,18 @@ int ksceLcdGetDDB(SceUInt16 *pSupplierId, SceUInt16 *pSupplierElectiveData);
 SceLcdColorSpaceMode ksceLcdGetDisplayColorSpaceMode(void);
 
 /**
- * Set the wide LCD brightness.
+ * Set the wide LCD brightness (0 through 0x10000).
  *
  * Valid values range from 0 through 0x10000. Zero queues the display-off
  * sequence when the panel is on. A nonzero value queues the display-on
- * sequence when the panel is off. One maps to backlight level 0x19; values
- * from 2 through 0x10000 are quantized to a 17-entry table from 0x1F through
- * 0xFF, while the exact requested value remains available through
+ * sequence when the panel is off. A value of 1 maps to backlight level 0x19.
+ * Values from 2 through 0x10000 map to one of 17 table entries ranging from
+ * 0x1F through 0xFF, while the exact requested value remains available through
  * ::ksceLcdGetBrightness.
  *
  * Once initialized, the backlight controller is updated through I2C register
- * 0x05. An off-to-on transition also writes 1 to register 0x0E; an on-to-off
- * transition writes 0. Per-command SPI and I2C errors are not propagated.
+ * 0x05. Changing from off to on also writes 1 to register 0x0E; changing from
+ * on to off writes 0. Errors from individual SPI and I2C commands are not returned.
  *
  * @param[in] brightness - Wide brightness from 0 through 0x10000.
  *
@@ -106,7 +107,8 @@ int ksceLcdSetBrightness(SceUInt32 brightness);
  *
  * If the panel is off, the new mode is cached without sending a command. If it
  * is on, the driver sends vendor commands B0 04, C9 00/01, and B0 03. Their
- * visual effect is unknown. Per-command SPI errors are not propagated.
+ * effect on the image is unknown. Errors from individual SPI commands are not
+ * returned.
  *
  * @param[in] mode - One of ::SceLcdColorSpaceMode.
  *
@@ -120,9 +122,9 @@ int ksceLcdSetDisplayColorSpaceMode(SceLcdColorSpaceMode mode);
  * Wait until the asynchronous LCD initialization attempt has completed.
  *
  * This function busy-waits without a timeout and returns 0 for both successful
- * and failed initialization. Call ::ksceLcdGetDDB to distinguish those states.
+ * and failed initialization. Call ::ksceLcdGetDDB to check whether it succeeded.
  *
- * @return 0 after the initialization state leaves pending.
+ * @return 0 after initialization succeeds or fails.
  */
 int ksceLcdWaitReady(void);
 

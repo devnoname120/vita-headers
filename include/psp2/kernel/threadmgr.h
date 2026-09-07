@@ -70,30 +70,30 @@ VITASDK_BUILD_ASSERT_EQ(0x18, sceKernelCreateThreadForUser_opt); // size is from
  * @param[in] pName Required mutex name, limited to 31 bytes plus NUL.
  * @param[in] attr Mutex attributes.
  * @param[in] pOpt Required 0x10-byte wrapper option block. Only
- *                          ::sceKernelCreateLwMutex_opt::initCount and
- *                          ::sceKernelCreateLwMutex_opt::pOptParam are used.
+ * ::sceKernelCreateLwMutex_opt::initCount and
+ * ::sceKernelCreateLwMutex_opt::pOptParam are used; the other fields are ignored.
  *
  * @return 0 on success, or < 0 on error.
  */
 int __sceKernelCreateLwMutex(SceKernelLwMutexWork *pWork, const char *pName, SceUInt32 attr, const sceKernelCreateLwMutex_opt *pOpt);
 
 /**
- * Retrieves size-prefixed mutex information through the raw user export.
+ * Gets mutex information through the raw user export.
  *
  * @param[in] mutexId Mutex identifier.
- * @param[in,out] pInfo Mutex information buffer.
- * @param[in] pOpt Required option block selecting the number of bytes copied.
+ * @param[in,out] pInfo Mutex information buffer, beginning with its size.
+ * @param[in] pOpt Required option block specifying the number of bytes to copy.
  *
  * @return 0 on success, or < 0 on error.
  */
 int _sceKernelGetMutexInfo(SceUID mutexId, SceKernelMutexInfo *pInfo, const _sceKernelGetMutexInfo_opt *pOpt);
 
 /**
- * Retrieves size-prefixed thread information through the raw user export.
+ * Gets thread information through the raw user export.
  *
  * @param[in] threadId Thread identifier.
- * @param[in,out] pInfo Thread information buffer.
- * @param[in] pOpt Required option block selecting the number of bytes copied.
+ * @param[in,out] pInfo Thread information buffer, beginning with its size.
+ * @param[in] pOpt Required option block specifying the number of bytes to copy.
  *
  * @return 0 on success, or < 0 on error.
  */
@@ -102,8 +102,8 @@ int _sceKernelGetThreadInfo(SceUID threadId, SceKernelThreadInfo *pInfo, const _
 /**
  * Registers a thread event handler through the raw user export.
  *
- * The returned handler must be released with
- * ::sceKernelUnregisterThreadEventHandler when it is no longer needed.
+ * Call ::sceKernelUnregisterThreadEventHandler with the returned handler
+ * identifier when the handler is no longer needed.
  *
  * @param[in] name Required handler name, limited to 31 bytes plus NUL.
  * @param[in] threadId Target thread identifier.
@@ -115,15 +115,14 @@ int _sceKernelGetThreadInfo(SceUID threadId, SceKernelThreadInfo *pInfo, const _
 SceUID _sceKernelRegisterThreadEventHandler(const char *name, SceUID threadId, SceUInt32 mask, const sceKernelRegisterThreadEventHandlerOpt *pOpt);
 
 /**
- * Creates a dormant user thread through the raw four-argument export.
+ * Creates a user thread in the dormant state through the raw four-argument export.
  *
  * @param[in] pName Required thread name, limited to 31 bytes plus NUL.
  * @param[in] entry Thread entry point.
  * @param[in] initPriority Initial thread priority.
- * @param[in] pOpt Required 0x18-byte wrapper option block. Its leading
- *                          ::sceKernelCreateThreadForUser_opt::size field is
- *                          ignored on FW 3.60, but should be initialized to
- *                          the size of the structure.
+ * @param[in] pOpt Required 0x18-byte wrapper option block. Initialize its first
+ * field, ::sceKernelCreateThreadForUser_opt::size, to the size of the structure,
+ * even though FW 3.60 ignores it.
  *
  * @return Thread identifier on success, or < 0 on error.
  */

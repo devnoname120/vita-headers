@@ -53,8 +53,8 @@ typedef enum SceAudioOutMode {
 /**
  * BGM seven-band graphic-equalizer presets.
  *
- * The gains documented below are ordered by the 63 Hz, 160 Hz, 400 Hz, 1 kHz,
- * 2.5 kHz, 6.3 kHz, and 16 kHz bands.
+ * The gains below apply to the 63 Hz, 160 Hz, 400 Hz, 1 kHz, 2.5 kHz, 6.3 kHz,
+ * and 16 kHz bands, in that order.
  */
 typedef enum SceAudioOutEffectType {
 	SCE_AUDIO_OUT_EFFECT_TYPE_OFF    = 0, //!< Bypasses the equalizer; the stored preset uses 0 dB for every band.
@@ -67,7 +67,7 @@ typedef enum SceAudioOutEffectType {
 /**
  * Audio-output sample rates.
  *
- * Each AudioOut API accepts only the subset documented for that API.
+ * Each AudioOut function accepts only the rates documented for that function.
  */
 typedef enum SceAudioOutSampleRate {
 	SCE_AUDIO_OUT_SAMPLE_RATE_8000  = 8000,
@@ -101,7 +101,7 @@ typedef enum SceAudioOutConfigType {
 	SCE_AUDIO_OUT_CONFIG_TYPE_MODE = 2
 } SceAudioOutConfigType;
 
-/** Automatic-level-control values associated with ::sceAudioOutSetAlcMode. */
+/** Automatic-level-control modes for ::sceAudioOutSetAlcMode. */
 typedef enum SceAudioOutAlcMode {
 	SCE_AUDIO_ALC_OFF      = 0, //!< Disable the BGM dynamic normalizer.
 	SCE_AUDIO_ALC_MODE1    = 1, //!< Enable the BGM dynamic normalizer.

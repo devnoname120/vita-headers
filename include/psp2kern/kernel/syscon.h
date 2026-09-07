@@ -270,7 +270,7 @@ int ksceSysconGetControlsInfo(SceUInt32 *ctrl);
 #define SCE_SYSCON_NVS_SIZE                     0xB60
 #define SCE_SYSCON_UPDATER_DIGEST_SIZE          0x14
 
-/** Touch-panel identities returned by ::ksceSysconGetTouchpanelDeviceInfo. */
+/** Touch-panel vendor IDs and firmware revisions returned by ::ksceSysconGetTouchpanelDeviceInfo. */
 typedef struct SceKernelTouchpanelDeviceInfo {
 	SceUInt16 frontVendorID;      //!< Front touch-panel vendor ID.
 	SceUInt16 frontFirmwareRev;   //!< Front touch-panel firmware revision.
@@ -284,7 +284,7 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceKernelTouchpanelDeviceInfo); // size is from FW 
  *
  * FW 3.60 uses Syscon command 0x09B3. On Baryon versions through 0x00070503
  * it uses the legacy command 0x08B3. SceSblUpdateMgr numbers script records
- * sequentially from one and uses that number as the command context.
+ * starting at 1 and uses each record's number as the command context.
  *
  * @param[in] commandContext Battery-bootloader command context.
  *
@@ -365,7 +365,7 @@ int ksceSysconBatteryStopBLMode(void);
  * The low 16 bits are sent without validation. Observed FW 3.60 callers use
  * ::SCE_FALSE and ::SCE_TRUE.
  *
- * @param[in] enable New accessory-power state.
+ * @param[in] enable Requested accessory-power state.
  *
  * @return 0 on success, or a negative Syscon/context error.
  */
@@ -377,7 +377,7 @@ int ksceSysconCtrlAccPower(SceBool enable);
  * The low 16 bits are sent without validation. Observed FW 3.60 callers use
  * ::SCE_FALSE and ::SCE_TRUE.
  *
- * @param[in] enable New DevKit USB-power state.
+ * @param[in] enable Requested DevKit USB-power state.
  *
  * @return 0 on success, or a negative Syscon/context error.
  */
@@ -389,7 +389,7 @@ int ksceSysconCtrlDevKitUsbPower(SceBool enable);
  * The low 16 bits are sent without validation. Observed FW 3.60 callers use
  * ::SCE_FALSE and ::SCE_TRUE.
  *
- * @param[in] enable New PSTV USB-power state.
+ * @param[in] enable Requested PSTV USB-power state.
  *
  * @return 0 on success, or a negative Syscon/context error.
  */
@@ -402,7 +402,7 @@ int ksceSysconCtrlDolceUsbPower(SceBool enable);
  * PostSs manager disables this output while it owns the Jig port and restores
  * it afterward on newer hardware.
  *
- * @param[in] enable New host-output state.
+ * @param[in] enable Requested host-output state.
  *
  * @return 0 on success, or a negative Syscon/context error.
  */
@@ -411,9 +411,9 @@ int ksceSysconCtrlHostOutputViaDongle(SceBool enable);
 /**
  * Get the battery hardware, firmware, and data-flash versions.
  *
- * Each independently optional output points to a 32-bit word. FW 3.60
- * zero-extends each 16-bit response value and performs a 32-bit store. It uses
- * command 0x0980, or legacy command 0x0882 on Baryon versions through
+ * Each output may be NULL. For each non-NULL output, FW 3.60 stores the
+ * 16-bit response value in a 32-bit word with the upper 16 bits set to zero.
+ * It uses command 0x0980, or legacy command 0x0882 on Baryon versions through
  * 0x00070503.
  *
  * @param[out] hardwareVersion Battery hardware version, or NULL.
@@ -437,7 +437,7 @@ int ksceSysconGetBatteryVersion(SceUInt32 *hardwareVersion, SceUInt32 *firmwareV
 int ksceSysconGetMicroUsbInfo(SceUInt32 *info);
 
 /**
- * Get the cached raw multi-connector information.
+ * Get the cached multi-connector information, with the mappings below.
  *
  * Bits 8 through 15 contain the connector code. On hardware versions below
  * 0x00400000, FW 3.60 maps the raw codes 0x60, 0x51, 0x65, and 0x55 to 0x00,
@@ -448,14 +448,14 @@ int ksceSysconGetMicroUsbInfo(SceUInt32 *info);
  * older multi-connector hardware. SceHpremote identifies code 0x03 as an
  * audio-output dock.
  *
- * @param[out] info Optional output for the normalized 32-bit information value.
+ * @param[out] info Optional output for the 32-bit information value after mapping.
  *
  * @return Always 0 on FW 3.60.
  */
 int ksceSysconGetMultiCnInfo(SceUInt32 *info);
 
 /**
- * Get the front and rear touch-panel identities.
+ * Get the front and rear touch-panel vendor IDs and firmware revisions.
  *
  * Uses Syscon command 0x0380.
  *
@@ -469,7 +469,7 @@ int ksceSysconGetTouchpanelDeviceInfo(SceKernelTouchpanelDeviceInfo *info);
 /**
  * Close the Jig port.
  *
- * FW 3.60 serializes the operation with an internal mutex and uses Syscon
+ * FW 3.60 holds an internal mutex during the operation and uses Syscon
  * command 0x2081. Closing an already-closed port returns 0x80250001.
  *
  * @return 0 on success, or a negative state, mutex, or Syscon error.
@@ -479,7 +479,7 @@ int ksceSysconJigClosePort(void);
 /**
  * Open the Jig port.
  *
- * FW 3.60 serializes the operation with an internal mutex and uses Syscon
+ * FW 3.60 holds an internal mutex during the operation and uses Syscon
  * command 0x2080. Opening an already-open port returns 0x80250001.
  *
  * @return 0 on success, or a negative state, mutex, or Syscon error.
@@ -491,7 +491,7 @@ int ksceSysconJigOpenPort(void);
  *
  * The port must be open. Syscon command 0x2082 receives the two bytes followed
  * by two zero bytes. Their individual purposes are unknown; the only observed
- * FW 3.60 importer passes zero for both.
+ * FW 3.60 caller passes zero for both.
  *
  * @param[in] config0 First raw configuration byte.
  * @param[in] config1 Second raw configuration byte.
@@ -560,8 +560,8 @@ int ksceSysconSetMultiCnPort(int port);
 /**
  * Calculate the checksum of a Syscon updater firmware segment.
  *
- * This function does not contact Syscon. It computes the modulo-2^32 sum of
- * the unsigned bytes and returns its bitwise complement.
+ * This function does not contact Syscon. It adds the unsigned bytes modulo
+ * 2^32 and writes the bitwise complement of the sum to \a checksum.
  *
  * @param[in] segment Segment data. Must not be NULL.
  * @param[in] segmentSize Number of bytes. Must not be zero.
@@ -579,7 +579,7 @@ int ksceSysconUpdaterCalcChecksum(const void *segment, SceSize segmentSize, SceU
  * the digest from the type-0x20 updater record.
  *
  * @param[in] digest Digest data. Must not be NULL.
- * @param[in] size Must be exactly ::SCE_SYSCON_UPDATER_DIGEST_SIZE.
+ * @param[in] size Digest size in bytes. Must be exactly ::SCE_SYSCON_UPDATER_DIGEST_SIZE.
  *
  * @return 0 on success, 0x80250001 for an invalid pointer or size, or a
  *         negative Syscon error.
@@ -602,9 +602,9 @@ int ksceSysconUpdaterExecProgramming(SceUInt32 checksum);
  * Set the Syscon updater run mode.
  *
  * FW 3.60 accepts only 0x152E, 0x3665, 0x72BA, 0x9A54, and 0xC5E7. Command
- * 0x1183 receives the 16-bit value. SceSblUpdateMgr begins its update-mode 0,
- * 2, and 3 flows with 0x9A54, 0x3665, and 0xC5E7 respectively, and ends the
- * latter two flows with 0x72BA. It does not use 0x152E.
+ * 0x1183 receives the 16-bit value. SceSblUpdateMgr begins updates in modes 0,
+ * 2, and 3 with 0x9A54, 0x3665, and 0xC5E7 respectively. It ends updates in
+ * modes 2 and 3 with 0x72BA. It does not use 0x152E.
  *
  * @param[in] mode Updater run-mode value.
  *

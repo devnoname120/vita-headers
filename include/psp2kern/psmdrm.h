@@ -76,9 +76,9 @@ int kscePsmDrmRemoveActData(SceUInt64 *account_id);
 /**
  * Validate and install PSM activation data.
  *
- * @param[in] psm_act_data - PSM-ACT payload (0x400 bytes)
+ * @param[in] psm_act_data - PSM-ACT activation data (0x400 bytes)
  * @param[in] aes_dec_key - Optional 0x10-byte AES key used to decrypt the
- *                          payload before validation
+ *                          activation data before validation
  *
  * @return 0 on success, < 0 on error.
  */

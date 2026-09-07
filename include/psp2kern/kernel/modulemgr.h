@@ -38,7 +38,7 @@ typedef struct {
   uint32_t version;
   uint32_t module_version;
   union {
-    uint32_t unk10; //!< Legacy packed view of module type/flags.
+    uint32_t unk10; //!< Legacy field containing the packed module type and flags.
     struct {
       uint8_t module_type;
       uint8_t reserved_0x11;
@@ -52,10 +52,7 @@ typedef struct {
   char module_name[28];
   uint32_t unk40;
   uint32_t unk44;
-  union {
-    uint32_t debug_fingerprint;
-    uint32_t nid; //!< Legacy name for ::debug_fingerprint.
-  };
+  uint32_t nid;
   SceSize segments_num;
   union {
     struct {
@@ -552,8 +549,8 @@ int ksceKernelUnloadProcessModules(SceUID pid);
  * Gets information about the loaded kernel module containing an address.
  *
  * @param[in] module_addr Address in any mapped module segment.
- * @param[out] info Zero-initialized ::SceKernelModuleInfo buffer whose
- *                  \a size field is set to the size of that structure.
+ * @param[out] info ::SceKernelModuleInfo buffer. Zero it and set its \a size
+ *                  field to the size of the structure before calling.
  *
  * @return 0 on success, < 0 on error.
  */
@@ -570,8 +567,8 @@ int ksceKernelGetModuleInfoByAddr(const void *module_addr, SceKernelModuleInfo *
 int ksceKernelRegisterLibary(const void *libent);
 
 /**
- * Unregisters an export library from a loaded kernel module and relinks its
- * affected importers.
+ * Unregisters an export library from a loaded kernel module and relinks
+ * modules whose imports are affected.
  *
  * @param[in] libent Pointer to the aligned 0x20-byte library export-table
  *                   entry within the loaded kernel module that owns it.

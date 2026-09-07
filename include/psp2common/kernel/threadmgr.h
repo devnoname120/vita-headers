@@ -54,7 +54,7 @@ typedef enum SceKernelThreadEventType {
 /** Timer event notification type. */
 typedef enum SceKernelTimerType {
 	SCE_KERNEL_TIMER_TYPE_SET_EVENT   = 0, //!< Set the timer event state when the deadline expires.
-	SCE_KERNEL_TIMER_TYPE_PULSE_EVENT = 1  //!< Wake current waiters without retaining a set event state.
+	SCE_KERNEL_TIMER_TYPE_PULSE_EVENT = 1  //!< Wake threads currently waiting without leaving the event set.
 } SceKernelTimerType;
 
 /** Timer state. */
@@ -69,7 +69,7 @@ typedef struct SceKernelTimerInfo {
 	SceUInt32 attr;
 	/** Nonzero while the timer is running. */
 	SceBool fActive;
-	/** Timer-time origin while active, or the stored timer time while stopped. */
+	/** Time from which the timer is measured while running, or the stored timer time while stopped. */
 	SceKernelSysClock baseTime;
 	/** Current logical timer time. */
 	SceKernelSysClock currentTime;
@@ -138,7 +138,7 @@ typedef struct SceKernelThreadInfo {
 	SceKernelThreadEntry entry;
 	/** Thread stack pointer */
 	void                 *stack;
-	/** Thread stack size. Value of type ::SceSize. */
+	/** Thread stack size, as a ::SceSize value. */
 	SceInt32             stackSize;
 	/** Initial priority */
 	SceInt32             initPriority;
@@ -325,10 +325,9 @@ VITASDK_BUILD_ASSERT_EQ(8, SceKernelMutexOptParam);
 
 /** Current state of a mutex.
  *
- * The information functions accept buffers of at most 0x40 bytes and copy no
- * more than the size requested by the caller. A caller using the former 0x3C
- * layout therefore remains supported, but does not receive the trailing
- * priority-ceiling field.
+ * The mutex information functions accept buffers of at most 0x40 bytes. They
+ * copy no more than the caller requests. The former 0x3C layout is still
+ * supported, but does not include the final priority-ceiling field.
  *
  * @see sceKernelGetMutexInfo.
  */
@@ -347,9 +346,9 @@ typedef struct SceKernelMutexInfo {
 	int             currentCount;
 	/** The UID of the current owner of the mutex. */
 	SceUID          currentOwnerId;
-	/** The number of threads waiting on the mutex, represented as a ::SceUInt32 value. */
+	/** Number of threads waiting on the mutex, as a ::SceUInt32 value. */
 	int             numWaitThreads;
-	/** Priority ceiling (zero when priority ceiling is unused). */
+	/** Priority ceiling, or zero when unused. */
 	SceInt32        ceilingPriority;
 } SceKernelMutexInfo;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceKernelMutexInfo); // size is from FW 3.60

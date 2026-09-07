@@ -35,12 +35,12 @@ VITASDK_BUILD_ASSERT_EQ(0x10, ScePsmDrmGetRifInfoOpt); // size is from FW 3.60
  *
  * @param[in] license_buf - Required RIF buffer (0x400 bytes)
  * @param[out] keydata - Required decrypted key set output
- * @param[out] version_flag - Optional activation version flag output. Receives
- *                            a value of type ::SceUInt32.
- * @param[in] exp_time - Required input-only structure containing optional
- *                       license start and expiration time output pointers.
- *                       Still declared as non-const for backwards
- *                       compatibility.
+ * @param[out] version_flag - Optional activation version flag output; receives
+ *                            a ::SceUInt32 value.
+ * @param[in] exp_time - Required structure containing optional license start
+ *                       and expiration time output pointers. The structure
+ *                       itself is not modified, but remains non-const for
+ *                       backwards compatibility.
  *
  * The returned start time is the later of the activation and license start
  * times. The returned expiration time is the earlier of their expiration
@@ -56,7 +56,8 @@ int scePsmDrmGetRifKey(const ScePsmDrmLicense *license_buf, ScePsmDrmKeySet *key
  * @param[out] act_type - Optional activation type output
  * @param[out] version_flag - Optional activation version flag output
  * @param[out] account_id - Optional activated account ID output
- * @param[in] pOpt - Required activation start and expiration time output pointers
+ * @param[in] pOpt - Required structure containing optional activation start
+ *                   and expiration time output pointers
  *
  * @return 0 on success, < 0 on error.
  */
@@ -68,7 +69,8 @@ int scePsmDrmGetActInfo(SceUInt32 *act_type, SceUInt32 *version_flag, SceUInt64 
  * @param[in] license - Required PSM RIF data (0x400 bytes)
  * @param[out] content_id - Optional content ID buffer (0x30 bytes)
  * @param[out] account_id - Optional license account ID output
- * @param[in] pOpt - Required license start and expiration time output pointers
+ * @param[in] pOpt - Required structure containing optional license start and
+ *                   expiration time output pointers
  *
  * @return 0 on success, < 0 on error.
  */

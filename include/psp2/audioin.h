@@ -22,11 +22,11 @@ extern "C" {
  * at 48000 Hz. ::SCE_AUDIO_IN_PORT_TYPE_CAMERA accepts 256 or 512 samples at
  * 16000 Hz.
  *
- * Successful FW 3.60 handles are in the range 0x80 through 0xFF. In addition
- * to the named profiles above, the implementation accepts any other
- * nonnegative selector below 0x400 whose low nibble is zero, as well as
- * selectors 0x12 and 0x1F.
- * Their purpose is unknown and they have no confirmed first-party uses.
+ * On FW 3.60, successful handles range from 0x80 through 0xFF. In addition
+ * to the named profiles above, any other nonnegative port type below 0x400
+ * whose low four bits are zero is accepted, as are 0x12 and 0x1F. The purpose
+ * of these additional values is unknown, and they have no confirmed
+ * first-party uses.
  *
  * @param[in] portType - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
@@ -43,7 +43,7 @@ int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudi
  *
  * This performs the same work as ::sceAudioInOpenPort. On FW 3.60 it also
  * accepts ::SCE_AUDIO_IN_PORT_TYPE_DIAG without validating \a grain or \a freq;
- * both values are nevertheless stored in the resulting port configuration.
+ * both values are still stored in the resulting port configuration.
  *
  * @param[in] portType - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
@@ -66,7 +66,7 @@ int sceAudioInOpenPortForDiag(SceAudioInPortType portType, int grain, int freq, 
 int sceAudioInReleasePort(int port);
 
 /**
- * Capture one grain of mono signed 16-bit PCM.
+ * Capture the configured number of mono signed 16-bit PCM samples.
  *
  * This function blocks until the configured number of samples is available.
  *
@@ -80,17 +80,18 @@ int sceAudioInReleasePort(int port);
 int sceAudioInInput(int port, void *destPtr);
 
 /**
- * Capture one grain and report an input-route transition.
+ * Capture the configured number of samples and report an input-route change.
  *
  * For a port with device-state reporting enabled, such as the camera profile,
  * FW 3.60 writes 1 for the first two successful captures after the input route
- * changes and writes 0 afterward. This value is not a persistent connection
- * state. For other profiles FW 3.60 does not write \a inputDeviceState.
+ * changes and writes 0 afterward. This value does not indicate whether the
+ * input device is still connected. For other profiles FW 3.60 does not write
+ * \a inputDeviceState.
  *
  * @param[in] port - Port handle returned by ::sceAudioInOpenPort.
  * @param[out] destPtr - Buffer for the captured samples. Its size must be at
  *                       least <code>grain * sizeof(SceInt16)</code> bytes.
- * @param[out] inputDeviceState - Receives the transient route-change state when
+ * @param[out] inputDeviceState - Receives the temporary route-change state when
  *                                reporting is enabled for the port. Otherwise
  *                                FW 3.60 does not access this pointer.
  *
@@ -116,7 +117,7 @@ int sceAudioInGetAdopt(SceAudioInPortType portType);
  * Query audio-input state.
  *
  * On Vita TV, FW 3.60 also reports the microphone as muted while the Bluetooth
- * input backend is inactive.
+ * input is inactive.
  *
  * @param[in] select - ::SCE_AUDIO_IN_GETSTATUS_MUTE on FW 3.60.
  *
@@ -124,7 +125,7 @@ int sceAudioInGetAdopt(SceAudioInPortType portType);
  *         negative error code for an unsupported selector. FW 3.60 returns
  *         ::SCE_AUDIO_IN_ERROR_INVALID_PORT_PARAM to processes built for an
  *         SDK older than 1.80, and ::SCE_AUDIO_IN_ERROR_INVALID_PARAMETER to
- *         newer processes.
+ *         processes built for SDK 1.80 or later.
  */
 int sceAudioInGetStatus(int select);
 
@@ -139,8 +140,9 @@ int sceAudioInGetInput(void);
  * Select the input route.
  *
  * The request is applied asynchronously by the input worker. FW 3.60 does not
- * reject other integer values: the worker records the requested value as the
- * current route but performs no explicit backend selection for it.
+ * reject values outside ::SceAudioInInputMode: the worker records the requested
+ * value as the current route but does not explicitly select an input source
+ * for it.
  *
  * @param[in] inputMode - Input route.
  *
@@ -172,8 +174,9 @@ int sceAudioInSetMute(SceAudioInMuteCommand command);
  * @param[in] port - Port handle owned by the calling process.
  * @param[in] gain - Value to store.
  *
- * @return 0 on success, or a negative error code. An invalid or unowned handle
- *         returns ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
+ * @return 0 on success, or a negative error code. An invalid handle or one not
+ *         owned by the calling process returns
+ *         ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
  */
 int sceAudioInSetMicGain(int port, int gain);
 
@@ -183,8 +186,8 @@ int sceAudioInSetMicGain(int port, int gain);
  * @param[in] port - Port handle owned by the calling process.
  *
  * @return The sign-extended 16-bit value on success, or a negative
- *         error code. An invalid or unowned handle returns
- *         ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
+ *         error code. An invalid handle or one not owned by the calling
+ *         process returns ::SCE_AUDIO_IN_ERROR_INVALID_PORT_TYPE on FW 3.60.
  */
 int sceAudioInGetMicGain(int port);
 

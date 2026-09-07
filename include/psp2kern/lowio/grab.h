@@ -13,9 +13,9 @@ extern "C" {
 #endif
 
 /**
- * Sets or releases a Grab client request mask.
+ * Set or clear Grab client request bits.
  *
- * When acquiring the mask, FW 3.60 waits until the selected clients are idle.
+ * When setting the request bits, FW 3.60 waits until the selected clients are idle.
  * ScePower uses mask 0xF00 around GPU clock changes.
  *
  * @param[in] client_mask - Client mask. Only bits 0 through 11 are accepted.
@@ -27,13 +27,14 @@ extern "C" {
 int ksceGrabSetClientRequestMask(SceUInt32 client_mask, int release);
 
 /**
- * Writes a whitelisted indexed SceGrab register.
+ * Write one of the allowed indexed SceGrab registers.
  *
  * @param[in] register_id - Register selector. Bits 0 through 7 select an index
  * from 0 to 31 and bits 8 through 15 select a group from 0 to 5.
  * Bits 16 through 31 are ignored. On FW 3.60, group 0 accepts indices 6 and
- * 8 through 11; group 1 accepts 1 and 8 through 11; and groups 2 through 5
- * accept 0 through 5 plus, respectively, index 8, 9, 10, or 11.
+ * 8 through 11; group 1 accepts 1 and 8 through 11. Groups 2 through 5 all
+ * accept indices 0 through 5. Group 2 also accepts index 8, group 3 accepts
+ * index 9, group 4 accepts index 10, and group 5 accepts index 11.
  * @param[in] value - Value to write.
  *
  * @return 0 on success, 0x803F0B00 for an invalid selector.
@@ -41,7 +42,7 @@ int ksceGrabSetClientRequestMask(SceUInt32 client_mask, int release);
 int ksceGrabWriteIndexedRegister(SceUInt32 register_id, SceUInt32 value);
 
 /**
- * Programs a SceGrab memory-bank physical address.
+ * Set a SceGrab memory-bank physical address.
  *
  * FW 3.60 SceCompat programs banks 0 through 3 and sets bit 0 in each address
  * value. The secure handler accepts eight banks.
@@ -57,7 +58,7 @@ int ksceGrabWriteIndexedRegister(SceUInt32 register_id, SceUInt32 value);
 int ksceGrabSetMemoryBankAddress(SceUInt32 bank, SceUIntPtr paddr);
 
 /**
- * Starts the compatibility hardware path.
+ * Start the compatibility hardware path.
  *
  * On FW 3.60, \a mode selects the value written to the low 24 bits of
  * Pervasive register 0x1E0: zero selects 0xA and nonzero selects 0xF. The
@@ -72,7 +73,7 @@ int ksceGrabSetMemoryBankAddress(SceUInt32 bank, SceUIntPtr paddr);
 int ksceGrabCompatStartEx(int mode);
 
 /**
- * Initializes the compatibility LCD DMA path. The secure handler quiesces all
+ * Initialize the compatibility LCD DMA path. The secure handler quiesces all
  * 12 Grab clients while changing its hardware state.
  *
  * @return 0 on FW 3.60.
@@ -80,7 +81,7 @@ int ksceGrabCompatStartEx(int mode);
 int ksceGrabCompatLcdDmacInit(void);
 
 /**
- * Stops the compatibility hardware path.
+ * Stop the compatibility hardware path.
  *
  * FW 3.60 quiesces Grab clients 6 and 7 and clears all eight memory-bank
  * address registers while stopping it.
@@ -90,7 +91,7 @@ int ksceGrabCompatLcdDmacInit(void);
 int ksceGrabCompatStop(void);
 
 /**
- * Waits for flags in the second SceSonyRegbus register region.
+ * Wait for flags in the second SceSonyRegbus register region.
  *
  * This function spins without a timeout until at least one selected flag is
  * set at offset 0x120 in the physical 0xE8001000 region.
@@ -102,7 +103,7 @@ int ksceGrabCompatStop(void);
 int ksceGrabWaitForSonyRegbusFlags(SceUInt32 flags);
 
 /**
- * Programs the GPU core and GPU MP clock selectors.
+ * Set the GPU core and GPU MP clock selectors.
  *
  * Grab clients 8 through 11 are idle while ScePervasiveBaseClk register 0x10
  * is changed. This function does not control the compatibility processor

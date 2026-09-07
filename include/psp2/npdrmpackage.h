@@ -7,8 +7,9 @@
  * 0x2800000000000001, 0x280000000000002D, 0x280000000000002E, or
  * 0x2800000000000039.
  *
- * The started and finished notification functions synchronously copy at most
- * 0x40 bytes from their message pointer and do not retain the pointer.
+ * The started and finished notification functions copy at most 0x40 bytes
+ * from the message buffer before returning. You may reuse or free the buffer
+ * after the function returns.
  */
 
 
@@ -31,7 +32,7 @@ VITASDK_BUILD_ASSERT_EQ(0x20, SceNpDrmPackageCheckOpt); // size is from FW 3.60
 /**
  * Options for ::_sceNpDrmPackageDecrypt.
  *
- * The previous ::_sceNpDrmPackageDecrypt_opt type name is retained for
+ * The older type name ::_sceNpDrmPackageDecrypt_opt is kept for
  * backwards compatibility.
  */
 typedef struct _sceNpDrmPackageDecrypt {
@@ -61,12 +62,14 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceNpDrmPackageFinishedOpt); // size is from FW 3.6
  * @param[in] buffer - Buffer containing the PKG header
  * @param[in] size - Buffer size. A normal check requires at least 0x8000 bytes.
  * @param[in] opt - A 32-bit user pointer to a ::SceNpDrmPackageCheckOpt
- *                  structure, or 0. The pointer type remains an integer for
+ *                  structure, or 0. The parameter remains an integer for
  *                  backwards compatibility. The structure contents are ignored
- *                  on FW 3.60. Any nonzero pointer requests context teardown.
+ *                  on FW 3.60. Any nonzero pointer requests that the context
+ *                  be destroyed.
  * @param[in] identifier - Value whose low byte selects one of six contexts. Bit
  *                         0x100 creates or uses the context. Bit 0x200 also
- *                         requests teardown and requires a nonzero \a opt.
+ *                         requests that the context be destroyed and requires
+ *                         a nonzero \a opt.
  *
  * @return 0 on success, < 0 on error
  */
@@ -79,11 +82,12 @@ int _sceNpDrmPackageCheck(const void *buffer, SceSize size, int opt, unsigned in
  *
  * @param[in,out] buffer - PKG data to decrypt in place
  * @param[in] size - Size of the buffer
- * @param[in] opt - Required input-only offset and context identifier.
+ * @param[in] opt - Required input-only offset and context identifier. Still
+ *                  declared as non-const for backwards compatibility.
  *
  * @return 0 on success, < 0 on error
  */
-int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, const SceNpDrmPackageDecryptOpt * __restrict__ opt);
+int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, SceNpDrmPackageDecryptOpt * __restrict__ opt);
 
 /**
  * Update a package hash-transform context
@@ -92,8 +96,8 @@ int _sceNpDrmPackageDecrypt(void * __restrict__ buffer, SceSize size, const SceN
  *
  * @param[in] buffer - Input data
  * @param[in] size - Size of the input data; must be nonzero
- * @param[in,out] context - Required hash context. Its complete 0x28-byte value
- *                          is copied in and out.
+ * @param[in,out] context - Required hash context. All 0x28 bytes are copied in
+ *                          before the update and copied back afterwards.
  * @param[in] identifier - Package identifier and flags. Bit 0x10000 copies the
  *                         0x20-byte DMAC5 hash output into \a context->state. Bit
  *                         0x40000000 selects DMAC5 command 3 instead of command
@@ -108,9 +112,9 @@ int _sceNpDrmPackageTransform(const void *buffer, SceSize size, SceSblDmac5HashT
  *
  * @param[in] identifier - Package operation identifier. The FW 3.60 installer
  *                         sets bit 0x80000000 for a started notification.
- * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
- *                              unchanged to the system callback and set to 0
- *                              by observed FW 3.60 callers.
+ * @param[in] forwarded_value - Passed unchanged to the system callback;
+ *                              its purpose is unknown. Observed FW 3.60
+ *                              callers pass 0.
  * @param[in] message - Optional status data
  * @param[in] opt - Required message-size options
  *
@@ -135,9 +139,9 @@ int _sceNpDrmPackageInstallFinished(int result_code, const void *message, SceSiz
  *
  * @param[in] identifier - Package operation identifier. The FW 3.60 installer
  *                         sets bit 0x80000000 for a started notification.
- * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
- *                              unchanged to the system callback and set to 0
- *                              by observed FW 3.60 callers.
+ * @param[in] forwarded_value - Passed unchanged to the system callback;
+ *                              its purpose is unknown. Observed FW 3.60
+ *                              callers pass 0.
  * @param[in] message - Optional status data
  * @param[in] opt - Required message-size options
  *
@@ -162,9 +166,9 @@ int _sceNpDrmPackageUninstallFinished(int result_code, const void *message, SceS
  *
  * @param[in] identifier - Save-data operation identifier. The FW 3.60 installer
  *                         sets bit 0x80000000 for a started notification.
- * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
- *                              unchanged to the system callback and set to 0
- *                              by observed FW 3.60 callers.
+ * @param[in] forwarded_value - Passed unchanged to the system callback;
+ *                              its purpose is unknown. Observed FW 3.60
+ *                              callers pass 0.
  * @param[in] message - Optional status data
  * @param[in] opt - Required message-size options
  *
@@ -189,9 +193,9 @@ int _sceNpDrmSaveDataFormatFinished(int result_code, const void *message, SceSiz
  *
  * @param[in] identifier - Save-data operation identifier. The FW 3.60 installer
  *                         sets bit 0x80000000 for a started notification.
- * @param[in] forwarded_value - Its purpose is unknown. It is forwarded
- *                              unchanged to the system callback and set to 0
- *                              by observed FW 3.60 callers.
+ * @param[in] forwarded_value - Passed unchanged to the system callback;
+ *                              its purpose is unknown. Observed FW 3.60
+ *                              callers pass 0.
  * @param[in] message - Optional status data
  * @param[in] opt - Required message-size options
  *

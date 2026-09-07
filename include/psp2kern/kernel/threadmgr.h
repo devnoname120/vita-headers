@@ -31,9 +31,9 @@ extern "C" {
  *
  * @param[in] common Value supplied to ::ksceKernelRegisterTimer.
  *
- * @return 0 to release the alarm object. Any nonzero value is interpreted as
- * an unsigned delay in microseconds and rearms it relative to the preceding
- * deadline; delays smaller than 200 microseconds are rounded up to 200.
+ * @return 0 to release the alarm object. A nonzero value is treated as an
+ * unsigned delay in microseconds. It rearms the alarm relative to its previous
+ * deadline. Delays below 200 microseconds are rounded up to 200.
  */
 typedef SceInt32 (*SceKernelTimerFunction)(SceInt32 common);
 
@@ -41,13 +41,12 @@ typedef SceInt32 (*SceKernelTimerFunction)(SceInt32 common);
  * Changes a thread's CPU affinity mask.
  *
  * @param[in] threadId Thread identifier, or 0 for the current thread.
- * @param[in] cpuAffinityMask New CPU affinity mask. Kernel callers may use a
- * low four-bit mask or the corresponding bits 16-19 encoding, but may not
- * combine both encodings. Value 0x40000000 selects the current CPU.
+ * @param[in] cpuAffinityMask New CPU affinity mask. Kernel callers may use
+ * bits 0-3 or the corresponding bits 16-19, but may not combine the two
+ * encodings. Value 0x40000000 selects the current CPU.
  *
- * @return The previous low four-bit affinity mask, or < 0 on error. The result
- * uses the low-mask encoding even when cpuAffinityMask uses the high-word
- * encoding.
+ * @return The previous affinity mask in bits 0-3, or < 0 on error. The result
+ * uses bits 0-3 even when cpuAffinityMask uses bits 16-19.
  */
 SceInt32 ksceKernelChangeThreadCpuAffinityMask(SceUID threadId, SceInt32 cpuAffinityMask);
 
@@ -55,20 +54,20 @@ SceInt32 ksceKernelChangeThreadCpuAffinityMask(SceUID threadId, SceInt32 cpuAffi
  * Clears event bits by ANDing the current pattern with the supplied pattern.
  *
  * @param[in] eventId Event identifier.
- * @param[in] clearPattern Pattern to retain. Passing 0 clears all bits. Bit
- * 0x00010000 is reserved and is rejected when set.
+ * @param[in] clearPattern Bits to retain. Passing 0 clears all bits. Bit
+ * 0x00010000 is reserved; setting it causes an error.
  *
  * @return 0 on success, or < 0 on error.
  */
 int ksceKernelClearEvent(SceUID eventId, SceUInt32 clearPattern);
 
 /**
- * Gets a timer's timebase origin.
+ * Gets the time from which a timer is measured.
  *
  * @param[in] timerId Timer identifier.
  *
- * @return 0 while the timer is stopped, the process-time value from which the
- * active timer is measured while it is running, or UINT64_MAX on error.
+ * @return While running, the process-time value from which the timer is
+ * measured; 0 while stopped; or UINT64_MAX on error.
  */
 SceUInt64 ksceKernelGetTimerBaseWide(SceUID timerId);
 
@@ -112,12 +111,12 @@ int ksceKernelStartTimer(SceUID timerId);
 int ksceKernelStopTimer(SceUID timerId);
 
 /**
- * Waits for an event pattern without dispatching thread callbacks.
+ * Waits for an event pattern without running thread callbacks.
  *
  * @param[in] eventId Event identifier.
  * @param[in] waitPattern Pattern to wait for.
- * @param[out] pResultPattern Optional matched-pattern output.
- * @param[out] pUserData Optional event user-data output.
+ * @param[out] pResultPattern Optional output for the matched pattern.
+ * @param[out] pUserData Optional output for the event's user data.
  * @param[in,out] pTimeout Optional timeout in microseconds.
  *
  * @return 0 on success, or < 0 on error.

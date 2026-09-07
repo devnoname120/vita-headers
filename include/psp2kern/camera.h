@@ -19,12 +19,12 @@ typedef enum SceCameraActiveStatusFlag {
 } SceCameraActiveStatusFlag;
 
 /**
- * Query the cameras actively owned by a process.
+ * Check which active cameras a process owns.
  *
  * A status bit is set only when the target process has opened and started the
  * corresponding camera and remains its current global owner. An invalid or
- * nonexistent process ID and an uninitialized Camera driver are reported as
- * inactive rather than errors.
+ * nonexistent process ID, or an uninitialized Camera driver, is reported as
+ * inactive, not as an error.
  *
  * @param[in] pid - Target process ID.
  * @param[out] pStatus - Receives a bitwise OR of

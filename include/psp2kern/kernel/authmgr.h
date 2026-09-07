@@ -18,8 +18,8 @@ extern "C" {
  * Clear a DMAC5 key slot.
  *
  * AuthMgr does not validate \a slot_id before forwarding it to secure command
- * 6. SceSblSsMgr manages slots 12 through 23, but no FW 3.60 importer calls
- * this export directly.
+ * 6. SceSblSsMgr manages slots 12 through 23, but no FW 3.60 module that
+ * imports this function calls it directly.
  *
  * @param[in] slot_id DMAC5 key slot identifier.
  * @param[in] zero Must be 0; forwarded in the secure command.
@@ -35,7 +35,7 @@ int ksceSblAuthMgrClearDmac5Key(int slot_id, int zero);
  * FW 3.60 does not validate \a slot_id before forwarding it to secure command
  * 5. SceSblSsMgr allocates slots 12 through 23.
  *
- * @param[in] key Required key data.
+ * @param[in] key Non-NULL pointer to the key data.
  * @param[in] keylen Key size, either 0x10 or 0x20 bytes.
  * @param[in] slot_id DMAC5 key slot identifier.
  * @param[in] key_id Key identifier: 0, 0x10000, 0x10001, 0x20000, or
@@ -49,27 +49,27 @@ int ksceSblAuthMgrSetDmac5Key(const void *key, SceSize keylen, int slot_id, int 
 /**
  * Authenticate a SELF header.
  *
- * This function is called after ::ksceSblAuthMgrOpen. The complete
+ * Call this function after ::ksceSblAuthMgrOpen. The complete
  * ::SceAuthInfo context is sent to secure command 1. On success, only
  * ::SceAuthInfo::response is copied back from the secure-module response.
  *
  * When the system license state is uninitialized, expired, or reports a
  * backup-battery failure, FW 3.60 sets the four-bit field at bits 8 through 11
- * of ::SceAuthInfo::self_type to the value 1 before authentication. For media
- * types 13 and 14, the verified SPSFO system version is supplied through
+ * of ::SceAuthInfo::self_type to 1 before authentication. For media types 13
+ * and 14, the verified SPSFO system version is written to
  * ::SceSelfAuthInfo::program_sceversion in the response SELF authorization
  * information; other media types receive zero in that field.
  *
- * When the authenticated program-authority ID matches 0x2F0 in its upper 12
- * bits, a registered Utoken override can replace the response program-authority
+ * When the upper 12 bits of the authenticated program-authority ID equal
+ * 0x2F0, a registered Utoken override can replace the response program-authority
  * ID, capability, attribute, and first 0x10 bytes of the shared secret. The
  * no-override error 0x800F1A02 is ignored; other negative Utoken errors are
  * returned.
  *
  * @param[in] handle Authentication session handle. Must be 1.
- * @param[in] self_header_addr Required mapped SELF-header address.
+ * @param[in] self_header_addr Non-NULL address of the mapped SELF header.
  * @param[in] self_header_size Size of the mapped SELF header in bytes.
- * @param[in,out] auth_info Required SELF authentication context.
+ * @param[in,out] auth_info Non-NULL pointer to the SELF authentication context.
  *
  * @return 0 on success, 0x800F0509 for an invalid handle, 0x800F0516 for an
  *         invalid pointer, or a negative address-translation, Utoken, or
@@ -81,9 +81,9 @@ int ksceSblAuthMgrAuthHeader(int handle, const void *self_header_addr, SceSize s
  * Close a SELF authentication session.
  *
  * This releases the single session acquired by ::ksceSblAuthMgrOpen and the
- * suspend lock held for its lifetime. FW 3.60 clears the internal session only
- * when stopping the secure module succeeds, but it does not return a secure
- * module stop error to the caller.
+ * suspend lock held while the session is open. FW 3.60 clears the internal
+ * session only when stopping the secure module succeeds, but it does not
+ * return a secure module stop error to the caller.
  *
  * @param[in] handle Authentication session handle. Must be 1.
  *
@@ -113,10 +113,10 @@ int ksceSblAuthMgrCompareSwVersion(int version);
  * calls this with a 0x10-byte output and a 0x90-byte request assembled from a
  * 0x20-byte bind seed followed by a 0x70-byte RIF header.
  *
- * @param[in,out] klicensee Required output buffer.
+ * @param[in,out] klicensee Non-NULL output buffer.
  * @param[in] klicensee_len Output size, from 0 through 0x1000 bytes and a
  *                          multiple of 0x10.
- * @param[in] request Required read-only request buffer.
+ * @param[in] request Non-NULL read-only request buffer.
  * @param[in] request_len Request size, from 0x10 through 0x1000 bytes and a
  *                        multiple of 0x10.
  * @param[in] zero Must be 0.
@@ -130,11 +130,12 @@ int ksceSblAuthMgrDecBindData(void *klicensee, SceSize klicensee_len, const void
 /**
  * Process NPDRM EKc key material in place.
  *
- * The secure module may return a different data byte count; AuthMgr rejects a
- * returned count above 0x100 and copies exactly that many bytes back. NpDrm
- * uses key identifier 0 to process its 0xC0-byte encrypted key-material table.
+ * The secure module may return a different number of bytes than supplied.
+ * AuthMgr rejects counts above 0x100; otherwise, it copies the reported number
+ * of bytes back to \a data. NpDrm uses key identifier 0 to process its 0xC0-byte
+ * encrypted key-material table.
  *
- * @param[in,out] data Required input/output buffer.
+ * @param[in,out] data Non-NULL input/output buffer.
  * @param[in] size Input size, from 0x10 through 0x100 bytes and a multiple of
  *                 0x10.
  * @param[in] key_id Key identifier, from 0 through 2.
@@ -148,12 +149,12 @@ int ksceSblAuthMgrGetEKc(void *data, SceSize size, int key_id);
 /**
  * Authenticate and decrypt a SELF segment block in place.
  *
- * The input and output use the same physical-range vector. Cache maintenance
- * is rounded up to 0x40 bytes. SceKernelModulemgr submits stream chunks of up
- * to 0x10000 bytes.
+ * The input and output use the same list of physical address ranges. Cache
+ * maintenance is rounded up to 0x40 bytes. SceKernelModulemgr submits stream
+ * chunks of up to 0x10000 bytes.
  *
  * @param[in] handle Authentication session handle. Must be 1.
- * @param[in,out] buffer Required 0x20-aligned block buffer.
+ * @param[in,out] buffer Non-NULL, 0x20-byte-aligned block buffer.
  * @param[in] buffer_size Nonzero block size in bytes.
  *
  * @return 0 on success, 0x800F0509 for an invalid handle, 0x800F0516 for an
@@ -165,11 +166,11 @@ int ksceSblAuthMgrLoadBlock(int handle, void *buffer, SceSize buffer_size);
 /**
  * Open a SELF authentication session.
  *
- * FW 3.60 supports one global session. A successful call starts the Auth
- * secure module, returns handle 1, and holds a suspend lock until the matching
- * ::ksceSblAuthMgrClose call.
+ * FW 3.60 supports one session for the whole system. A successful call starts
+ * the Auth secure module, writes handle 1 to \a pHandle, and holds a suspend
+ * lock until the matching ::ksceSblAuthMgrClose call.
  *
- * @param[out] pHandle Required output that receives handle 1.
+ * @param[out] pHandle Non-NULL pointer that receives handle 1.
  *
  * @return 0 on success, 0x800F0501 when a session is already open,
  *         0x800F0516 for an invalid pointer or internal session state, or a
@@ -196,12 +197,12 @@ int ksceSblAuthMgrSetupAuthSegment(int handle, int segment_index);
  * Verify a signed SPSFO context.
  *
  * The mapped file is passed to secure command 8. After successful secure
- * verification, FW 3.60 validates the embedded signed-header offset and copies
- * the 0x200-byte header into AuthMgr state for subsequent SELF authentication.
+ * verification, FW 3.60 checks the embedded signed-header offset and saves
+ * a copy of the 0x200-byte header in AuthMgr for later SELF authentication.
  *
- * @param[in,out] ctx Required SPSFO mapping. Its memory-block base must be
- *                    non-NULL and 0x20-byte aligned, and its exact file size
- *                    must not exceed 0x8000 bytes.
+ * @param[in,out] ctx Non-NULL pointer to the SPSFO mapping. Its memory-block
+ *                    base must be non-NULL and 0x20-byte aligned, and its exact
+ *                    file size must not exceed 0x8000 bytes.
  *
  * @return 0 on success, 0x800F0516 for an invalid context, base, or size,
  *         0x800F0524 for an invalid signed-header range after verification,

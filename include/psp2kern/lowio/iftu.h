@@ -56,11 +56,11 @@ VITASDK_BUILD_ASSERT_EQ(1, SceIftuFieldMode);
 typedef struct SceIftuCscParams {
 	unsigned int post_add_0;		//!< 10-bit post-add offset for component 0.
 	unsigned int post_add_1_2;		//!< 10-bit post-add value shared by components 1 and 2.
-	unsigned int post_clamp_max_0;		//!< 10-bit maximum clamp for component 0.
-	unsigned int post_clamp_min_0;		//!< 10-bit minimum clamp for component 0.
-	unsigned int post_clamp_max_1_2;	//!< 10-bit maximum clamp shared by components 1 and 2.
-	unsigned int post_clamp_min_1_2;	//!< 10-bit minimum clamp shared by components 1 and 2.
-	unsigned int ctm[3][3];			//!< Signed S3.9 values stored as 12-bit two's-complement register fields.
+	unsigned int post_clamp_max_0;		//!< 10-bit upper clamp limit for component 0.
+	unsigned int post_clamp_min_0;		//!< 10-bit lower clamp limit for component 0.
+	unsigned int post_clamp_max_1_2;	//!< 10-bit upper clamp limit shared by components 1 and 2.
+	unsigned int post_clamp_min_1_2;	//!< 10-bit lower clamp limit shared by components 1 and 2.
+	unsigned int ctm[3][3];			//!< Signed S3.9 fixed-point values stored as 12-bit two's-complement register fields.
 } SceIftuCscParams;
 VITASDK_BUILD_ASSERT_EQ(0x3C, SceIftuCscParams);
 
@@ -80,8 +80,8 @@ VITASDK_BUILD_ASSERT_EQ(0x28, SceIftuConvParams);
 
 typedef struct SceIftuFrameBuf {
 	unsigned int pixelformat;              //!< One of ::SceIftuPixelformat or a documented extended format.
-	unsigned int width;                    //!< Frame width in pixels; loaded FW 3.60 callers align it to 16 pixels.
-	unsigned int height;                   //!< Frame height in pixels; loaded FW 3.60 callers align it to 8 pixels.
+	unsigned int width;                    //!< Frame width in pixels; known FW 3.60 callers align it to 16 pixels.
+	unsigned int height;                   //!< Frame height in pixels; known FW 3.60 callers align it to 8 pixels.
 	unsigned int leftover_stride;          //!< Additional bytes after each luma or packed-pixel row.
 	unsigned int plane1_2_leftover_stride; //!< Additional bytes after each chroma row.
 	unsigned int paddr0;                   //!< Physical address of plane 0.
@@ -92,7 +92,7 @@ VITASDK_BUILD_ASSERT_EQ(0x20, SceIftuFrameBuf);
 
 typedef struct SceIftuPlaneState {
 	SceIftuFrameBuf fb;
-	unsigned int reserved[3]; //!< Forwarded to undocumented IFTU registers; their purpose is unknown.
+	unsigned int reserved[3]; //!< Values written to undocumented IFTU registers; their purpose is unknown.
 	unsigned int src_w;       //!< Horizontal source-sampling step per destination pixel in 16.16 fixed-point format.
 	unsigned int src_h;       //!< Vertical source-sampling step per destination pixel in 16.16 fixed-point format.
 	unsigned int dst_x;       //!< Destination X coordinate in pixels.
@@ -107,19 +107,20 @@ typedef struct SceIftuPlaneState {
 VITASDK_BUILD_ASSERT_EQ(0x54, SceIftuPlaneState);
 
 /**
- * Run a synchronous conversion through the standalone IFTU2 engine.
+ * Convert a frame with the standalone IFTU2 engine and wait for completion.
  *
- * \a dst and \a src are required and read-only; FW 3.60 dereferences them
- * without NULL checks. \a params is optional. NULL selects bilinear filtering,
- * no CSC control, a zero background, alpha 0xFF, and progressive field mode.
+ * \a dst and \a src must be non-NULL; FW 3.60 dereferences them without
+ * checking for NULL. The structures they point to are read-only. \a params
+ * may be NULL, which selects bilinear filtering, no CSC control, a zero
+ * background, alpha 0xFF, and progressive field mode.
  *
  * FW 3.60 does not read or validate ::SceIftuConvParams::size. Interlaced
  * callers perform one conversion with field mode 2 or 3 and a second
- * conversion with the other mode. Their top/bottom association depends on
- * the source descriptor and is not established.
+ * conversion with the other mode. How these modes correspond to the top and
+ * bottom fields depends on the source description and is not established.
  *
  * The source accepts every ::SceIftuPixelformat value, zero, 0x80020000,
- * 0x80140000, and 0x80180000. The purpose of the latter three extended
+ * 0x80140000, and 0x80180000. The purpose of these three extended
  * formats is unknown. The destination accepts every ::SceIftuPixelformat
  * value and ignores bit 31 while validating it.
  *
@@ -152,7 +153,7 @@ int ksceIftuDisable(unsigned int plane_index);
 int ksceIftuEnable(unsigned int plane_index);
 
 /**
- * Cache and submit an IFTU input-plane state.
+ * Store an IFTU input-plane state in the cache and submit it.
  *
  * FW 3.60 copies all 0x54 bytes when \a plane_state is non-NULL. A zero pixel
  * format disables the input. When the plane is enabled, a zero \a sync updates
@@ -165,10 +166,10 @@ int ksceIftuEnable(unsigned int plane_index);
  * @param[in] plane_state - New complete state, or NULL to reuse the cached
  * state. The structure is read-only.
  * @param[in] bilinear - A nonnegative value replaces the cached filter
- * setting; a negative value preserves it. Loaded FW 3.60 callers use
+ * setting; a negative value preserves it. Known FW 3.60 callers use
  * ::SCE_IFTU_FILTER_MODE_NEAREST or ::SCE_IFTU_FILTER_MODE_BILINEAR.
- * @param[in] sync - Zero for an address-only update, or nonzero to submit the
- * complete state.
+ * @param[in] sync - Zero to update only addresses and reserved register words
+ * when the plane is enabled, or nonzero to submit the complete state.
  *
  * @return 0 on success, ::SCE_IFTU_ERROR_INVALID_PLANE for an invalid plane,
  * or ::SCE_IFTU_ERROR_INVALID_PIXELFORMAT for an unsupported input format.
@@ -186,7 +187,7 @@ int ksceIftuSetInputFrameBuffer(unsigned int plane_index, const SceIftuPlaneStat
 int ksceIftuSetMergeSetting(unsigned int plane_index, int control);
 
 /**
- * Configure an IFTU display plane's output geometry.
+ * Configure an IFTU display plane's output size and format.
  *
  * @param[in] plane_index - Display-plane index in the range 0 to 3.
  * @param[in] width - Output width in pixels; must be a multiple of 16.
