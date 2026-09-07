@@ -56,6 +56,24 @@ CHECK_WORD_OFFSET(SceKernelModuleListInfo, nid, 0x48);
 
 #undef CHECK_WORD_OFFSET
 
+static_assert(std::is_same<decltype(&sceLsdbGetLiveAreaActivityDisabled),
+	SceUInt32 (*)(const SceLsdbAppInfo *)>::value,
+	"Preserve the activity-flag getter signature");
+static_assert(std::is_same<decltype(&sceLsdbGetLiveAreaPreviewDisabled),
+	int (*)(const SceLsdbAppInfo *)>::value,
+	"Preserve the preview-flag getter signature");
+static_assert(std::is_same<decltype(&sceLsdbGetExtendedMemoryMode),
+	SceInt64 (*)(const SceLsdbAppInfo *)>::value,
+	"The extended-memory mode getter must keep its 64-bit return type");
+static_assert(std::is_same<decltype(&sceLsdbIsLiveAreaActivitySupported),
+	int (*)(const SceLsdbAppInfo *)>::value,
+	"Preserve the activity-support query signature");
+static_assert(SCE_LSDB_EXTENDED_MEMORY_MODE_DEFAULT == 0 &&
+	SCE_LSDB_EXTENDED_MEMORY_MODE_29_MIB == 1 &&
+	SCE_LSDB_EXTENDED_MEMORY_MODE_77_MIB == 2 &&
+	SCE_LSDB_EXTENDED_MEMORY_MODE_109_MIB == 3,
+	"Extended-memory modes are selectors, not byte counts");
+
 static_assert(std::is_same<SceCoredumpHandler, int (*)(void *)>::value,
 	"The public coredump callback takes the registered argument");
 static_assert(std::is_same<decltype(&sceVoiceSetBitRate), int (*)(SceVoicePortId, SceUInt32)>::value,

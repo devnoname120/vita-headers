@@ -36,9 +36,6 @@ modules:
           sceLsdbGetAppMetadataLocationType: 0x298134FE
           sceLsdbGetAppVer: 0x63AB6A8F
           sceLsdbGetAttribute: 0xD494B2C3
-          sceLsdbGetAttributeBit15: 0x85B7A172
-          sceLsdbGetAttributeBit16: 0xC80B07C3
-          sceLsdbGetAttributeBits34To36: 0x43153457
           sceLsdbGetBackgroundTitleId: 0x457F369E
           sceLsdbGetBootInstallDir: 0xD5747AD4
           sceLsdbGetBootParamAttribute: 0x45B38A03
@@ -53,6 +50,7 @@ modules:
           sceLsdbGetCurrentRtcTick: 0x76C1997A
           sceLsdbGetDatabaseLanguageIndex: 0x0CF73C33
           sceLsdbGetDiscId: 0x039FD1AB
+          sceLsdbGetExtendedMemoryMode: 0x43153457
           sceLsdbGetFilteredTitleIdsFromDatabase: 0xDD7D68C0
           sceLsdbGetFirstPopupNewEvent: 0xD046218A
           sceLsdbGetFolderPageNosByTitle: 0x148D7572
@@ -66,6 +64,7 @@ modules:
           sceLsdbGetInstallDirSavedataAdd1: 0x04D6A099
           sceLsdbGetLastAppDatabaseError: 0xB0E42B67
           sceLsdbGetLastLaunchTime: 0xF8874996
+          sceLsdbGetLiveAreaActivityDisabled: 0x85B7A172
           sceLsdbGetLiveAreaCompatibilityMode: 0xBE72A404
           sceLsdbGetLiveAreaContentsPath: 0xC070E42E
           sceLsdbGetLiveAreaFrameUserData: 0xBA1D0DB8
@@ -73,6 +72,7 @@ modules:
           sceLsdbGetLiveAreaModifiedDate: 0xD22CFA8C
           sceLsdbGetLiveAreaPath: 0xD4B1C54E
           sceLsdbGetLiveAreaPccInfo: 0x4B64A790
+          sceLsdbGetLiveAreaPreviewDisabled: 0xC80B07C3
           sceLsdbGetLiveAreaRevision: 0xF9B38E6B
           sceLsdbGetLiveAreaSystemVersion: 0x9AE94B9F
           sceLsdbGetLiveAreaTitleIdNotInList: 0xDA5DC77C
@@ -132,7 +132,7 @@ modules:
           sceLsdbIsCurrentTimeInRange: 0x628CFBE1
           sceLsdbIsGameCategoryOrLiveAreaSystemVersion1Or2: 0xDA0D7B0A
           sceLsdbIsGameOrEgCategory: 0x44CD0D07
-          sceLsdbIsType1AndAttributeBit15Clear: 0xF4325AD0
+          sceLsdbIsLiveAreaActivitySupported: 0xF4325AD0
           sceLsdbLiveAreaFrameGetItem: 0x92D3A2EA
           sceLsdbLiveAreaFrameInit: 0x840502DE
           sceLsdbLiveAreaFrameListEnd: 0xDCF95A06

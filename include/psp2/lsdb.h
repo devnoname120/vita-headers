@@ -142,6 +142,19 @@ typedef struct SceLsdbAppInfo {
 } SceLsdbAppInfo;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceLsdbAppInfo); // size is from FW 3.60
 
+/**
+ * Extended-memory modes returned by ::sceLsdbGetExtendedMemoryMode.
+ *
+ * On FW 3.60, these select additional game main RAM, not CDRAM. The values
+ * identify modes; they are not sizes in bytes.
+ */
+typedef enum SceLsdbExtendedMemoryMode {
+	SCE_LSDB_EXTENDED_MEMORY_MODE_DEFAULT = 0, //!< No additional memory requested by this setting.
+	SCE_LSDB_EXTENDED_MEMORY_MODE_29_MIB  = 1, //!< Request 29 MiB of additional main RAM.
+	SCE_LSDB_EXTENDED_MEMORY_MODE_77_MIB  = 2, //!< Request 77 MiB of additional main RAM.
+	SCE_LSDB_EXTENDED_MEMORY_MODE_109_MIB = 3  //!< Request 109 MiB of additional main RAM.
+} SceLsdbExtendedMemoryMode;
+
 /** AppInfo operation reported to an ::SceLsdbAppInfoObserverCallback. */
 typedef enum SceLsdbAppInfoEventType {
 	SCE_LSDB_APP_INFO_EVENT_INSERT_APPLICATION = 0, //!< Follows ::sceLsdbInsertApplication.
@@ -1858,8 +1871,19 @@ SceInt64 sceLsdbGetBootable(const SceLsdbAppInfo *appInfo);
 /** Return the LiveArea system-version value stored in ATTRIBUTE bits 13 and 14. */
 SceUInt32 sceLsdbGetLiveAreaSystemVersion(const SceLsdbAppInfo *appInfo);
 
-/** Return ATTRIBUTE bit 15. Its purpose is unknown. */
-SceUInt32 sceLsdbGetAttributeBit15(const SceLsdbAppInfo *appInfo);
+/**
+ * Get the flag that disables Shell's LiveArea activities for a title.
+ *
+ * On FW 3.60, ATTRIBUTE bit 15 makes Shell skip activity refreshes and
+ * game and system-software activity posts. It does not disable all LiveArea
+ * resource updates. Use ::sceLsdbIsLiveAreaActivitySupported to also check
+ * the application type.
+ *
+ * @param[in] appInfo - Initialized AppInfo object; must not be NULL.
+ *
+ * @return ATTRIBUTE bit 15 as 0 or 1; 0 if ATTRIBUTE is absent or not an integer.
+ */
+SceUInt32 sceLsdbGetLiveAreaActivityDisabled(const SceLsdbAppInfo *appInfo);
 
 const char *sceLsdbGetBootInstallDir(const SceLsdbAppInfo *appInfo);
 
@@ -1869,15 +1893,35 @@ int sceLsdbIsGameCategoryOrLiveAreaSystemVersion1Or2(const SceLsdbAppInfo *appIn
 /** Return nonzero for a game category or the `EG` category. */
 int sceLsdbIsGameOrEgCategory(const SceLsdbAppInfo *appInfo);
 
-/** Return nonzero when ::sceLsdbGetType returns 1 and ATTRIBUTE bit 15 is clear. */
-int sceLsdbIsType1AndAttributeBit15Clear(const SceLsdbAppInfo *appInfo);
+/**
+ * Check whether a title supports Shell's LiveArea activities.
+ *
+ * This checks the application type and metadata, not network availability.
+ *
+ * @param[in] appInfo - Initialized AppInfo object; must not be NULL.
+ *
+ * @return 1 when ::sceLsdbGetType returns 1 and
+ *         ::sceLsdbGetLiveAreaActivityDisabled returns 0; otherwise 0.
+ */
+int sceLsdbIsLiveAreaActivitySupported(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetContentLocation(const SceLsdbAppInfo *appInfo);
 
 /** Return the resolved path to the application's `sce_sys/pic0.png` image. */
 const char *sceLsdbGetPic0Path(const SceLsdbAppInfo *appInfo);
 
-/** Return ATTRIBUTE bit 16. Its purpose is unknown. */
-int sceLsdbGetAttributeBit16(const SceLsdbAppInfo *appInfo);
+/**
+ * Get the flag that disables Shell's cached application preview in LiveArea.
+ *
+ * On FW 3.60, Shell checks ATTRIBUTE bit 16 when creating the cached
+ * framebuffer preview for the normal LiveArea launch/resume panel. This is
+ * not a general screenshot-permission flag. Changing the metadata does not
+ * necessarily discard an existing preview.
+ *
+ * @param[in] appInfo - Initialized AppInfo object; must not be NULL.
+ *
+ * @return ATTRIBUTE bit 16 as 0 or 1; 0 if ATTRIBUTE is absent or not an integer.
+ */
+int sceLsdbGetLiveAreaPreviewDisabled(const SceLsdbAppInfo *appInfo);
 
 const char *sceLsdbGetLastLaunchTime(const SceLsdbAppInfo *appInfo);
 SceInt64 sceLsdbGetUpdateStatus(const SceLsdbAppInfo *appInfo);
@@ -1886,13 +1930,21 @@ const char *sceLsdbGetSupportUri(const SceLsdbAppInfo *appInfo);
 const char *sceLsdbGetInstallDirSavedataAdd1(const SceLsdbAppInfo *appInfo);
 
 /**
- * Return ATTRIBUTE bits 34 through 36 as a value from 0 through 7.
+ * Get the requested extended game-memory mode.
  *
- * FW 3.60 Shell maps values 1, 2, and 3 to launch-descriptor values 29, 77,
- * and 109 respectively, and also uses them when deciding whether one system
- * application may replace another. Their underlying purpose is unknown.
+ * Reads ATTRIBUTE bits 34 through 36, which correspond to SFO ATTRIBUTE2
+ * bits 2 through 4. On FW 3.60, these select additional game main RAM; see
+ * ::SceLsdbExtendedMemoryMode. Shell also uses the mode to decide whether
+ * another application can run alongside the game.
+ *
+ * This function only reads metadata; it does not allocate memory.
+ *
+ * @param[in] appInfo - Initialized AppInfo object; must not be NULL.
+ *
+ * @return A value from 0 through 7; 0 if ATTRIBUTE is absent or not an integer.
+ *         AppMgr rejects modes 4 through 7 on FW 3.60.
  */
-SceInt64 sceLsdbGetAttributeBits34To36(const SceLsdbAppInfo *appInfo);
+SceInt64 sceLsdbGetExtendedMemoryMode(const SceLsdbAppInfo *appInfo);
 
 /**
  * Select the LiveArea compatibility mode for \a titleId.
