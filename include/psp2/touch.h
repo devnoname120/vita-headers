@@ -155,14 +155,14 @@ int sceTouchDisableTouchForce(SceUInt32 port);
  * or back panel identity record. The output is copied only after the kernel
  * getter succeeds.
  *
- * @param[in] panel - One of ::SceTouchPortType.
+ * @param[in] port_type - One of ::SceTouchPortType.
  * @param[out] pInfo - Receives the complete 0xC-byte device-information record.
  *
- * @return 0 on success, ::SCE_TOUCH_ERROR_INVALID_ARG for an invalid panel,
+ * @return 0 on success, ::SCE_TOUCH_ERROR_INVALID_ARG for an invalid \a port_type,
  *         ::SCE_TOUCH_ERROR_PRIV_REQUIRED when the caller is not a system
  *         program, or a kernel user-memory-copy error for an invalid \a pInfo.
  */
-int sceTouchGetDeviceInfo(SceUInt32 panel, SceTouchDeviceInfo *pInfo);
+int sceTouchGetDeviceInfo(SceUInt32 port_type, SceTouchDeviceInfo *pInfo);
 
 #ifdef __cplusplus
 }

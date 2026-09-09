@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 typedef struct SceBacktraceArgs {
-	SceUInt32 *pNumReturn; //!< Receives the number of frames written to the output buffer. May be NULL.
+	SceUInt32 *num_frames; //!< Receives the number of frames written to the output buffer. May be NULL.
 	SceInt32 mode; //!< Bitwise OR of ::SceKernelBacktraceMode values.
 	SceUInt32 reserved[2]; //!< Copied from user memory but unused on FW 3.60.
 } SceBacktraceArgs;

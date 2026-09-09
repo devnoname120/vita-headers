@@ -612,12 +612,26 @@ SceInt32 sceAppMgrDrmOpen(const SceAppMgrDrmOpenParam *param);
  */
 SceInt32 sceAppMgrGetAppInfo(const char *appName, SceAppMgrAppState *appInfo);
 
+/**
+ * Recommended physical device orientation, viewed from the screen side.
+ *
+ * Rotations are relative to upright landscape, not framebuffer rotations.
+ * FW 3.60 SceShell maps the basic-orientation axes +Y, -Y, -X, and +X to
+ * these values, respectively.
+ */
+typedef enum SceAppMgrScreenOrientation {
+	SCE_APPMGR_SCREEN_ORIENTATION_LANDSCAPE          = 1, //!< Upright landscape (+Y).
+	SCE_APPMGR_SCREEN_ORIENTATION_LANDSCAPE_REVERSED = 2, //!< Upside-down landscape (-Y).
+	SCE_APPMGR_SCREEN_ORIENTATION_PORTRAIT           = 3, //!< Clockwise quarter-turn; right edge down (-X).
+	SCE_APPMGR_SCREEN_ORIENTATION_PORTRAIT_REVERSED  = 4  //!< Counterclockwise quarter-turn; left edge down (+X).
+} SceAppMgrScreenOrientation;
+
 typedef struct SceAppMgrAppMgrState {
 	SceUInt32 prioritizeSystemChat;
 	SceUInt32 systemImposeState;
 	SceInt32 reserved08; //!< Initialized to -1 on FW 3.60.
 	SceUInt32 audioRoutingState;
-	SceUInt32 recommendedScreenOrientation; //!< A value from 1 through 4.
+	SceUInt32 recommendedScreenOrientation; //!< One of ::SceAppMgrScreenOrientation.
 	SceUInt32 systemImposeState2;
 	SceUInt8 reserved[0x68]; //!< Reserved in the FW 3.60 state block.
 } SceAppMgrAppMgrState;
@@ -692,7 +706,7 @@ typedef struct SceAppMgrAppStatus {
 	SceUInt8 applicationType; //!< One of ::SceAppMgrApplicationType.
 	SceUInt8 reserved72[2]; //!< Set to 0 on FW 3.60.
 	SceUInt32 appFlags; //!< Internal process flags copied from AppMgr's process context.
-	SceUInt32 recommendedScreenOrientation; //!< A value from 1 through 4.
+	SceUInt32 recommendedScreenOrientation; //!< One of ::SceAppMgrScreenOrientation.
 	SceBool recommendedScreenOrientationActivated;
 } SceAppMgrAppStatus;
 VITASDK_BUILD_ASSERT_EQ(0x80, SceAppMgrAppStatus); // size is from FW 3.60

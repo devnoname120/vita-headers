@@ -13,10 +13,10 @@
 extern "C" {
 #endif
 
-typedef struct SceErrorStrings {
+typedef struct SceErrorString {
 	char s[16]; //!< NUL-terminated formatted external error code, for example "C2-12828-1".
-} SceErrorStrings;
-VITASDK_BUILD_ASSERT_EQ(0x10, SceErrorStrings); // size is from FW 3.60
+} SceErrorString;
+VITASDK_BUILD_ASSERT_EQ(0x10, SceErrorString); // size is from FW 3.60
 
 /**
  * Convert an internal error code to its formatted external error code.
@@ -62,7 +62,7 @@ typedef struct SceErrorHistoryInfo {
 	SceUInt8 reserved1; //!< Zero-initialized for newly posted entries.
 	SceUInt32 reserved2; //!< Zero-initialized for newly posted entries.
 	SceInt64 time; //!< Value of type ::SceRtcTick.
-	SceErrorStrings error_code; //!< Formatted external error code.
+	SceErrorString error_code; //!< Formatted external error code.
 	SceUInt8 reserved3[0x10]; //!< Zero-initialized for newly posted entries.
 	SceErrorHistoryPostInfo post; //!< Posted error information.
 } SceErrorHistoryInfo;

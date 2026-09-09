@@ -1,8 +1,12 @@
 #include <stddef.h>
 #include <type_traits>
+#include <psp2/appmgr.h>
 #include <psp2/coredump.h>
+#include <psp2/error.h>
+#include <psp2/kernel/backtrace.h>
 #include <psp2/lsdb.h>
 #include <psp2/npdrmpackage.h>
+#include <psp2/touch.h>
 #include <psp2/voice.h>
 #include <psp2kern/appmgr.h>
 #include <psp2kern/coredump.h>
@@ -54,7 +58,31 @@ CHECK_WORD_OFFSET(SceCoredumpTriggerParam, output_mode, 0x8);
 CHECK_WORD_OFFSET(SceKernelHeapMemoryOpt, mappingAction, 0x4);
 CHECK_WORD_OFFSET(SceKernelModuleListInfo, nid, 0x48);
 
+CHECK_WORD_OFFSET(SceAppMgrAppMgrState, recommendedScreenOrientation, 0x10);
+CHECK_WORD_OFFSET(SceAppMgrAppStatus, recommendedScreenOrientation, 0x78);
+CHECK_WORD_OFFSET(SceBacktraceArgs, num_frames, 0x0);
+static_assert(sizeof(SceBacktraceArgs) == 0x10, "Preserve the backtrace argument layout");
+static_assert(std::is_same<decltype(SceBacktraceArgs::num_frames), SceUInt32 *>::value,
+	"The frame-count output must remain a pointer to a 32-bit word");
+static_assert(sizeof(SceErrorString) == 0x10, "Preserve the external error string size");
+static_assert(offsetof(SceErrorHistoryInfo, error_code) == 0x10,
+	"Preserve the external error string offset in error history");
+static_assert(sizeof(SceErrorHistoryInfo) == 0x1B0, "Preserve the error-history layout");
+static_assert(std::is_enum<SceAppMgrScreenOrientation>::value,
+	"Screen orientations must have a named enum");
+static_assert(SCE_APPMGR_SCREEN_ORIENTATION_LANDSCAPE == 1 &&
+	SCE_APPMGR_SCREEN_ORIENTATION_LANDSCAPE_REVERSED == 2 &&
+	SCE_APPMGR_SCREEN_ORIENTATION_PORTRAIT == 3 &&
+	SCE_APPMGR_SCREEN_ORIENTATION_PORTRAIT_REVERSED == 4,
+	"Preserve the firmware screen-orientation selectors");
+
 #undef CHECK_WORD_OFFSET
+
+static_assert(std::is_same<decltype(&_sceErrorGetExternalString), int (*)(char *, int)>::value,
+	"The external error string API must keep accepting a character buffer");
+static_assert(std::is_same<decltype(&sceTouchGetDeviceInfo),
+	int (*)(SceUInt32, SceTouchDeviceInfo *)>::value,
+	"Preserve the touch device-info signature");
 
 static_assert(std::is_same<decltype(&sceLsdbGetLiveAreaActivityDisabled),
 	SceUInt32 (*)(const SceLsdbAppInfo *)>::value,
