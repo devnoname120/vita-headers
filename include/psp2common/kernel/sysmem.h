@@ -23,9 +23,9 @@ typedef enum SceKernelMemoryType {
 
 typedef struct SceKernelMemBlockInfo {
 	SceSize size;
-	void *mappedBase;
-	SceSize mappedSize;
-	int memoryType; //!< One of ::SceKernelMemoryType
+	void *mapped_base;
+	SceSize mapped_size;
+	int memory_type; //!< One of ::SceKernelMemoryType
 	SceUInt32 access;
 	SceKernelMemBlockType type;
 } SceKernelMemBlockInfo;

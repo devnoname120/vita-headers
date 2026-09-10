@@ -162,11 +162,11 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceDisplayCaptureFrameBuf); // size is from FW 3.6
 
 typedef struct SceDisplayResolutionInfo {
 	SceSize size; //!< Must be set to sizeof(SceDisplayResolutionInfo).
-	SceDisplayScreenMode screenMode; //!< One of ::SceDisplayScreenModeId.
+	SceDisplayScreenMode screen_mode; //!< One of ::SceDisplayScreenModeId.
 	SceUInt32 width; //!< Output width in pixels.
 	SceUInt32 height; //!< Output height in pixels.
-	SceUInt32 outputFormat; //!< Combined pixel-format and RGB-range encoding.
-	SceUInt32 scanMode; //!< One of ::SceDisplayScanMode; stored as a 32-bit value.
+	SceUInt32 output_format; //!< Combined pixel-format and RGB-range encoding.
+	SceUInt32 scan_mode; //!< One of ::SceDisplayScanMode; stored as a 32-bit value.
 	float fps; //!< Driver refresh-rate value; approximately 59.940056 on FW 3.60.
 } SceDisplayResolutionInfo;
 VITASDK_BUILD_ASSERT_EQ(0x1C, SceDisplayResolutionInfo); // size is from FW 3.60

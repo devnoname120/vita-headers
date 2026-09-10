@@ -23,12 +23,12 @@ void __stack_chk_fail(void);
 /**
  * Gets a thread backtrace.
  *
- * @param[in] threadId Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
- * @param[out] pCallFrameBuffer Buffer that receives the call frames, or NULL
- *                              when \a numBytesBuffer is 0.
- * @param[in] numBytesBuffer Size of the call-frame buffer in bytes. A non-NULL
+ * @param[in] thread_id Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
+ * @param[out] call_frame_buffer Buffer that receives the call frames, or NULL
+ *                              when \a num_bytes_buffer is 0.
+ * @param[in] num_bytes_buffer Size of the call-frame buffer in bytes. A non-NULL
  *                           buffer must hold at least one frame.
- * @param[out] pNumReturn Optional pointer that receives the number of frames
+ * @param[out] num_frames Optional pointer that receives the number of frames
  *                        written to the output buffer.
  * @param[in] mode Bitwise OR of ::SceKernelBacktraceMode values.
  *
@@ -36,16 +36,16 @@ void __stack_chk_fail(void);
  * Otherwise, the complete call-stack depth on success, even when the output
  * buffer is too small to contain every frame. Returns < 0 on error.
  */
-SceInt32 sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, SceUInt32 *pNumReturn, SceInt32 mode);
+SceInt32 sceKernelBacktrace(SceUID thread_id, SceKernelCallFrame *call_frame_buffer, SceSize num_bytes_buffer, SceUInt32 *num_frames, SceInt32 mode);
 
 /**
  * Gets a backtrace of the calling thread.
  *
- * @param[out] pCallFrameBuffer Buffer that receives the call frames, or NULL
- *                              when \a numBytesBuffer is 0.
- * @param[in] numBytesBuffer Size of the call-frame buffer in bytes. A non-NULL
+ * @param[out] call_frame_buffer Buffer that receives the call frames, or NULL
+ *                              when \a num_bytes_buffer is 0.
+ * @param[in] num_bytes_buffer Size of the call-frame buffer in bytes. A non-NULL
  *                           buffer must hold at least one frame.
- * @param[out] pNumReturn Optional pointer that receives the number of frames
+ * @param[out] num_frames Optional pointer that receives the number of frames
  *                        written to the output buffer.
  * @param[in] mode Bitwise OR of ::SceKernelBacktraceMode values.
  *
@@ -53,79 +53,79 @@ SceInt32 sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffe
  * Otherwise, the complete call-stack depth on success, even when the output
  * buffer is too small to contain every frame. Returns < 0 on error.
  */
-SceInt32 sceKernelBacktraceSelf(SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, SceUInt32 *pNumReturn, SceInt32 mode);
+SceInt32 sceKernelBacktraceSelf(SceKernelCallFrame *call_frame_buffer, SceSize num_bytes_buffer, SceUInt32 *num_frames, SceInt32 mode);
 
 /**
  * Disarms a timer event and cancels all waits on the timer.
  *
- * @param[in] timerId Timer identifier.
- * @param[out] numWaitThreads Optional pointer that receives the number of
+ * @param[in] timer_id Timer identifier.
+ * @param[out] num_wait_threads Optional pointer that receives the number of
  * threads whose waits were canceled.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelCancelTimer(SceUID timerId, SceUInt32 *numWaitThreads);
+int sceKernelCancelTimer(SceUID timer_id, SceUInt32 *num_wait_threads);
 
 /**
  * Gets a timer's reference process time.
  *
- * @param[in] timerId Timer identifier.
- * @param[out] baseTime Must be non-NULL. Receives 0 while the timer is stopped,
+ * @param[in] timer_id Timer identifier.
+ * @param[out] base_time Must be non-NULL. Receives 0 while the timer is stopped,
  * or its reference process time as a ::SceKernelSysClock value while it is active.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelGetTimerBase(SceUID timerId, SceKernelSysClock *baseTime);
+int sceKernelGetTimerBase(SceUID timer_id, SceKernelSysClock *base_time);
 
 /**
  * Gets the remaining duration before an armed timer event.
  *
- * @param[in] timerId Timer identifier.
- * @param[out] remainingTime Must be non-NULL. Receives the remaining duration
+ * @param[in] timer_id Timer identifier.
+ * @param[out] remaining_time Must be non-NULL. Receives the remaining duration
  * as a ::SceKernelSysClock value.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelGetTimerEventRemainingTime(SceUID timerId, SceKernelSysClock *remainingTime);
+int sceKernelGetTimerEventRemainingTime(SceUID timer_id, SceKernelSysClock *remaining_time);
 
 /**
  * Gets timer information.
  *
- * @param[in] timerId Timer identifier.
- * @param[in,out] pInfo Must point to a ::SceKernelTimerInfo structure.
+ * @param[in] timer_id Timer identifier.
+ * @param[in,out] info Must point to a ::SceKernelTimerInfo structure.
  * Its first field, \c size, sets the exact number of bytes copied to and from
  * the structure, up to the full 0x60-byte structure on FW 3.60.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelGetTimerInfo(SceUID timerId, SceKernelTimerInfo *pInfo);
+int sceKernelGetTimerInfo(SceUID timer_id, SceKernelTimerInfo *info);
 
 /**
  * Gets the current timer time.
  *
- * @param[in] timerId Timer identifier.
- * @param[out] timerTime Must be non-NULL. Receives the current timer time
+ * @param[in] timer_id Timer identifier.
+ * @param[out] timer_time Must be non-NULL. Receives the current timer time
  * as a ::SceKernelSysClock value.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelGetTimerTime(SceUID timerId, SceKernelSysClock *timerTime);
+int sceKernelGetTimerTime(SceUID timer_id, SceKernelSysClock *timer_time);
 
 /**
  * Prints call frames for the current process.
  *
- * @param[in] pCallFrame Call frames to print. Must be non-NULL even when
- *                       \a numFrames is 0.
- * @param[in] numFrames Number of entries in pCallFrame.
+ * @param[in] call_frame Call frames to print. Must be non-NULL even when
+ *                       \a num_frames is 0.
+ * @param[in] num_frames Number of entries in call_frame.
  *
  * @return 0 on success, or < 0 on error.
  */
-SceInt32 sceKernelPrintBacktrace(const SceKernelCallFrame *pCallFrame, SceUInt32 numFrames);
+SceInt32 sceKernelPrintBacktrace(const SceKernelCallFrame *call_frame, SceUInt32 num_frames);
 
 /**
  * Arms a timer event after a relative interval.
  *
- * @param[in] timerId Timer identifier.
+ * @param[in] timer_id Timer identifier.
  * @param[in] type Notification behavior selected from ::SceKernelTimerType.
  * @param[in] interval Must be non-NULL. Points to the relative interval
  * expressed as a ::SceKernelSysClock value.
@@ -133,29 +133,29 @@ SceInt32 sceKernelPrintBacktrace(const SceKernelCallFrame *pCallFrame, SceUInt32
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelSetTimerEvent(SceUID timerId, SceKernelTimerType type, const SceKernelSysClock *interval, SceBool repeat);
+int sceKernelSetTimerEvent(SceUID timer_id, SceKernelTimerType type, const SceKernelSysClock *interval, SceBool repeat);
 
 /**
  * Sets the current timer time.
  *
- * @param[in] timerId Timer identifier.
- * @param[in,out] timerTime Must be non-NULL. Contains the new timer time as a
+ * @param[in] timer_id Timer identifier.
+ * @param[in,out] timer_time Must be non-NULL. Contains the new timer time as a
  * ::SceKernelSysClock value. For callers targeting SDK version 2.00 or newer,
  * it receives the previous timer time on return; older target SDK versions do
  * not receive that value.
  *
  * @return 0 on success, or < 0 on error.
  */
-int sceKernelSetTimerTime(SceUID timerId, SceKernelSysClock *timerTime);
+int sceKernelSetTimerTime(SceUID timer_id, SceKernelSysClock *timer_time);
 
 /**
  * Gets the 0x20-byte type 01 media ID produced by the game-card authentication state.
  *
- * @param[out] pMediaId - Output media ID.
+ * @param[out] media_id - Output media ID.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblGcAuthMgrGetMediaIdType01(SceMediaIdType01 *pMediaId);
+int sceSblGcAuthMgrGetMediaIdType01(SceMediaIdType01 *media_id);
 
 /**
  * Installs PC activation data.
@@ -187,12 +187,12 @@ int sceSblGcAuthMgrPcactGetChallenge(SceUInt32 mode, const SceUInt8 *epassword, 
 /**
  * Verifies a package ECDSA-160 signature.
  *
- * @param[in] pHash - Pointer to a 0x14-byte SHA-1 digest.
- * @param[in] pSig - Pointer to a 0x28-byte ECDSA signature.
+ * @param[in] hash - Pointer to a 0x14-byte SHA-1 digest.
+ * @param[in] signature - Pointer to a 0x28-byte ECDSA signature.
  *
  * @return 0 if the signature is valid, < 0 on error.
  */
-int sceSblGcAuthMgrPkgVry(const SceUInt8 *pHash, const SceUInt8 *pSig);
+int sceSblGcAuthMgrPkgVry(const SceUInt8 *hash, const SceUInt8 *signature);
 
 /**
  * Waits until any requested event bit is present.
@@ -201,17 +201,17 @@ int sceSblGcAuthMgrPkgVry(const SceUInt8 *pHash, const SceUInt8 *pSig);
  * after a successful wait. This function does not dispatch callbacks while
  * blocked.
  *
- * @param[in] eventId Event identifier.
- * @param[in] waitPattern Pattern of bits to wait for.
- * @param[out] pResultPattern Optional pointer that receives the matched bits.
- * @param[out] pUserData Optional pointer that receives the event's user data.
- * @param[in,out] pTimeout Optional timeout in microseconds. If the call
+ * @param[in] event_id Event identifier.
+ * @param[in] wait_pattern Pattern of bits to wait for.
+ * @param[out] result_pattern Optional pointer that receives the matched bits.
+ * @param[out] user_data Optional pointer that receives the event's user data.
+ * @param[in,out] timeout Optional timeout in microseconds. If the call
  * blocks, it receives the remaining duration; it receives 0 when the timeout
  * expires. It is left unchanged when the wait is satisfied immediately.
  *
  * @return 0 on success, or < 0 on error.
  */
-SceInt32 sceKernelWaitEvent(SceUID eventId, SceUInt32 waitPattern, SceUInt32 *pResultPattern, SceUInt64 *pUserData, SceUInt32 *pTimeout);
+SceInt32 sceKernelWaitEvent(SceUID event_id, SceUInt32 wait_pattern, SceUInt32 *result_pattern, SceUInt64 *user_data, SceUInt32 *timeout);
 
 #ifdef __cplusplus
 }

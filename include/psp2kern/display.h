@@ -283,11 +283,11 @@ VITASDK_BUILD_ASSERT_EQ(1, SceDisplayColorSpaceMode);
  * copied source values.
  *
  * @param[in] pid - Source process ID, or 0 for the calling process.
- * @param[in,out] pCaptureFrameBuf - Capture destination and resulting format.
+ * @param[in,out] capture_frame_buf - Capture destination and resulting format.
  *
  * @return 0 on success, or a negative error code.
  */
-SceInt32 ksceDisplayCaptureFrameBufDMAC(SceUID pid, SceDisplayCaptureFrameBuf *pCaptureFrameBuf);
+SceInt32 ksceDisplayCaptureFrameBufDMAC(SceUID pid, SceDisplayCaptureFrameBuf *capture_frame_buf);
 
 /**
  * Capture a selected process framebuffer through DMAC.
@@ -295,13 +295,13 @@ SceInt32 ksceDisplayCaptureFrameBufDMAC(SceUID pid, SceDisplayCaptureFrameBuf *p
  * @param[in] pid - Source process ID, or 0 for the calling process.
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pCaptureFrameBuf - Capture destination and resulting format.
+ * @param[in,out] capture_frame_buf - Capture destination and resulting format.
  *                                   The same rules apply as for
  *                                   ::ksceDisplayCaptureFrameBufDMAC.
  *
  * @return 0 on success, or a negative error code.
  */
-SceInt32 ksceDisplayCaptureFrameBufDMACInternal(SceUID pid, SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayCaptureFrameBuf *pCaptureFrameBuf);
+SceInt32 ksceDisplayCaptureFrameBufDMACInternal(SceUID pid, SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayCaptureFrameBuf *capture_frame_buf);
 
 /**
  * Convert and capture the current process's primary GAME_APP framebuffer
@@ -313,11 +313,11 @@ SceInt32 ksceDisplayCaptureFrameBufDMACInternal(SceUID pid, SceDisplayHead head,
  * at least pitch * height * 4 bytes.
  *
  * @param[in] pid - Source process ID, or 0 for the calling process.
- * @param[in] pCaptureFrameBuf - Capture destination description.
+ * @param[in] capture_frame_buf - Capture destination description.
  *
  * @return 0 on success, or a negative error code.
  */
-SceInt32 ksceDisplayCaptureFrameBufIFTU(SceUID pid, const SceDisplayCaptureFrameBuf *pCaptureFrameBuf);
+SceInt32 ksceDisplayCaptureFrameBufIFTU(SceUID pid, const SceDisplayCaptureFrameBuf *capture_frame_buf);
 
 /**
  * Convert and capture a selected process framebuffer through IFTU.
@@ -325,13 +325,13 @@ SceInt32 ksceDisplayCaptureFrameBufIFTU(SceUID pid, const SceDisplayCaptureFrame
  * @param[in] pid - Source process ID, or 0 for the calling process.
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in] pCaptureFrameBuf - Capture destination description. The same
+ * @param[in] capture_frame_buf - Capture destination description. The same
  *                               rules apply as for
  *                               ::ksceDisplayCaptureFrameBufIFTU.
  *
  * @return 0 on success, or a negative error code.
  */
-SceInt32 ksceDisplayCaptureFrameBufIFTUInternal(SceUID pid, SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayCaptureFrameBuf *pCaptureFrameBuf);
+SceInt32 ksceDisplayCaptureFrameBufIFTUInternal(SceUID pid, SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayCaptureFrameBuf *capture_frame_buf);
 
 /**
  * Disable a display head.
@@ -360,11 +360,11 @@ int ksceDisplayEnableHead(SceDisplayHead head);
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pViewportConf - Receives the viewport; set its size member first.
+ * @param[in,out] viewport_conf - Receives the viewport; set its size member first.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplayGetActualViewportConf(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayViewportConf *pViewportConf);
+int ksceDisplayGetActualViewportConf(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayViewportConf *viewport_conf);
 
 /**
  * Get the hardware type for a display head.
@@ -374,11 +374,11 @@ int ksceDisplayGetActualViewportConf(SceDisplayHead head, SceDisplayFrameBufType
  * The output pointer is optional.
  *
  * @param[in] head - Display head.
- * @param[out] pDeviceInfo - Optional device-information output.
+ * @param[out] device_info - Optional device-information output.
  *
  * @return One of ::SceDisplayDeviceType, or a negative error code.
  */
-int ksceDisplayGetDeviceType(SceDisplayHead head, SceUInt32 *pDeviceInfo);
+int ksceDisplayGetDeviceType(SceDisplayHead head, SceUInt32 *device_info);
 
 /**
  * Get one current process framebuffer slot.
@@ -389,51 +389,51 @@ int ksceDisplayGetDeviceType(SceDisplayHead head, SceUInt32 *pDeviceInfo);
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in,out] pFrameBuf - Receives the extended framebuffer information;
+ * @param[in,out] frame_buf - Receives the extended framebuffer information;
  *                            set its size member first.
- * @param[in] iUpdateTimingMode - One of ::SceDisplaySetBufSync. FW 3.60
+ * @param[in] update_timing_mode - One of ::SceDisplaySetBufSync. FW 3.60
  *                                validates but otherwise ignores this value.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplayGetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayFrameBufExt *pFrameBuf, SceDisplaySetBufSync iUpdateTimingMode);
+int ksceDisplayGetFrameBufInternal(SceDisplayHead head, SceDisplayFrameBufType fb_idx, SceDisplayFrameBufExt *frame_buf, SceDisplaySetBufSync update_timing_mode);
 
 /**
  * Get the configured screen-mode ID and output-format value for a head.
  *
  * @param[in] head - Display head.
- * @param[out] pScreenMode - Optional complete screen-mode ID output.
- * @param[out] pOutputFormat - Optional pixel-format/RGB-range output.
+ * @param[out] screen_mode - Optional complete screen-mode ID output.
+ * @param[out] output_format - Optional pixel-format/RGB-range output.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplayGetOutputMode(SceDisplayHead head, SceDisplayScreenMode *pScreenMode, SceUInt32 *pOutputFormat);
+int ksceDisplayGetOutputMode(SceDisplayHead head, SceDisplayScreenMode *screen_mode, SceUInt32 *output_format);
 
 /**
  * Get a head's theoretical refresh rate and scan mode.
  *
  * Either output pointer may be NULL. The scan-mode output is a 32-bit value
  * containing one of ::SceDisplayScanMode. FW 3.60 reports approximately
- * 59.940056 through \a pFps for every configured screen mode; this value is
+ * 59.940056 through \a fps for every configured screen mode; this value is
  * not calculated from the selected DSI timing.
  *
  * @param[in] head - Display head.
- * @param[out] pFps - Optional stored refresh-rate output.
- * @param[out] pScanMode - Optional 32-bit scan-mode output.
+ * @param[out] fps - Optional stored refresh-rate output.
+ * @param[out] scan_mode - Optional 32-bit scan-mode output.
  *
  * @return 0 on success, or a negative error code.
  */
-SceInt32 ksceDisplayGetRefreshRateInternal(SceDisplayHead head, float *pFps, SceUInt32 *pScanMode);
+SceInt32 ksceDisplayGetRefreshRateInternal(SceDisplayHead head, float *fps, SceUInt32 *scan_mode);
 
 /**
  * Get complete resolution and output-mode information for a head.
  *
  * @param[in] head - Display head.
- * @param[in,out] pInfo - Receives the information; set its size member to 0x1C.
+ * @param[in,out] info - Receives the information; set its size member to 0x1C.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplayGetResolutionInfoInternal(SceDisplayHead head, SceDisplayResolutionInfo *pInfo);
+int ksceDisplayGetResolutionInfoInternal(SceDisplayHead head, SceDisplayResolutionInfo *info);
 
 /**
  * Set display brightness.
@@ -485,13 +485,13 @@ int ksceDisplaySetMergeConf(SceDisplayHead head, int control, SceUInt32 alpha);
  * 0x60808000, 0x60900001, and 0x60908000.
  *
  * @param[in] head - Main or HDMI display head.
- * @param[in] screenMode - One of ::SceDisplayScreenModeId. Use these IDs as
+ * @param[in] screen_mode - One of ::SceDisplayScreenModeId. Use these IDs as
  *                         listed; do not combine them as flags.
- * @param[in] outputFormat - Combined pixel-format and RGB-range encoding.
+ * @param[in] output_format - Combined pixel-format and RGB-range encoding.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplaySetOutputMode(SceDisplayHead head, SceDisplayScreenMode screenMode, SceUInt32 outputFormat);
+int ksceDisplaySetOutputMode(SceDisplayHead head, SceDisplayScreenMode screen_mode, SceUInt32 output_format);
 
 /**
  * Set scaling for a display head's framebuffer slot.
@@ -522,11 +522,11 @@ int ksceDisplaySetScaleConf(float scale, SceDisplayHead head, SceDisplayFrameBuf
  *
  * @param[in] head - Main or HDMI display head.
  * @param[in] fb_idx - One of ::SceDisplayFrameBufType.
- * @param[in] pViewportConf - Viewport configuration, or NULL for the default.
+ * @param[in] viewport_conf - Viewport configuration, or NULL for the default.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceDisplaySetViewportConf(SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayViewportConf *pViewportConf);
+int ksceDisplaySetViewportConf(SceDisplayHead head, SceDisplayFrameBufType fb_idx, const SceDisplayViewportConf *viewport_conf);
 
 /**
  * Wait for the next vertical blank start since the last update of the selected

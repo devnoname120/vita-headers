@@ -86,8 +86,8 @@ typedef enum SceVoiceEventType {
 typedef SceUInt32 SceVoicePortId;
 
 typedef struct SceVoiceEventPortDataReady {
-	SceInt16 portCount; //!< Number of valid entries in @p portIds.
-	SceUInt16 portIds[SCE_VOICE_MAX_EVENT_PORTS]; //!< Output-voice ports with encoded data available.
+	SceInt16 port_count; //!< Number of valid entries in @p port_ids.
+	SceUInt16 port_ids[SCE_VOICE_MAX_EVENT_PORTS]; //!< Output-voice ports with encoded data available.
 } SceVoiceEventPortDataReady;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceVoiceEventPortDataReady); // size is from FW 3.60
 
@@ -98,12 +98,12 @@ typedef struct SceVoiceEventAudioInputOwnershipChanged {
 VITASDK_BUILD_ASSERT_EQ(0x10, SceVoiceEventAudioInputOwnershipChanged); // size is from FW 3.60
 
 typedef struct SceVoiceEvent {
-	SceUInt32 eventType; //!< One of ::SceVoiceEventType.
-	void *userData; //!< Value supplied to ::sceVoiceInit.
+	SceUInt32 event_type; //!< One of ::SceVoiceEventType.
+	void *user_data; //!< Value supplied to ::sceVoiceInit.
 	union {
-		SceVoiceEventPortDataReady portDataReady;
-		SceVoiceEventAudioInputOwnershipChanged audioInputOwnershipChanged;
-	} eventPayload;
+		SceVoiceEventPortDataReady port_data_ready;
+		SceVoiceEventAudioInputOwnershipChanged audio_input_ownership_changed;
+	} event_payload;
 } SceVoiceEvent;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVoiceEvent); // size is from FW 3.60
 
@@ -120,48 +120,48 @@ VITASDK_BUILD_ASSERT_EQ(0x18, SceVoiceEvent); // size is from FW 3.60
 typedef void (*SceVoiceEventCallback)(const SceVoiceEvent *event);
 
 typedef struct SceVoiceInitParam {
-	SceUInt32 applicationType; //!< One of ::SceVoiceApplicationType.
-	SceVoiceEventCallback eventCallback; //!< Optional event callback, or NULL to disable events.
-	void *userData; //!< Copied to ::SceVoiceEvent::userData.
+	SceUInt32 application_type; //!< One of ::SceVoiceApplicationType.
+	SceVoiceEventCallback event_callback; //!< Optional event callback, or NULL to disable events.
+	void *user_data; //!< Copied to ::SceVoiceEvent::user_data.
 	SceUInt32 reserved[5]; //!< Ignored on FW 3.60.
 } SceVoiceInitParam;
 VITASDK_BUILD_ASSERT_EQ(0x20, SceVoiceInitParam); // size is from FW 3.60
 
 typedef struct SceVoiceStartParam {
-	SceUID memBlockId; //!< Memory block providing at least ::SCE_VOICE_WORKING_MEMORY_SIZE bytes.
+	SceUID mem_block_id; //!< Memory block providing at least ::SCE_VOICE_WORKING_MEMORY_SIZE bytes.
 	SceUInt32 reserved[7]; //!< Ignored on FW 3.60.
 } SceVoiceStartParam;
 VITASDK_BUILD_ASSERT_EQ(0x20, SceVoiceStartParam); // size is from FW 3.60
 
 typedef struct SceVoicePortParam {
-	SceUInt32 portType; //!< One of ::SceVoicePortType.
+	SceUInt32 port_type; //!< One of ::SceVoicePortType.
 	SceUInt16 threshold; //!< Buffering threshold for application input, in milliseconds; at least two frame durations are used.
-	SceUInt16 muteFlag; //!< Nonzero to create the port muted.
+	SceUInt16 mute_flag; //!< Nonzero to create the port muted.
 	float volume; //!< Linear volume; 1.0 is unity gain.
 	union {
-		SceSize bufferSize; //!< PCM byte capacity for PCMAUDIO ports.
-		SceUInt32 bitRate; //!< One of ::SceVoiceBitRate for VOICE ports.
+		SceSize buffer_size; //!< PCM byte capacity for PCMAUDIO ports.
+		SceUInt32 bit_rate; //!< One of ::SceVoiceBitRate for VOICE ports.
 	} data;
-	SceUInt32 pcmDataType; //!< One of ::SceVoicePcmDataType for PCMAUDIO ports.
-	SceUInt32 samplingRate; //!< One of ::SceVoiceSamplingRate for PCMAUDIO ports.
+	SceUInt32 pcm_data_type; //!< One of ::SceVoicePcmDataType for PCMAUDIO ports.
+	SceUInt32 sampling_rate; //!< One of ::SceVoiceSamplingRate for PCMAUDIO ports.
 } SceVoicePortParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVoicePortParam); // size is from FW 3.60
 
 typedef struct SceVoiceResourceInfo {
-	SceUInt16 maxVoiceInputPorts; //!< Maximum number of IN_VOICE ports.
-	SceUInt16 maxVoiceOutputPorts; //!< Maximum number of OUT_VOICE ports.
-	SceUInt16 maxDeviceInputPorts; //!< Maximum number of IN_DEVICE ports.
-	SceUInt16 maxDeviceOutputPorts; //!< Maximum number of OUT_DEVICE ports.
-	SceUInt16 maxPorts; //!< Maximum number of ports of all types.
+	SceUInt16 max_voice_input_ports; //!< Maximum number of IN_VOICE ports.
+	SceUInt16 max_voice_output_ports; //!< Maximum number of OUT_VOICE ports.
+	SceUInt16 max_device_input_ports; //!< Maximum number of IN_DEVICE ports.
+	SceUInt16 max_device_output_ports; //!< Maximum number of OUT_DEVICE ports.
+	SceUInt16 max_ports; //!< Maximum number of ports of all types.
 } SceVoiceResourceInfo;
 VITASDK_BUILD_ASSERT_EQ(0xA, SceVoiceResourceInfo); // size is from FW 3.60
 
 typedef struct SceVoicePortInfo {
-	SceUInt32 portType; //!< One of ::SceVoicePortType.
+	SceUInt32 port_type; //!< One of ::SceVoicePortType.
 	SceUInt32 state; //!< One of ::SceVoicePortState.
 	SceUInt32 reserved0; //!< Not written on FW 3.60.
-	SceSize dataSize; //!< Free bytes in the input ring buffer or queued bytes in the output ring buffer.
-	SceSize frameSize; //!< Encoded or PCM processing-frame size in bytes.
+	SceSize data_size; //!< Free bytes in the input ring buffer or queued bytes in the output ring buffer.
+	SceSize frame_size; //!< Encoded or PCM processing-frame size in bytes.
 	SceUInt32 reserved1; //!< Not written on FW 3.60.
 } SceVoicePortInfo;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceVoicePortInfo); // size is from FW 3.60
@@ -265,12 +265,12 @@ int sceVoiceSetMuteFlagAll(SceBool mute);
 /**
  * Set one port's mute flag.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[in] mute - Nonzero to mute the port, or zero to unmute it.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceSetMuteFlag(SceVoicePortId portId, SceBool mute);
+int sceVoiceSetMuteFlag(SceVoicePortId port_id, SceBool mute);
 
 /**
  * Get one port's reported mute flag.
@@ -279,12 +279,12 @@ int sceVoiceSetMuteFlag(SceVoicePortId portId, SceBool mute);
  * individual flag returned by this function. On FW 3.60 that process-wide
  * flag does not affect audio processing.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[out] mute - Receives 1 when muted or 0 when unmuted.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetMuteFlag(SceVoicePortId portId, SceUInt16 *mute);
+int sceVoiceGetMuteFlag(SceVoicePortId port_id, SceUInt16 *mute);
 
 /**
  * Set one port's linear volume.
@@ -292,22 +292,22 @@ int sceVoiceGetMuteFlag(SceVoicePortId portId, SceUInt16 *mute);
  * FW 3.60 stores the value without limiting its range. During PCM processing,
  * scaled samples are clamped to the signed 16-bit range.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[in] volume - Linear volume; 1.0 is unity gain.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceSetVolume(SceVoicePortId portId, float volume);
+int sceVoiceSetVolume(SceVoicePortId port_id, float volume);
 
 /**
  * Get one port's linear volume.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[out] volume - Receives the stored volume.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetVolume(SceVoicePortId portId, float *volume);
+int sceVoiceGetVolume(SceVoicePortId port_id, float *volume);
 
 /**
  * Change the bitrate of an encoded input or output port.
@@ -315,23 +315,23 @@ int sceVoiceGetVolume(SceVoicePortId portId, float *volume);
  * Changing the bitrate creates a new encoder or decoder for the port and
  * discards its buffered data.
  *
- * @param[in] portId - Encoded input or output port identifier.
- * @param[in] bitRate - New codec bitrate; one of ::SceVoiceBitRate.
+ * @param[in] port_id - Encoded input or output port identifier.
+ * @param[in] bit_rate - New codec bitrate; one of ::SceVoiceBitRate.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceSetBitRate(SceVoicePortId portId, SceUInt32 bitRate);
+int sceVoiceSetBitRate(SceVoicePortId port_id, SceUInt32 bit_rate);
 
 /**
  * Get the bitrate of an encoded input or output port.
  *
- * @param[in] portId - Encoded input or output port identifier.
- * @param[out] bitRate - Receives the configured codec bitrate; one of
+ * @param[in] port_id - Encoded input or output port identifier.
+ * @param[out] bit_rate - Receives the configured codec bitrate; one of
  *                       ::SceVoiceBitRate.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetBitRate(SceVoicePortId portId, SceUInt32 *bitRate);
+int sceVoiceGetBitRate(SceVoicePortId port_id, SceUInt32 *bit_rate);
 
 /**
  * Set a port attribute.
@@ -341,13 +341,13 @@ int sceVoiceGetBitRate(SceVoicePortId portId, SceUInt32 *bitRate);
  * the valid range that does not identify an existing port, it returns
  * ::SCE_VOICE_ERROR_INVALID_PORT_ID.
  *
- * @param[in] portId - Port identifier.
+ * @param[in] port_id - Port identifier.
  * @param[in] attr - Attribute selector.
  * @param[in] value - Attribute value.
  *
  * @return A negative ::SceVoiceErrorCode value on FW 3.60.
  */
-int sceVoiceSetPortAttr(SceVoicePortId portId, SceVoicePortAttr attr, const SceInt32 *value);
+int sceVoiceSetPortAttr(SceVoicePortId port_id, SceVoicePortAttr attr, const SceInt32 *value);
 
 /**
  * Get a port attribute.
@@ -356,13 +356,13 @@ int sceVoiceSetPortAttr(SceVoicePortId portId, SceVoicePortAttr attr, const SceI
  * defined value only for a ::SCE_VOICE_PORT_TYPE_IN_DEVICE port. Other port
  * types return success without modifying @p value.
  *
- * @param[in] portId - Port identifier.
+ * @param[in] port_id - Port identifier.
  * @param[in] attr - Attribute selector.
  * @param[out] value - Receives the attribute value.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetPortAttr(SceVoicePortId portId, SceVoicePortAttr attr, SceInt32 *value);
+int sceVoiceGetPortAttr(SceVoicePortId port_id, SceVoicePortAttr attr, SceInt32 *value);
 
 /**
  * Create a Voice port.
@@ -378,16 +378,16 @@ int sceVoiceGetPortAttr(SceVoicePortId portId, SceVoicePortAttr attr, SceInt32 *
  * shorter than the duration represented by the port's buffer. The
  * type-specific union member must be zero for a device port.
  *
- * @param[out] portId - Receives a port identifier from 0 through 63.
+ * @param[out] port_id - Receives a port identifier from 0 through 63.
  * @param[in] param - Port configuration.
  *
- * FW 3.60 writes 0xFF to @p portId before validation. If immediate startup of
+ * FW 3.60 writes 0xFF to @p port_id before validation. If immediate startup of
  * the port's audio processing fails, the function returns that error after
  * creating the port and replacing 0xFF with its valid port ID.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceCreatePort(SceVoicePortId *portId, const SceVoicePortParam *param);
+int sceVoiceCreatePort(SceVoicePortId *port_id, const SceVoicePortParam *param);
 
 /**
  * Update an existing port's configuration.
@@ -395,7 +395,7 @@ int sceVoiceCreatePort(SceVoicePortId *portId, const SceVoicePortParam *param);
  * The port type cannot be changed. Changing an encoded bitrate creates a new
  * encoder or decoder for the port and discards its buffered data.
  *
- * Do not change a PCMAUDIO port's `data.bufferSize` on FW 3.60. The function
+ * Do not change a PCMAUDIO port's `data.buffer_size` on FW 3.60. The function
  * never reallocates or reinitializes the PCM ring buffers. The first update
  * stores the new requested size but keeps the old size used for resource
  * accounting. A later update recalculates the accounting size from that stored
@@ -403,12 +403,12 @@ int sceVoiceCreatePort(SceVoicePortId *portId, const SceVoicePortParam *param);
  * accounting size, not the capacity originally allocated. This function does
  * not check ::SceVoicePortParam::threshold again against the queue duration.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[in] param - Replacement configuration with the same port type.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceUpdatePort(SceVoicePortId portId, const SceVoicePortParam *param);
+int sceVoiceUpdatePort(SceVoicePortId port_id, const SceVoicePortParam *param);
 
 /**
  * Connect an input port to an output port.
@@ -417,46 +417,46 @@ int sceVoiceUpdatePort(SceVoicePortId portId, const SceVoicePortParam *param);
  * rejects a direct IN_VOICE to OUT_VOICE connection and duplicate connections.
  * An instance can contain at most 128 connections.
  *
- * @param[in] inputPortId - Device, PCM, or encoded input port.
- * @param[in] outputPortId - PCM, encoded, or device output port.
+ * @param[in] input_port_id - Device, PCM, or encoded input port.
+ * @param[in] output_port_id - PCM, encoded, or device output port.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceConnectIPortToOPort(SceVoicePortId inputPortId, SceVoicePortId outputPortId);
+int sceVoiceConnectIPortToOPort(SceVoicePortId input_port_id, SceVoicePortId output_port_id);
 
 /**
  * Disconnect an input port from an output port.
  *
- * @param[in] inputPortId - Connected input port.
- * @param[in] outputPortId - Connected output port.
+ * @param[in] input_port_id - Connected input port.
+ * @param[in] output_port_id - Connected output port.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceDisconnectIPortFromOPort(SceVoicePortId inputPortId, SceVoicePortId outputPortId);
+int sceVoiceDisconnectIPortFromOPort(SceVoicePortId input_port_id, SceVoicePortId output_port_id);
 
 /**
  * Delete a Voice port and remove its connections.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceDeletePort(SceVoicePortId portId);
+int sceVoiceDeletePort(SceVoicePortId port_id);
 
 /**
  * Write application data to a PCM or encoded input port.
  *
  * On return, @p size contains the number of bytes accepted. PCM writes ignore
- * @p frameGap. For encoded input, a nonnegative frame gap inserts that many
+ * @p frame_gap. For encoded input, a nonnegative frame gap inserts that many
  * missing frames before the supplied data. A negative value begins backfilling
  * previously marked missing frames at that relative frame offset behind the
  * current stream write point.
  *
- * @param[in] portId - ::SCE_VOICE_PORT_TYPE_IN_PCMAUDIO or
+ * @param[in] port_id - ::SCE_VOICE_PORT_TYPE_IN_PCMAUDIO or
  *                     ::SCE_VOICE_PORT_TYPE_IN_VOICE port.
  * @param[in] data - Data to write.
  * @param[in,out] size - Requested byte count and resulting accepted byte count.
- * @param[in] frameGap - Encoded-stream frame gap or negative backfill offset;
+ * @param[in] frame_gap - Encoded-stream frame gap or negative backfill offset;
  *                       ignored for PCM input.
  *
  * When the operation fails after argument validation, FW 3.60 sets @p size to
@@ -464,7 +464,7 @@ int sceVoiceDeletePort(SceVoicePortId portId);
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceWriteToIPort(SceVoicePortId portId, const void *data, SceSize *size, SceInt16 frameGap);
+int sceVoiceWriteToIPort(SceVoicePortId port_id, const void *data, SceSize *size, SceInt16 frame_gap);
 
 /**
  * Read application data from a PCM or encoded output port.
@@ -473,7 +473,7 @@ int sceVoiceWriteToIPort(SceVoicePortId portId, const void *data, SceSize *size,
  * rounded down to complete codec frames; PCM reads are rounded down to an even
  * byte count.
  *
- * @param[in] portId - ::SCE_VOICE_PORT_TYPE_OUT_PCMAUDIO or
+ * @param[in] port_id - ::SCE_VOICE_PORT_TYPE_OUT_PCMAUDIO or
  *                     ::SCE_VOICE_PORT_TYPE_OUT_VOICE port.
  * @param[out] data - Destination buffer.
  * @param[in,out] size - Destination capacity and resulting byte count.
@@ -483,22 +483,22 @@ int sceVoiceWriteToIPort(SceVoicePortId portId, const void *data, SceSize *size,
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceReadFromOPort(SceVoicePortId portId, void *data, SceSize *size);
+int sceVoiceReadFromOPort(SceVoicePortId port_id, void *data, SceSize *size);
 
 /**
  * Get one port's type, processing state, available data, and frame size.
  *
  * If Voice has not been started, FW 3.60 clears the complete output structure
  * and returns ::SCE_VOICE_ERROR_NOT_STARTED. On success, it writes only
- * `portType`, `state`, `dataSize`, and `frameSize`; the two reserved members
+ * `port_type`, `state`, `data_size`, and `frame_size`; the two reserved members
  * are unchanged.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  * @param[out] info - Receives the port information.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceGetPortInfo(SceVoicePortId portId, SceVoicePortInfo *info);
+int sceVoiceGetPortInfo(SceVoicePortId port_id, SceVoicePortInfo *info);
 
 /**
  * Clear one port's buffered data and reset its processing state.
@@ -507,11 +507,11 @@ int sceVoiceGetPortInfo(SceVoicePortId portId, SceVoicePortInfo *info);
  * their current internal state. The state visible through
  * ::sceVoiceGetPortInfo is updated by a later processing synchronization.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceResetPort(SceVoicePortId portId);
+int sceVoiceResetPort(SceVoicePortId port_id);
 
 /**
  * Pause processing for one port.
@@ -522,20 +522,20 @@ int sceVoiceResetPort(SceVoicePortId portId);
  * paused, so ::sceVoiceGetPortInfo can continue reporting the state from
  * before the pause until processing resumes.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoicePausePort(SceVoicePortId portId);
+int sceVoicePausePort(SceVoicePortId port_id);
 
 /**
  * Resume processing for one port.
  *
- * @param[in] portId - Port identifier returned by ::sceVoiceCreatePort.
+ * @param[in] port_id - Port identifier returned by ::sceVoiceCreatePort.
  *
  * @return 0 on success, or a negative ::SceVoiceErrorCode value.
  */
-int sceVoiceResumePort(SceVoicePortId portId);
+int sceVoiceResumePort(SceVoicePortId port_id);
 
 /**
  * Pause processing for every Voice port in the calling process.

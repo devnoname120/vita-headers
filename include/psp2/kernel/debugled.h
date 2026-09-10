@@ -45,11 +45,11 @@ SceUInt32 sceKernelGetGPI(void);
  * The full value is saved. On PDEL units, bits 0 through 7 control the
  * debug LED display.
  *
- * @param[in] uiBits - Output bitfield.
+ * @param[in] bits - Output bitfield.
  *
  * @return 0.
  */
-int sceKernelSetGPO(SceUInt32 uiBits);
+int sceKernelSetGPO(SceUInt32 bits);
 
 #ifdef __cplusplus
 }

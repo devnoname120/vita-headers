@@ -62,17 +62,17 @@ typedef struct SceKernelTimerInfo {
 	/** Number of bytes available in this structure. */
 	SceSize size;
 	/** Timer identifier. */
-	SceUID timerId;
+	SceUID timer_id;
 	/** NUL-terminated timer name. */
 	char name[SCE_UID_NAMELEN + 1];
 	/** Timer attributes. */
 	SceUInt32 attr;
 	/** Nonzero while the timer is running. */
-	SceBool fActive;
+	SceBool active;
 	/** Time from which the timer is measured while running, or the stored timer time while stopped. */
-	SceKernelSysClock baseTime;
+	SceKernelSysClock base_time;
 	/** Current logical timer time. */
-	SceKernelSysClock currentTime;
+	SceKernelSysClock current_time;
 	/** Logical timer time at which the armed event will next occur, or zero when
 	 * no event is armed. */
 	SceKernelSysClock schedule;
@@ -81,9 +81,9 @@ typedef struct SceKernelTimerInfo {
 	/** One of ::SceKernelTimerType. */
 	SceKernelTimerType type;
 	/** Nonzero when the event repeats. */
-	SceBool fRepeat;
+	SceBool repeat;
 	/** Number of threads waiting on the timer. */
-	SceUInt32 numWaitThreads;
+	SceUInt32 num_wait_threads;
 	/** Set to 0 on FW 3.60. */
 	SceInt32 reserved[1];
 } SceKernelTimerInfo;

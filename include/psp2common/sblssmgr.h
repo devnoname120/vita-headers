@@ -60,9 +60,9 @@ VITASDK_BUILD_ASSERT_EQ(0x24, ScePortabilityData); // size is from FW 3.60
 
 /** Parameters used to create the 0x200-byte CMA account pass phrase. */
 typedef struct SceSblSsCreatePassPhraseParam {
-	SceUInt32 secureModuleArg; //!< Set to 0 by the observed FW 3.60 caller; forwarded to aimgr_sm command 5. Its purpose is unknown.
+	SceUInt32 secure_module_arg; //!< Set to 0 by the observed FW 3.60 caller; forwarded to aimgr_sm command 5. Its purpose is unknown.
 	SceSize size;              //!< Ignored on FW 3.60.
-	char accountIdText[0x10];  //!< Sixteen lowercase ASCII hexadecimal account-ID characters; not NUL-terminated.
+	char account_id_text[0x10];  //!< Sixteen lowercase ASCII hexadecimal account-ID characters; not NUL-terminated.
 } SceSblSsCreatePassPhraseParam;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceSblSsCreatePassPhraseParam); // size is from FW 3.60
 

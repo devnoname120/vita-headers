@@ -210,27 +210,27 @@ SceUInt64 __aeabi_uldivmod(SceUInt64 dividend, SceUInt64 divisor);
  *
  * @param[in,out] dest - NUL-terminated destination buffer.
  * @param[in] src - Source string.
- * @param[in] destSize - Total destination capacity.
+ * @param[in] dest_size - Total destination capacity.
  *
  * @return \p dest.
  */
-char *__strncat_chk2(char *dest, const char *src, SceSize destSize);
+char *__strncat_chk2(char *dest, const char *src, SceSize dest_size);
 
 /**
  * Copy a string after checking its bounded length.
  *
  * On FW 3.60, this function executes breakpoint 0x81 only if
- * `strnlen(src, destSize)` is greater than \p destSize. The FW 3.60
+ * `strnlen(src, dest_size)` is greater than \p dest_size. The FW 3.60
  * ::strnlen cannot normally produce such a result.
  *
  * @param[out] dest - Destination buffer.
  * @param[in] src - Source string.
- * @param[in] destSize - Number of bytes to copy, padding with NUL bytes when
+ * @param[in] dest_size - Number of bytes to copy, padding with NUL bytes when
  * the source is shorter.
  *
  * @return \p dest.
  */
-char *__strncpy_chk2(char *dest, const char *src, SceSize destSize);
+char *__strncpy_chk2(char *dest, const char *src, SceSize dest_size);
 
 /**
  * Append at most \p count bytes from \p src to \p dest and return \p dest.
@@ -242,15 +242,15 @@ char *strncat(char *dest, const char *src, SceSize count);
 
 #ifndef _PSP2_LIBC_H_
 /**
- * Copy at most \p destSize bytes from a string.
+ * Copy at most \p dest_size bytes from a string.
  *
  * A terminating NUL is written only when the source is shorter than
- * \p destSize; unlike the C11 Annex K function with the same name, this FW
+ * \p dest_size; unlike the C11 Annex K function with the same name, this FW
  * 3.60 function takes three arguments and returns \p dest.
  *
  * @return \p dest.
  */
-char *strncpy_s(char *dest, const char *src, SceSize destSize);
+char *strncpy_s(char *dest, const char *src, SceSize dest_size);
 #endif
 
 #ifdef __cplusplus

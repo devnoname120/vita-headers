@@ -74,14 +74,14 @@ int ksceRtcConvertDateTimeToUnixTime(const SceDateTime *src, SceUInt64 *dst);
  * fractional field contains hundredths of a second, truncated from the tick's
  * microseconds. The output buffer must hold at least 29 bytes.
  *
- * @param[out] dateTime - Output string buffer.
+ * @param[out] date_time - Output string buffer.
  * @param[in] utc - UTC tick to format, or NULL to use the current tick.
- * @param[in] timeZoneMinutes - Signed UTC offset in minutes, from -1439 through 1439.
+ * @param[in] time_zone_minutes - Signed UTC offset in minutes, from -1439 through 1439.
  *
- * @return 0 on success, ::SCE_RTC_ERROR_INVALID_POINTER when \a dateTime is
+ * @return 0 on success, ::SCE_RTC_ERROR_INVALID_POINTER when \a date_time is
  * NULL, or ::SCE_RTC_ERROR_INVALID_VALUE for an invalid offset or adjusted tick.
  */
-int ksceRtcFormatRFC3339(char *dateTime, const SceRtcTick *utc, int timeZoneMinutes);
+int ksceRtcFormatRFC3339(char *date_time, const SceRtcTick *utc, int time_zone_minutes);
 
 /**
  * Return the accumulated system-time counter in microseconds.

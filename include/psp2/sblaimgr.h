@@ -18,11 +18,11 @@ extern "C" {
  *
  * This is the underlying export called by ::sceKernelGetOpenPsId.
  *
- * @param[out] pOpenPsId - Required output for the 16-byte OpenPSID.
+ * @param[out] open_ps_id - Required output for the 16-byte OpenPSID.
  *
  * @return 0 on success, < 0 on error.
  */
-int _sceKernelGetOpenPsId(SceOpenPsId *pOpenPsId);
+int _sceKernelGetOpenPsId(SceOpenPsId *open_ps_id);
 
 #ifdef __cplusplus
 }

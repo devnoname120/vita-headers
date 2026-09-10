@@ -29,37 +29,37 @@ CHECK_WORD_OFFSET(SceLsdbLiveAreaStartupImage, type, 0x4);
 CHECK_WORD_OFFSET(SceLsdbLiveAreaTitleColor, type, 0x4);
 CHECK_WORD_OFFSET(SceLsdbLiveAreaFrameElement, type, 0x4);
 CHECK_WORD_OFFSET(SceLsdbLiveAreaVisualElement, type, 0x4);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaVisualElement, horizontalAlignment, 0x8);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaVisualElement, verticalAlignment, 0xC);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaVisualElement, horizontal_alignment, 0x8);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaVisualElement, vertical_alignment, 0xC);
 CHECK_WORD_OFFSET(SceLsdbLiveAreaImageElement, origin, 0x30);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, textAlignment, 0x24);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, verticalTextAlignment, 0x28);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, lineAlignment, 0x2C);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, text_alignment, 0x24);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, vertical_text_alignment, 0x28);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, line_alignment, 0x2C);
 CHECK_WORD_OFFSET(SceLsdbLiveAreaTextElement, origin, 0x30);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaFrame, objectType, 0x4);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaFrame, multiMode, 0x14);
-CHECK_WORD_OFFSET(SceLsdbLiveAreaParser, compatibilityMode, 0x28);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaFrame, object_type, 0x4);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaFrame, multi_mode, 0x14);
+CHECK_WORD_OFFSET(SceLsdbLiveAreaParser, compatibility_mode, 0x28);
 
-CHECK_WORD_OFFSET(SceVoiceEvent, eventType, 0x0);
-CHECK_WORD_OFFSET(SceVoiceInitParam, applicationType, 0x0);
-CHECK_WORD_OFFSET(SceVoicePortParam, portType, 0x0);
-CHECK_WORD_OFFSET(SceVoicePortParam, data.bitRate, 0xC);
-CHECK_WORD_OFFSET(SceVoicePortParam, pcmDataType, 0x10);
-CHECK_WORD_OFFSET(SceVoicePortParam, samplingRate, 0x14);
+CHECK_WORD_OFFSET(SceVoiceEvent, event_type, 0x0);
+CHECK_WORD_OFFSET(SceVoiceInitParam, application_type, 0x0);
+CHECK_WORD_OFFSET(SceVoicePortParam, port_type, 0x0);
+CHECK_WORD_OFFSET(SceVoicePortParam, data.bit_rate, 0xC);
+CHECK_WORD_OFFSET(SceVoicePortParam, pcm_data_type, 0x10);
+CHECK_WORD_OFFSET(SceVoicePortParam, sampling_rate, 0x14);
 static_assert(offsetof(SceVoicePortParam, threshold) == 0x4, "Voice threshold offset mismatch");
-static_assert(offsetof(SceVoicePortParam, muteFlag) == 0x6, "Voice mute flag offset mismatch");
-CHECK_WORD_OFFSET(SceVoicePortInfo, portType, 0x0);
+static_assert(offsetof(SceVoicePortParam, mute_flag) == 0x6, "Voice mute flag offset mismatch");
+CHECK_WORD_OFFSET(SceVoicePortInfo, port_type, 0x0);
 CHECK_WORD_OFFSET(SceVoicePortInfo, state, 0x4);
-CHECK_WORD_OFFSET(SceVoicePortInfo, dataSize, 0xC);
-CHECK_WORD_OFFSET(SceVoicePortInfo, frameSize, 0x10);
+CHECK_WORD_OFFSET(SceVoicePortInfo, data_size, 0xC);
+CHECK_WORD_OFFSET(SceVoicePortInfo, frame_size, 0x10);
 
-CHECK_WORD_OFFSET(SceAppMgrLaunchParam, processExitSpawnMode, 0x20);
+CHECK_WORD_OFFSET(SceAppMgrLaunchParam, process_exit_spawn_mode, 0x20);
 CHECK_WORD_OFFSET(SceCoredumpTriggerParam, output_mode, 0x8);
-CHECK_WORD_OFFSET(SceKernelHeapMemoryOpt, mappingAction, 0x4);
+CHECK_WORD_OFFSET(SceKernelHeapMemoryOpt, mapping_action, 0x4);
 CHECK_WORD_OFFSET(SceKernelModuleListInfo, nid, 0x48);
 
-CHECK_WORD_OFFSET(SceAppMgrAppMgrState, recommendedScreenOrientation, 0x10);
-CHECK_WORD_OFFSET(SceAppMgrAppStatus, recommendedScreenOrientation, 0x78);
+CHECK_WORD_OFFSET(SceAppMgrAppMgrState, recommended_screen_orientation, 0x10);
+CHECK_WORD_OFFSET(SceAppMgrAppStatus, recommended_screen_orientation, 0x78);
 CHECK_WORD_OFFSET(SceBacktraceArgs, num_frames, 0x0);
 static_assert(sizeof(SceBacktraceArgs) == 0x10, "Preserve the backtrace argument layout");
 static_assert(std::is_same<decltype(SceBacktraceArgs::num_frames), SceUInt32 *>::value,
@@ -116,10 +116,10 @@ static_assert(std::is_same<decltype(&ksceKernelMemBlockTypeGetPrivileges),
 	"Preserve the integer permission-mask return type");
 
 // Compile the documented bitmask call pattern without an explicit enum cast.
-void checkPermissionMaskCalls(ScePID pid, const void *base, SceSize size, void **physicalAddress)
+void checkPermissionMaskCalls(ScePID pid, const void *base, SceSize size, void **physical_address)
 {
 	ksceKernelIsAccessibleRange(SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, base, size);
 	ksceKernelIsAccessibleRangeProc(pid, SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, base, size);
 	ksceKernelIsEqualAccessibleRangeProcBySW(pid, SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, base, size);
-	ksceKernelProcModeVAtoPA(pid, SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, base, physicalAddress);
+	ksceKernelProcModeVAtoPA(pid, SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, base, physical_address);
 }

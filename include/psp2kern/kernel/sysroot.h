@@ -366,16 +366,16 @@ void ksceKernelSysrootRegisterCoredumpTrigger(SceKernelCoredumpTriggerFunc func)
 
 typedef struct SceSyscallInfo {
 	SceSize size; //!< Must be set to `sizeof(SceSyscallInfo)`.
-	SceUID moduleId; //!< Global module UID.
-	SceUInt16 moduleAttr;
-	SceUInt8 moduleVersion[2];
-	char moduleName[0x1C];
-	SceNID moduleNid;
-	const char *libraryName; //!< Read-only imported-library name.
+	SceUID module_id; //!< Global module UID.
+	SceUInt16 module_attr;
+	SceUInt8 module_version[2];
+	char module_name[0x1C];
+	SceNID module_nid;
+	const char *library_name; //!< Read-only imported-library name.
 	SceUInt32 reserved; //!< Reserved; set to zero on FW 3.60.
-	SceUInt16 libraryVersion;
+	SceUInt16 library_version;
 	SceUInt16 reserved2; //!< Reserved; not written on FW 3.60.
-	SceNID functionNid; //!< Imported function NID corresponding to the stub address.
+	SceNID function_nid; //!< Imported function NID corresponding to the stub address.
 } SceSyscallInfo;
 VITASDK_BUILD_ASSERT_EQ(0x3C, SceSyscallInfo); // size is from FW 3.60
 
@@ -392,11 +392,11 @@ typedef struct SceUIDAddressSpaceObject SceUIDAddressSpaceObject;
  *
  * @param[in] pid Process whose heap supplies the allocation.
  * @param[in] size Allocation size.
- * @param[in,out] pOpt Optional heap-allocation options and mapping results.
+ * @param[in,out] opt Optional heap-allocation options and mapping results.
  *
  * @return The allocation address, or NULL on failure.
  */
-void *ksceKernelAllocHeapMemory2(ScePID pid, SceSize size, SceKernelHeapMemoryOpt *pOpt);
+void *ksceKernelAllocHeapMemory2(ScePID pid, SceSize size, SceKernelHeapMemoryOpt *opt);
 
 /**
  * Call all pending initialization callbacks up to and including a target slot.
@@ -429,7 +429,7 @@ int ksceSysrootIsSdCardMode(void);
 /**
  * Test a hardware-model capability bit.
  *
- * The low byte of \p capabilityIndex is used as the ARM shift count. A value
+ * The low byte of \p capability_index is used as the ARM shift count. A value
  * from 0 through 31 selects that bit; a larger low-byte value returns zero.
  * Known FW 3.60 callers use index 11 to enable the alternate removable-SD
  * storage slot. The RTL USB-Ethernet driver uses index 12 to select a board
@@ -437,15 +437,15 @@ int ksceSysrootIsSdCardMode(void);
  *
  * @return 1 if the capability is present, otherwise 0.
  */
-int ksceKernelSysrootCheckModelCapability(int capabilityIndex);
+int ksceKernelSysrootCheckModelCapability(int capability_index);
 
 /**
  * Trigger a coredump through the registered coredump callback.
  *
  * @param[in] pid Process identifier.
- * @param[in] updateCallback Optional progress callback.
- * @param[in] finishCallback Required completion callback.
- * @param[in] pParam Coredump parameters.
+ * @param[in] update_callback Optional progress callback.
+ * @param[in] finish_callback Required completion callback.
+ * @param[in] param Coredump parameters.
  *
  * FW 3.60 accepts the first part of the structure: size 4 through 7 uses the
  * default dump level; size 8 through 19 also supplies \c dump_level; size 20 through
@@ -454,7 +454,7 @@ int ksceKernelSysrootCheckModelCapability(int capabilityIndex);
  *
  * @return A positive coredump task ID on success, < 0 on error.
  */
-int ksceKernelSysrootCoredumpTrigger(ScePID pid, SceKernelCoredumpStateUpdateCallback updateCallback, SceKernelCoredumpStateFinishCallback finishCallback, const SceCoredumpTriggerParam *pParam);
+int ksceKernelSysrootCoredumpTrigger(ScePID pid, SceKernelCoredumpStateUpdateCallback update_callback, SceKernelCoredumpStateFinishCallback finish_callback, const SceCoredumpTriggerParam *param);
 
 /**
  * Get the current address-space UID object's class-specific data.
@@ -483,13 +483,13 @@ void *ksceKernelSysrootGetModulePrivate(int index);
  *
  * @param[in] pid Process identifier passed to the registered Processmgr
  * callback.
- * @param[out] pEntryHeap Receives the heap pointer; must be non-NULL. When
+ * @param[out] entry_heap Receives the heap pointer; must be non-NULL. When
  * Processmgr has not yet registered its callback, FW 3.60 supplies Sysroot's
  * default entry heap.
  *
  * @return 0 when no callback is registered, otherwise the callback's result.
  */
-int ksceKernelSysrootGetPUIDEntryHeap(ScePID pid, void **pEntryHeap);
+int ksceKernelSysrootGetPUIDEntryHeap(ScePID pid, void **entry_heap);
 
 /** @return The raw Sysroot lifecycle state value. */
 SceUInt32 ksceKernelSysrootGetStatus(void);
@@ -520,14 +520,14 @@ SceUInt32 ksceSysrootGetHardwareInfo(void);
  *
  * @param[in] pid Process whose loaded modules are searched.
  * @param[in] pc Address in an imported function stub.
- * @param[in,out] pInfo Output structure. Set its \c size to 0x3C before calling.
+ * @param[in,out] info Output structure. Set its \c size to 0x3C before calling.
  *
  * @return 0 on success, < 0 on error or when Modulemgr is not registered.
  */
-int ksceSysrootGetModuleInfoForPid(ScePID pid, const void *pc, SceSyscallInfo *pInfo);
+int ksceSysrootGetModuleInfoForPid(ScePID pid, const void *pc, SceSyscallInfo *info);
 
 /** Get a read-only symbolic name for a function NID when one is registered. */
-int ksceSysrootGetNidName(SceNID functionNid, const char **pName);
+int ksceSysrootGetNidName(SceNID function_nid, const char **name);
 
 /**
  * Get the 0x90-byte SELF authorization information for a process.
@@ -535,20 +535,20 @@ int ksceSysrootGetNidName(SceNID functionNid, const char **pName);
  * Before Processmgr registers its callback, FW 3.60 returns the boot/default
  * authorization information.
  */
-int ksceSysrootGetSelfAuthInfo(ScePID pid, SceSelfAuthInfo *pSelfAuthInfo);
+int ksceSysrootGetSelfAuthInfo(ScePID pid, SceSelfAuthInfo *self_auth_info);
 
 /**
  * Get the 16-byte system session identifier.
  *
- * @param[out] pSessionId Buffer that receives exactly 16 bytes.
+ * @param[out] session_id Buffer that receives exactly 16 bytes.
  *
- * @return \p pSessionId.
+ * @return \p session_id.
  */
-void *ksceSysrootGetSessionId(void *pSessionId);
+void *ksceSysrootGetSessionId(void *session_id);
 
 /** @return The raw wakeup-factor bitfield. */
 SceUInt32 ksceSysrootGetWakeupFactor(void);
-int ksceSysrootRegisterLicMgrGetLicenseStatus(int (*sceSblLicMgrGetLicenseStatusForDriver)(void));
+int ksceSysrootRegisterLicMgrGetLicenseStatus(int (*sce_sbl_lic_mgr_get_license_status_for_driver)(void));
 
 #ifdef __cplusplus
 }

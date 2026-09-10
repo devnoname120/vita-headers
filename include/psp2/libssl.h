@@ -47,11 +47,11 @@ typedef void SceSslCertName;
  * Certificate list node stored inside the caller's output buffer.
  *
  * The caller owns both this node and the string referenced by
- * ::SceSslCertificateAuthorityEntry::pemCertificate. They remain valid for as
+ * ::SceSslCertificateAuthorityEntry::pem_certificate. They remain valid for as
  * long as the output buffer remains valid. No separate list cleanup is needed.
  */
 typedef struct SceSslCertificateAuthorityEntry {
-	char *pemCertificate; //!< NUL-terminated PEM certificate stored in the caller's buffer.
+	char *pem_certificate; //!< NUL-terminated PEM certificate stored in the caller's buffer.
 	struct SceSslCertificateAuthorityEntry *next; //!< Next selected certificate, or NULL.
 } SceSslCertificateAuthorityEntry;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceSslCertificateAuthorityEntry); // size is from FW 3.60
@@ -89,32 +89,32 @@ int sceSslFreeSslCertName(SceSslCertName* certName);
  * output mode, every loaded certificate is checked against a built-in SHA-1
  * digest before it is returned.
  *
- * If either \p certificateList or \p buffer is NULL, the function only
- * calculates the required storage size and ignores \p bufferSize. Output mode
+ * If either \p certificate_list or \p buffer is NULL, the function only
+ * calculates the required storage size and ignores \p buffer_size. Output mode
  * requires both pointers to be non-NULL. The required size includes every
  * NUL-terminated PEM string, alignment padding, and one embedded
  * ::SceSslCertificateAuthorityEntry per certificate.
  *
- * In output mode, \p certificateList receives a linked list whose nodes and
+ * In output mode, \p certificate_list receives a linked list whose nodes and
  * PEM strings point into \p buffer. The function does not allocate output
  * memory. Callers should first query the size, allocate one buffer of that
  * size, and then call the function again to fill it. If output mode fails
  * after processing begins, the buffer and list may contain partial data and
  * should be discarded.
  *
- * @param[in] issuerId - One of ::SceSslCertIssuer.
- * @param[in] certificateMask - Issuer-specific certificate-selection bitmask.
- *                              For a nonzero \p issuerId, -1 selects that
+ * @param[in] issuer_id - One of ::SceSslCertIssuer.
+ * @param[in] certificate_mask - Issuer-specific certificate-selection bitmask.
+ *                              For a nonzero \p issuer_id, -1 selects that
  *                              issuer's firmware default mask. On FW 3.60 the
  *                              default is the full supported mask only for SCE,
  *                              GeoTrust, Thawte, and GoDaddy; it is zero for
  *                              the other issuer groups. With
  *                              ::SCE_SSLCERT_ISSUER_ALL, -1 selects every
  *                              known certificate.
- * @param[out] certificateList - Receives the first list node in output mode.
+ * @param[out] certificate_list - Receives the first list node in output mode.
  * @param[out] buffer - Caller-owned buffer receiving PEM strings and list nodes.
- * @param[in] bufferSize - Size of \a buffer in bytes.
- * @param[out] resultSize - Optional pointer receiving the total storage required
+ * @param[in] buffer_size - Size of \a buffer in bytes.
+ * @param[out] result_size - Optional pointer receiving the total storage required
  *                          or used on success. If non-NULL, the function sets
  *                          the output to zero before validation and leaves it
  *                          zero on error.
@@ -125,9 +125,9 @@ int sceSslFreeSslCertName(SceSslCertName* certName);
  *         ::SCE_SSL_ERROR_INVALID_VALUE when a certificate digest differs,
  *         or another negative file/path error.
  */
-int sceSslInternalGetCertificateAuthority(SceSslCertIssuer issuerId, int certificateMask,
-	SceSslCertificateAuthorityEntry **certificateList, char *buffer, SceSize bufferSize,
-	SceSize *resultSize);
+int sceSslInternalGetCertificateAuthority(SceSslCertIssuer issuer_id, int certificate_mask,
+	SceSslCertificateAuthorityEntry **certificate_list, char *buffer, SceSize buffer_size,
+	SceSize *result_size);
 
 #ifdef __cplusplus
 }

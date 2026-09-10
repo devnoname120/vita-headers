@@ -28,7 +28,7 @@ extern "C" {
  * of these additional values is unknown, and they have no confirmed
  * first-party uses.
  *
- * @param[in] portType - Capture profile.
+ * @param[in] port_type - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
  * @param[in] freq - Sample frequency in Hz.
  * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
@@ -45,7 +45,7 @@ int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudi
  * accepts ::SCE_AUDIO_IN_PORT_TYPE_DIAG without validating \a grain or \a freq;
  * both values are still stored in the resulting port configuration.
  *
- * @param[in] portType - Capture profile.
+ * @param[in] port_type - Capture profile.
  * @param[in] grain - Number of mono samples returned by each input call.
  * @param[in] freq - Sample frequency in Hz.
  * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
@@ -53,7 +53,7 @@ int sceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudi
  * @return A port handle on success, or a negative error code. Most validation
  *         failures use ::SceAudioInErrorCode.
  */
-int sceAudioInOpenPortForDiag(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
+int sceAudioInOpenPortForDiag(SceAudioInPortType port_type, int grain, int freq, SceAudioInParam param);
 
 /**
  * Release an audio-input port owned by the calling process.
@@ -72,7 +72,7 @@ int sceAudioInReleasePort(int port);
  *
  * @param[in] port - Port handle returned by ::sceAudioInOpenPort or
  *                   ::sceAudioInOpenPortForDiag.
- * @param[out] destPtr - Buffer for the captured samples. Its size must be at
+ * @param[out] dest_ptr - Buffer for the captured samples. Its size must be at
  *                       least <code>grain * sizeof(SceInt16)</code> bytes.
  *
  * @return 0 on success, or a negative error code.
@@ -86,18 +86,18 @@ int sceAudioInInput(int port, void *destPtr);
  * FW 3.60 writes 1 for the first two successful captures after the input route
  * changes and writes 0 afterward. This value does not indicate whether the
  * input device is still connected. For other profiles FW 3.60 does not write
- * \a inputDeviceState.
+ * \a input_device_state.
  *
  * @param[in] port - Port handle returned by ::sceAudioInOpenPort.
- * @param[out] destPtr - Buffer for the captured samples. Its size must be at
+ * @param[out] dest_ptr - Buffer for the captured samples. Its size must be at
  *                       least <code>grain * sizeof(SceInt16)</code> bytes.
- * @param[out] inputDeviceState - Receives the temporary route-change state when
+ * @param[out] input_device_state - Receives the temporary route-change state when
  *                                reporting is enabled for the port. Otherwise
  *                                FW 3.60 does not access this pointer.
  *
  * @return 0 on success, or a negative error code.
  */
-int sceAudioInInputWithInputDeviceState(int port, void *destPtr, int *inputDeviceState);
+int sceAudioInInputWithInputDeviceState(int port, void *dest_ptr, int *input_device_state);
 
 /**
  * Check whether the calling process owns the adopted audio-input port.
@@ -106,7 +106,7 @@ int sceAudioInInputWithInputDeviceState(int port, void *destPtr, int *inputDevic
  * ::SCE_AUDIO_IN_PORT_TYPE_RAW. The selected type is validated but does not
  * otherwise affect the result.
  *
- * @param[in] portType - Port type to validate.
+ * @param[in] port_type - Port type to validate.
  *
  * @return 1 when the calling process owns a port and is the adopted input
  *         process, 0 otherwise, or a negative ::SceAudioInErrorCode value.
@@ -144,12 +144,12 @@ int sceAudioInGetInput(void);
  * value as the current route but does not explicitly select an input source
  * for it.
  *
- * @param[in] inputMode - Input route.
+ * @param[in] input_mode - Input route.
  *
  * @return 0 when the route is already selected, otherwise the result of the
  *         FW 3.60 input-worker notification.
  */
-int sceAudioInSelectInput(SceAudioInInputMode inputMode);
+int sceAudioInSelectInput(SceAudioInInputMode input_mode);
 
 /**
  * Set the system microphone mute state.

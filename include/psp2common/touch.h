@@ -23,11 +23,11 @@ extern "C" {
  * set ::SceTouchDeviceInfo::reserved to zero.
  */
 typedef struct SceTouchDeviceInfo {
-	SceUInt16 vendorID;       //!< Touch-controller vendor ID.
-	SceUInt16 firmwareRev;    //!< Controller firmware revision.
-	SceUInt16 configRev;      //!< Controller configuration revision.
-	SceUInt8 hwVersion;       //!< Hardware version used for firmware compatibility.
-	SceUInt8 vendorInfo;      //!< Vendor-specific value used for firmware compatibility.
+	SceUInt16 vendor_id;       //!< Touch-controller vendor ID.
+	SceUInt16 firmware_rev;    //!< Controller firmware revision.
+	SceUInt16 config_rev;      //!< Controller configuration revision.
+	SceUInt8 hw_version;       //!< Hardware version used for firmware compatibility.
+	SceUInt8 vendor_info;      //!< Vendor-specific value used for firmware compatibility.
 	SceUInt8 reserved[4];     //!< Set to zero on FW 3.60.
 } SceTouchDeviceInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceTouchDeviceInfo); // size is from FW 3.60

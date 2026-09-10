@@ -24,7 +24,7 @@ VITASDK_BUILD_ASSERT_EQ(0x84, SceAppMgrPhotoMountParam); // size is from FW 3.60
 
 typedef struct SceAppMgrAcInstResult {
 	SceUInt8 keystone[0x60]; //!< Add-on-content keystone.
-	char gameTitle[0x80]; //!< NUL-terminated localized game title.
+	char game_title[0x80]; //!< NUL-terminated localized game title.
 } SceAppMgrAcInstResult;
 VITASDK_BUILD_ASSERT_EQ(0xE0, SceAppMgrAcInstResult); // size is from FW 3.60
 

@@ -19,13 +19,13 @@ extern "C" {
  * System suspend/resume event handler.
  *
  * @param[in] resume - Zero while suspending, or one while resuming.
- * @param[in] eventId - Event identifier.
- * @param[in] eventParam - Event data supplied to ::ksceKernelSysEventDispatch.
+ * @param[in] event_id - Event identifier.
+ * @param[in] event_param - Event data supplied to ::ksceKernelSysEventDispatch.
  * @param[in] args - Private argument supplied when registering the handler.
  *
  * @return 0 on success, < 0 on error.
  */
-typedef int (*SceSysEventHandler)(int resume, int eventId, void *eventParam, void *args);
+typedef int (*SceSysEventHandler)(int resume, int event_id, void *event_param, void *args);
 
 
 /**
@@ -51,28 +51,28 @@ int ksceKernelRegisterSysEventHandler(const char *name, SceSysEventHandler handl
 /**
  * Call registered handlers for a suspend or resume event.
  *
- * If a handler fails and \p failedHandlerId is non-NULL, stop calling handlers
- * and write the failing handler's UID to *failedHandlerId. If \p failedHandlerId
+ * If a handler fails and \p failed_handler_id is non-NULL, stop calling handlers
+ * and write the failing handler's UID to *failed_handler_id. If \p failed_handler_id
  * is NULL, continue calling handlers after failures and return the last
  * handler's result.
  *
  * @param[in] resume - Zero while suspending, or one while resuming.
- * @param[in] eventId - Event identifier.
- * @param[in] eventParam - Event data passed to each handler that is called.
- * @param[out] failedHandlerId - Optional output for the first failing handler UID.
+ * @param[in] event_id - Event identifier.
+ * @param[in] event_param - Event data passed to each handler that is called.
+ * @param[out] failed_handler_id - Optional output for the first failing handler UID.
  *
  * @return The result from the last handler called, or 0 when no handler is registered.
  */
-int ksceKernelSysEventDispatch(SceBool resume, SceUInt32 eventId, void *eventParam, SceUID *failedHandlerId);
+int ksceKernelSysEventDispatch(SceBool resume, SceUInt32 event_id, void *event_param, SceUID *failed_handler_id);
 
 /**
  * Unregister a system event handler.
  *
- * @param[in] handlerId - UID returned by ::ksceKernelRegisterSysEventHandler.
+ * @param[in] handler_id - UID returned by ::ksceKernelRegisterSysEventHandler.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelUnregisterSysEventHandler(SceUID handlerId);
+int ksceKernelUnregisterSysEventHandler(SceUID handler_id);
 
 #ifdef __cplusplus
 }

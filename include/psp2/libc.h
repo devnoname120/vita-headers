@@ -47,13 +47,13 @@ char *strncat(char *dest, const char *src, size_t count);
  * `psp2kern/kernel/sysclib.h`.
  *
  * @param[out] dest Destination buffer.
- * @param[in] destSize Total destination capacity.
+ * @param[in] dest_size Total destination capacity.
  * @param[in] src Source string.
  * @param[in] count Maximum number of source characters to examine and copy.
  *
  * @return 0 on success, or 34 (`ERANGE`) after a runtime-constraint violation.
  */
-int strncpy_s(char *dest, size_t destSize, const char *src, size_t count);
+int strncpy_s(char *dest, size_t dest_size, const char *src, size_t count);
 #endif
 
 #ifdef __cplusplus

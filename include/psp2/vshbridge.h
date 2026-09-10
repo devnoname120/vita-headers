@@ -61,13 +61,13 @@ int _vshSblAimgrGetSMI(SceUInt32 *info);
 /**
  * Get the console identifier.
  *
- * @param[out] consoleId - Receives 16 bytes with the layout of ::SceConsoleId.
+ * @param[out] console_id - Receives 16 bytes with the layout of ::SceConsoleId.
  *
  * @note The calling process must be authorized as a system program.
  *
  * @return 0 on success, < 0 on error.
  */
-int _vshSblAimgrGetConsoleId(char consoleId[0x10]);
+int _vshSblAimgrGetConsoleId(char console_id[0x10]);
 
 /**
  * @brief Check if a module is loaded.
@@ -253,9 +253,9 @@ typedef struct SceVshAppMgrCheckPfsMountedOpt {
 VITASDK_BUILD_ASSERT_EQ(8, SceVshAppMgrCheckPfsMountedOpt); // size is from FW 3.60
 
 typedef struct SceVshAppMgrBgdlQueueStatusEntry {
-	SceUInt32 downloadStatus; //!< Set from SceShell's 4-bit state: 7 maps to 2, 8 to 1,
+	SceUInt32 download_status; //!< Set from SceShell's 4-bit state: 7 maps to 2, 8 to 1,
 	                          //!< 9 to 3, 0xC to 4, and every other value to 0.
-	SceBool unknownBoolean; //!< Set for SceShell state 9, or when an unidentified source word is zero,
+	SceBool unknown_boolean; //!< Set for SceShell state 9, or when an unidentified source word is zero,
 	                        //!< flags 0x300 are clear, and flag 0x40000 is set. AppMgr
 	                        //!< preserves but does not test this field; its purpose is unknown.
 	char identifier[0x30]; //!< NUL-terminated BGDL identifier; AppMgr treats bytes 7 through 15 as a title ID.
@@ -273,14 +273,14 @@ typedef struct SceVshSblAuthMgrVerifySpsfoOpt {
 VITASDK_BUILD_ASSERT_EQ(8, SceVshSblAuthMgrVerifySpsfoOpt); // size is from FW 3.60
 
 typedef struct SceVshNpDrmGetLegacyDocKeyOpt {
-	SceUInt8 *documentKey; //!< Destination for the 16-byte document key.
-	SceSize documentDataSize; //!< Number of bytes to copy from the document data, at most 0x200.
+	SceUInt8 *document_key; //!< Destination for the 16-byte document key.
+	SceSize document_data_size; //!< Number of bytes to copy from the document data, at most 0x200.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceVshNpDrmGetLegacyDocKeyOpt;
 VITASDK_BUILD_ASSERT_EQ(0x10, SceVshNpDrmGetLegacyDocKeyOpt); // size is from FW 3.60
 
 typedef struct SceVshSblSsCreatePassPhraseOpt {
-	SceSize passPhraseSize; //!< Number of pass-phrase bytes to copy, at most 0x200.
+	SceSize pass_phrase_size; //!< Number of pass-phrase bytes to copy, at most 0x200.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceVshSblSsCreatePassPhraseOpt;
 VITASDK_BUILD_ASSERT_EQ(8, SceVshSblSsCreatePassPhraseOpt); // size is from FW 3.60
@@ -288,8 +288,8 @@ VITASDK_BUILD_ASSERT_EQ(8, SceVshSblSsCreatePassPhraseOpt); // size is from FW 3
 /**
  * Get add-on-content installation data.
  *
- * @param[in] titleId - Pointer to a 0x10-byte buffer containing a NUL-terminated, nine-character title ID.
- * @param[in] addcontId - Pointer to a 0x14-byte buffer containing a NUL-terminated, 16-character add-on-content ID.
+ * @param[in] title_id - Pointer to a 0x10-byte buffer containing a NUL-terminated, nine-character title ID.
+ * @param[in] addcont_id - Pointer to a 0x14-byte buffer containing a NUL-terminated, 16-character add-on-content ID.
  * @param[out] result - Output ::SceAppMgrAcInstResult structure containing the
  *                      add-on-content keystone and localized game title.
  *
@@ -300,12 +300,12 @@ VITASDK_BUILD_ASSERT_EQ(8, SceVshSblSsCreatePassPhraseOpt); // size is from FW 3
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshAppMgrAcInstGetAcdirParam(const char titleId[0x10], const char addcontId[0x14], SceAppMgrAcInstResult *result);
+int _vshAppMgrAcInstGetAcdirParam(const char title_id[0x10], const char addcont_id[0x14], SceAppMgrAcInstResult *result);
 
 /**
  * Update the background-download queue status table.
  *
- * @param[in] queueStatus - Pointer to a ::SceVshAppMgrBgdlQueueStatus structure.
+ * @param[in] queue_status - Pointer to a ::SceVshAppMgrBgdlQueueStatus structure.
  *
  * All 0x700 bytes are copied before this function returns. The caller still
  * owns the structure.
@@ -314,7 +314,7 @@ int _vshAppMgrAcInstGetAcdirParam(const char titleId[0x10], const char addcontId
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshAppMgrBgdlSetQueueStatus(const SceVshAppMgrBgdlQueueStatus *queueStatus);
+int _vshAppMgrBgdlSetQueueStatus(const SceVshAppMgrBgdlQueueStatus *queue_status);
 
 /**
  * Check whether a PFS path is mounted.
@@ -331,8 +331,8 @@ int _vshAppMgrCheckPfsMounted(const char *path, const SceVshAppMgrCheckPfsMounte
 /**
  * Create and sign a cloud-data header.
  *
- * @param[in] setupKey - 0x18-byte setup-key buffer. Its first 0x10 bytes contain the ASCII account ID.
- * @param[in] dataSize - Size of the cloud-data payload, at most 0x40000000 bytes.
+ * @param[in] setup_key - 0x18-byte setup-key buffer. Its first 0x10 bytes contain the ASCII account ID.
+ * @param[in] data_size - Size of the cloud-data payload, at most 0x40000000 bytes.
  * @param[in] digest - 0x20-byte payload digest.
  * @param[out] header - 0x170-byte "PSVB" header containing the timestamp,
  *                     data size, account ID, digest, and RSA signature.
@@ -345,7 +345,7 @@ int _vshAppMgrCheckPfsMounted(const char *path, const SceVshAppMgrCheckPfsMounte
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshAppMgrCloudDataCreateHeader(const SceUInt8 setupKey[0x18], SceSize dataSize, const SceUInt8 digest[0x20], SceUInt8 header[0x170]);
+int _vshAppMgrCloudDataCreateHeader(const SceUInt8 setup_key[0x18], SceSize data_size, const SceUInt8 digest[0x20], SceUInt8 header[0x170]);
 
 /**
  * Change selected attributes of a path.
@@ -393,21 +393,21 @@ int _vshIoGetstat(const char *file, SceIoStat *stat, const sceIoGetstatOpt *opt)
  * Get the compiled SDK version of a process.
  *
  * @param[in] pid - Process ID.
- * @param[out] sdkVersion - Receives the compiled SDK version as a ::SceUInt32.
+ * @param[out] sdk_version - Receives the compiled SDK version as a ::SceUInt32.
  *
  * @note The calling process must be authorized as a system program.
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshKernelGetCompiledSdkVersionByPid(ScePID pid, SceUInt32 *sdkVersion);
+int _vshKernelGetCompiledSdkVersionByPid(ScePID pid, SceUInt32 *sdk_version);
 
 /**
  * Derive the 16-byte key for a legacy document.
  *
- * @param[in] rifData - Optional 0x200-byte RIF data buffer. Some PSPEDAT
+ * @param[in] rif_data - Optional 0x200-byte RIF data buffer. Some PSPEDAT
  *                      document modes require it.
- * @param[in] documentData - PSPEDAT document data, at least 0x90 bytes.
- * @param[in] documentDataSize - Size of documentData in bytes; must match opt->documentDataSize.
+ * @param[in] document_data - PSPEDAT document data, at least 0x90 bytes.
+ * @param[in] document_data_size - Size of document_data in bytes; must match opt->document_data_size.
  * @param[in] opt - Required structure specifying the document-data copy size and key output buffer.
  *
  * The bridge can copy at most 0x200 bytes of document data. The caller owns
@@ -417,7 +417,7 @@ int _vshKernelGetCompiledSdkVersionByPid(ScePID pid, SceUInt32 *sdkVersion);
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshNpDrmGetLegacyDocKey(const SceUInt8 rifData[0x200], const void *documentData, SceSize documentDataSize, const SceVshNpDrmGetLegacyDocKeyOpt *opt);
+int _vshNpDrmGetLegacyDocKey(const SceUInt8 rif_data[0x200], const void *document_data, SceSize document_data_size, const SceVshNpDrmGetLegacyDocKeyOpt *opt);
 
 /**
  * Get the primary platform security code.
@@ -447,54 +447,54 @@ int _vshSblAimgrGetPscode2(ScePsCode *pscode);
 /**
  * Get the 0x20-byte visible ID when the system is in product mode.
  *
- * @param[out] visibleId - Output ::SceVisibleId structure.
+ * @param[out] visible_id - Output ::SceVisibleId structure.
  *
  * @note Product mode must be enabled and the calling process must be authorized
  *       as a system program.
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshSblAimgrGetVisibleId(SceVisibleId *visibleId);
+int _vshSblAimgrGetVisibleId(SceVisibleId *visible_id);
 
 /**
  * Verify a signed PARAM.SFO file and copy its embedded payload.
  *
  * @param[in] path - NUL-terminated path to the signed PARAM.SFO file, at most
  *                   0xFF characters.
- * @param[out] verifiedData - Output payload buffer.
- * @param[in] verifiedDataCapacity - Capacity of verifiedData in bytes.
+ * @param[out] verified_data - Output payload buffer.
+ * @param[in] verified_data_capacity - Capacity of verified_data in bytes.
  * @param[in] opt - Required 8-byte structure whose contents are ignored on FW 3.60.
  *
  * The verified embedded payload must not be empty and must fit completely in
- * verifiedData. The function does not copy part of a payload.
+ * verified_data. The function does not copy part of a payload.
  *
  * @note The calling process must be authorized as a system program.
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshSblAuthMgrVerifySpsfo(const char *path, void *verifiedData, SceSize verifiedDataCapacity, const SceVshSblAuthMgrVerifySpsfoOpt *opt);
+int _vshSblAuthMgrVerifySpsfo(const char *path, void *verified_data, SceSize verified_data_capacity, const SceVshSblAuthMgrVerifySpsfoOpt *opt);
 
 /**
  * Create a 0x200-byte account pass phrase.
  *
  * @param[in] args - Pass-phrase input parameters.
- * @param[out] passPhrase - Output pass-phrase buffer.
+ * @param[out] pass_phrase - Output pass-phrase buffer.
  * @param[in] opt - Required structure specifying how many pass-phrase bytes to copy.
  *
  * SceSblSsMgr always creates 0x200 bytes internally. The bridge copies the
- * first opt->passPhraseSize bytes to passPhrase; this size must not exceed
+ * first opt->pass_phrase_size bytes to pass_phrase; this size must not exceed
  * 0x200. The caller owns all buffers.
  *
  * @note The calling process must be authorized as a system program.
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *args, void *passPhrase, const SceVshSblSsCreatePassPhraseOpt *opt);
+int _vshSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *args, void *pass_phrase, const SceVshSblSsCreatePassPhraseOpt *opt);
 
 /**
  * Get the manufacturing-status value.
  *
- * @param[out] manufacturingStatus - Receives the manufacturing status as a ::SceUInt32.
+ * @param[out] manufacturing_status - Receives the manufacturing status as a ::SceUInt32.
  *
  * FW 3.60 returns the four-byte response to Syscon command 0x15. No observed
  * caller interprets its individual bits, so their purposes are unknown.
@@ -504,13 +504,13 @@ int _vshSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *args, void *p
  *
  * @return 0 on success, or a negative error code.
  */
-int _vshSysconGetManufacturesStatus(SceUInt32 *manufacturingStatus);
+int _vshSysconGetManufacturesStatus(SceUInt32 *manufacturing_status);
 
 /**
  * Create a mount event.
  *
- * @param[in] mountId - One of ::SceVshMountId.
- * @param[in] eventBits - Bitwise OR of ::SceIoMountEvent values. FW 3.60
+ * @param[in] mount_id - One of ::SceVshMountId.
+ * @param[in] event_bits - Bitwise OR of ::SceIoMountEvent values. FW 3.60
  *                        discards bits outside 0x333; at least one accepted bit
  *                        must remain.
  *
@@ -520,12 +520,12 @@ int _vshSysconGetManufacturesStatus(SceUInt32 *manufacturingStatus);
  *
  * @return Event UID on success, or a negative error code.
  */
-SceUID vshIoCreateMountEvent(SceVshMountId mountId, SceUInt32 eventBits);
+SceUID vshIoCreateMountEvent(SceVshMountId mount_id, SceUInt32 event_bits);
 
 /**
  * Notify the kernel that SceShell is ready.
  *
- * @param[in] eventId - Event ID. FW 3.60 accepts only 0, meaning that SceShell
+ * @param[in] event_id - Event ID. FW 3.60 accepts only 0, meaning that SceShell
  *                      is ready.
  *
  * The notification is sent to SceSysroot only on the first successful call;
@@ -535,7 +535,7 @@ SceUID vshIoCreateMountEvent(SceVshMountId mountId, SceUInt32 eventBits);
  *
  * @return 0 on success, or a negative error code.
  */
-int vshKernelSendSysEvent(SceUInt32 eventId);
+int vshKernelSendSysEvent(SceUInt32 event_id);
 
 /**
  * Check whether the communication-test flag is set.

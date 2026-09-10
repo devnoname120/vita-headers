@@ -83,27 +83,27 @@ typedef void (*SceHprmConnectCallback)(SceBool headphone_detect,
  * - 12 is the steady state that waits for disconnect or reset events.
  */
 typedef struct SceHprmInternalState {
-	SceUID eventFlagId; //!< Event flag used by the detection state machine.
-	SceUID detectionThreadId; //!< Headset-detection worker thread.
-	SceInt32 detectionState; //!< Detection state-machine index described above.
-	SceUID callbackIds[32]; //!< Kernel callback UIDs, or a negative value for an unused slot.
-	SceUInt8 hardwareFlags; //!< Model-specific headset-detection behavior flags.
-	SceUInt8 headphoneDetect; //!< Debounced Syscon headphone-detect signal, 0 or 1.
-	SceUInt8 sysconMicrophoneConnect; //!< Latest Syscon microphone-connect signal, 0 or 1.
-	SceUInt8 pendingHeadphoneDetect; //!< Latest raw headphone-detect signal awaiting debounce.
-	SceUInt32 headphoneDebounceHistory; //!< Shift register of recent headphone-detect samples.
-	SceUInt8 interfaceConnect; //!< Debounced Syscon interface-connect signal, 0 or 1.
-	SceUInt8 pendingInterfaceConnect; //!< Latest raw interface-connect signal awaiting debounce.
-	SceUInt8 audioOutDockExists; //!< Whether the multiconnector is in audio-output mode.
+	SceUID event_flag_id; //!< Event flag used by the detection state machine.
+	SceUID detection_thread_id; //!< Headset-detection worker thread.
+	SceInt32 detection_state; //!< Detection state-machine index described above.
+	SceUID callback_ids[32]; //!< Kernel callback UIDs, or a negative value for an unused slot.
+	SceUInt8 hardware_flags; //!< Model-specific headset-detection behavior flags.
+	SceUInt8 headphone_detect; //!< Debounced Syscon headphone-detect signal, 0 or 1.
+	SceUInt8 syscon_microphone_connect; //!< Latest Syscon microphone-connect signal, 0 or 1.
+	SceUInt8 pending_headphone_detect; //!< Latest raw headphone-detect signal awaiting debounce.
+	SceUInt32 headphone_debounce_history; //!< Shift register of recent headphone-detect samples.
+	SceUInt8 interface_connect; //!< Debounced Syscon interface-connect signal, 0 or 1.
+	SceUInt8 pending_interface_connect; //!< Latest raw interface-connect signal awaiting debounce.
+	SceUInt8 audio_out_dock_exists; //!< Whether the multiconnector is in audio-output mode.
 	SceUInt8 reserved0; //!< Set to 0 during initialization and otherwise unused on FW 3.60.
-	SceUInt32 interfaceDebounceHistory; //!< Shift register of recent interface-connect samples.
+	SceUInt32 interface_debounce_history; //!< Shift register of recent interface-connect samples.
 	SceUInt8 reserved1[4]; //!< Set to 0 during initialization and otherwise unused on FW 3.60.
-	SceUInt8 notificationPending; //!< Whether connection callbacks need to be notified.
-	SceInt8 headphoneExists; //!< Headphone connection state reported by the module, 0 or 1.
-	SceInt8 remoteState; //!< One of ::SceHprmDeviceState; the FW 3.60 module only sets -1 or 0.
-	SceInt8 microphoneState; //!< One of ::SceHprmDeviceState.
-	SceHprmConnectCallback connectCallback; //!< Direct connection callback, or NULL.
-	void *connectCallbackArg; //!< Caller-owned argument passed to the direct connection callback.
+	SceUInt8 notification_pending; //!< Whether connection callbacks need to be notified.
+	SceInt8 headphone_exists; //!< Headphone connection state reported by the module, 0 or 1.
+	SceInt8 remote_state; //!< One of ::SceHprmDeviceState; the FW 3.60 module only sets -1 or 0.
+	SceInt8 microphone_state; //!< One of ::SceHprmDeviceState.
+	SceHprmConnectCallback connect_callback; //!< Direct connection callback, or NULL.
+	void *connect_callback_arg; //!< Caller-owned argument passed to the direct connection callback.
 } SceHprmInternalState;
 VITASDK_BUILD_ASSERT_EQ(0xAC, SceHprmInternalState); // size is from FW 3.60
 

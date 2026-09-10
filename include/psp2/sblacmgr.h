@@ -29,13 +29,13 @@ SceInt32 sceSblACMgrIsGameProgram(SceBool *result);
 /**
  * Check whether the calling process is a game program.
  *
- * @param[out] pResult - Must point to a four-byte value. Receives 1 if the
+ * @param[out] result - Must point to a four-byte value. Receives 1 if the
  *                      calling process is a game program, otherwise 0.
  *
- * @return SCE_OK on success, 0x800F0916 if \a pResult is NULL, or
+ * @return SCE_OK on success, 0x800F0916 if \a result is NULL, or
  *         an error copying the result to user memory.
  */
-int _sceSblACMgrIsGameProgram(int *pResult);
+int _sceSblACMgrIsGameProgram(int *result);
 
 #ifdef __cplusplus
 }

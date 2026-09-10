@@ -21,9 +21,9 @@ extern "C" {
  * depends on the response format; this API does not interpret them.
  */
 typedef struct SceKernelMotionDeviceInfo {
-	SceUInt16 barkleyFirmwareVersion; //!< Barkley motion-controller firmware version.
-	SceUInt16 barkleyHardwareInfo; //!< Barkley hardware information.
-	SceUInt8 controllerInfo[0x28]; //!< Controller-specific device-information response data.
+	SceUInt16 barkley_firmware_version; //!< Barkley motion-controller firmware version.
+	SceUInt16 barkley_hardware_info; //!< Barkley hardware information.
+	SceUInt8 controller_info[0x28]; //!< Controller-specific device-information response data.
 } SceKernelMotionDeviceInfo;
 VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelMotionDeviceInfo); // size is from FW 3.60
 
@@ -31,15 +31,15 @@ VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelMotionDeviceInfo); // size is from FW 3.6
  * Get the cached motion-controller identity record.
  *
  * MotionDev holds its state spinlock with CPU interrupts suspended while
- * copying the output. On error, \a pInfo is not modified.
+ * copying the output. On error, \a info is not modified.
  *
- * @param[out] pInfo - Receives the complete identity record; must not be NULL.
+ * @param[out] info - Receives the complete identity record; must not be NULL.
  *
- * @return 0 on success, 0x80360001 if \a pInfo is NULL, 0x80360004 while
+ * @return 0 on success, 0x80360001 if \a info is NULL, 0x80360004 while
  *         MotionDev is in a state that does not expose device information, or
  *         0x80360006 when its cached device-information record is unavailable.
  */
-int ksceMotionDevGetDeviceInfo(SceKernelMotionDeviceInfo *pInfo);
+int ksceMotionDevGetDeviceInfo(SceKernelMotionDeviceInfo *info);
 
 #ifdef __cplusplus
 }

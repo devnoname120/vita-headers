@@ -156,8 +156,8 @@ typedef struct SceSblACMgrFsAttrInfo {
 	int operation;         //!< Values 1-5 select ordinary filesystem attributes; 6 selects a PFS
 	                       //!< attribute; 7-8 are unsupported by the mode-conversion functions.
 	void *attribute;       //!< Caller-owned pointer to a ::SceUInt8 or ::SceUInt16 value,
-	                       //!< selected by ::SceSblACMgrFsAttrInfo::attributeSize.
-	SceSize attributeSize; //!< Attribute size in bytes. Use 1 or 2; other values can make FW 3.60
+	                       //!< selected by ::SceSblACMgrFsAttrInfo::attribute_size.
+	SceSize attribute_size; //!< Attribute size in bytes. Use 1 or 2; other values can make FW 3.60
 	                       //!< return success without writing anything.
 } SceSblACMgrFsAttrInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceSblACMgrFsAttrInfo); // size is from FW 3.60
@@ -178,7 +178,7 @@ VITASDK_BUILD_ASSERT_EQ(0xC, SceSblACMgrFsAttrInfo); // size is from FW 3.60
  * high PFS bits. Operations 7 and 8 return 0x800F0925.
  *
  * @param[in]     pid   - Target process ID (::ScePID).
- * @param[in,out] pInfo - Attribute operation and output buffer.
+ * @param[in,out] info - Attribute operation and output buffer.
  * @param[in]     mode  - File mode (::SceMode).
  *
  * @return SCE_OK on success; 0x800F0902 when an operation-6 mode has no
@@ -188,8 +188,8 @@ VITASDK_BUILD_ASSERT_EQ(0xC, SceSblACMgrFsAttrInfo); // size is from FW 3.60
  *         class; 0x8001000D when the selected attribute is forbidden; or
  *         0x80010016 when a mode/access-level mapping is invalid.
  */
-int ksceSblACMgrConvertModeToFsAttribute(SceUID pid, SceSblACMgrFsAttrInfo *pInfo, int mode);
-int ksceSblACMgrConvertModeToFsAttribute2(SceUID pid, SceSblACMgrFsAttrInfo *pInfo, int mode);
+int ksceSblACMgrConvertModeToFsAttribute(SceUID pid, SceSblACMgrFsAttrInfo *info, int mode);
+int ksceSblACMgrConvertModeToFsAttribute2(SceUID pid, SceSblACMgrFsAttrInfo *info, int mode);
 
 /**
  * Check capability bit 1 (system-program privilege).
@@ -204,30 +204,30 @@ int ksceSblACMgrIsSystemProgram2(SceUID pid);
  * Get the media type selected by a path's device and path-class prefix.
  *
  * @param[in] path - NUL-terminated path to classify.
- * @param[out] mediaType - Receives one of ::SceSblACMgrMediaType.
+ * @param[out] media_type - Receives one of ::SceSblACMgrMediaType.
  *
  * @return SCE_OK on success, 0x800F090E for a NULL argument, or 0x800F0903
- *         when no rule matches. On the no-match error, \a mediaType receives
+ *         when no rule matches. On the no-match error, \a media_type receives
  *         ::SCE_SBL_ACMGR_MEDIA_TYPE_UX_USER.
  */
-int ksceSblACMgrGetMediaType2(const char *path, SceUInt32 *mediaType);
+int ksceSblACMgrGetMediaType2(const char *path, SceUInt32 *media_type);
 
 /**
  * Get the program authority ID from the process self-authentication information.
  *
  * @param[in]  pid   - Target process ID (::ScePID).
- * @param[out] pPaid - Program authority ID.
+ * @param[out] paid - Program authority ID.
  *
- * @return SCE_OK on success, or 0x800F0916 if \a pPaid is NULL or the
+ * @return SCE_OK on success, or 0x800F0916 if \a paid is NULL or the
  *         authentication information is unavailable.
  */
-int ksceSblACMgrGetPaid2(SceUID pid, SceUInt64 *pPaid);
+int ksceSblACMgrGetPaid2(SceUID pid, SceUInt64 *paid);
 
 /**
  * Test a process capability bit.
  *
  * Capability bits are numbered from 0 to 255 and stored most-significant bit
- * first within each byte. FW 3.60 does not bounds-check \a capabilityBit;
+ * first within each byte. FW 3.60 does not bounds-check \a capability_bit;
  * callers must keep it in this range.
  *
  * Known values used by FW 3.60 include 0 (kernel program), 1 (system program),
@@ -237,13 +237,13 @@ int ksceSblACMgrGetPaid2(SceUID pid, SceUInt64 *pPaid);
  * (system data).
  *
  * @param[in] pid           - Target process ID (::ScePID).
- * @param[in] capabilityBit - Capability bit number.
+ * @param[in] capability_bit - Capability bit number.
  *
  * @return 1 if the capability is present, otherwise 0. Failure to obtain the
  *         process authentication information also returns 0.
  */
-int ksceSblACMgrHasCapability(SceUID pid, int capabilityBit);
-int ksceSblACMgrHasCapability2(SceUID pid, int capabilityBit);
+int ksceSblACMgrHasCapability(SceUID pid, int capability_bit);
+int ksceSblACMgrHasCapability2(SceUID pid, int capability_bit);
 
 /**
  * Return whether a process may create a loopback mount.

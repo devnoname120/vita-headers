@@ -171,11 +171,11 @@ int ksceSblSmSchedProxyExecuteSKCommand(SceUInt32 command_index, SceUInt32 unuse
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param pMailValue - Receives the register value; must be non-NULL.
+ * @param mail_value - Receives the register value; must be non-NULL.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyReadArm2Cry(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *pMailValue);
+int ksceSblSmSchedProxyReadArm2Cry(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *mail_value);
 
 /** Previous VitaSDK name retained for backwards compatibility. */
 #define ksceSblSmSchedProxyGetCommandF00DRegister ksceSblSmSchedProxyReadArm2Cry
@@ -184,13 +184,13 @@ int ksceSblSmSchedProxyReadArm2Cry(SceSmSchedRequestId req_id, SceUInt32 mailbox
  * Query a secure-module request through SMC 0x12F.
  *
  * @param req_id - Scheduler request ID.
- * @param pResult - Receives the secure-module result and scheduler status;
+ * @param result - Receives the secure-module result and scheduler status;
  *                  must be non-NULL. Unlike ::ksceSblSmSchedProxyWait, this
  *                  function does not release the request record.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyGetStatus(SceSmSchedRequestId req_id, SceSblSmCommPair *pResult);
+int ksceSblSmSchedProxyGetStatus(SceSmSchedRequestId req_id, SceSblSmCommPair *result);
 
 /**
  * Initialize the scheduler proxy.
@@ -207,38 +207,38 @@ int ksceSblSmSchedProxyInitialize(void);
  * @param priority - Boolean priority: 0 for high priority, 1 for low priority.
  * @param pa_ranges_paddr - Physical address of an array of
  *                          ::SceKernelPARange entries. It is required when
- *                          `(pCtx->self_type & 0xF000) == 0` and must be 0
+ *                          `(context->self_type & 0xF000) == 0` and must be 0
  *                          when that value is 0x1000.
  * @param pa_range_count - Number of entries in the physical-address range
  *                         array. It must be 0 when
- *                         `(pCtx->self_type & 0xF000) == 0x1000`.
+ *                         `(context->self_type & 0xF000) == 0x1000`.
  * @param invoke_input - Optional four-word startup data, copied unchanged.
  *                       The secure module defines their meaning; the scheduler
  *                       does not interpret them. NULL passes four zero words.
- * @param pCtx - Launch context; must be non-NULL. FW 3.60 reads only self_type,
+ * @param context - Launch context; must be non-NULL. FW 3.60 reads only self_type,
  *               media_type, and the program authority ID and capability from
  *               spawner_self_auth_info.
- * @param pReqId - Receives the scheduler request ID; must be non-NULL.
+ * @param request_id - Receives the scheduler request ID; must be non-NULL.
  *
- * Values of `pCtx->self_type & 0xF000` other than 0 or 0x1000 are rejected.
+ * Values of `context->self_type & 0xF000` other than 0 or 0x1000 are rejected.
  * A request ID is assigned before the shared-buffer and secure-monitor work;
  * callers may therefore receive an assigned ID even when a later step fails.
  * The proxy can track at most 64 concurrent request records.
  *
  * @return Secure-monitor result or a negative scheduler/kernel error.
  */
-int ksceSblSmSchedProxyInvoke(SceBool priority, SceUIntPtr pa_ranges_paddr, SceSize pa_range_count, const SceSmInvokeDataBlockInput *invoke_input, const SceSblSmCommContext130 *pCtx, SceSmSchedRequestId *pReqId);
+int ksceSblSmSchedProxyInvoke(SceBool priority, SceUIntPtr pa_ranges_paddr, SceSize pa_range_count, const SceSmInvokeDataBlockInput *invoke_input, const SceSblSmCommContext130 *context, SceSmSchedRequestId *request_id);
 
 /**
  * Read a Cry-to-ARM mailbox through SMC 0x137.
  *
  * @param req_id - Scheduler request ID.
  * @param mailbox_id - Mailbox ID in the range 1 through 3.
- * @param pMailValue - Receives the mailbox value; must be non-NULL.
+ * @param mail_value - Receives the mailbox value; must be non-NULL.
  *
  * @return Secure-monitor result or a negative scheduler validation error.
  */
-int ksceSblSmSchedProxyReadCry2Arm(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *pMailValue);
+int ksceSblSmSchedProxyReadCry2Arm(SceSmSchedRequestId req_id, SceUInt32 mailbox_id, SceUInt32 *mail_value);
 
 /**
  * Uninitialize the scheduler proxy.
@@ -253,13 +253,13 @@ int ksceSblSmSchedProxyUninitialize(void);
  * Wait for a secure-module request to complete through SMC 0x12E.
  *
  * @param req_id - Scheduler request ID.
- * @param pResult - Receives the secure-module result and scheduler status;
+ * @param result - Receives the secure-module result and scheduler status;
  *                  must be non-NULL. The request record is released before
  *                  this function returns.
  *
  * @return Secure-monitor result or a negative scheduler/kernel error.
  */
-int ksceSblSmSchedProxyWait(SceSmSchedRequestId req_id, SceSblSmCommPair *pResult);
+int ksceSblSmSchedProxyWait(SceSmSchedRequestId req_id, SceSblSmCommPair *result);
 
 /**
  * Clear bits in an ARM-to-Cry mailbox through SMC 0x135.

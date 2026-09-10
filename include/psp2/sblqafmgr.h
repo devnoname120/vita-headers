@@ -45,15 +45,15 @@ int sceSblQafManagerDeleteQafTokenForUser(void);
  *
  * The calling process must be a system program. The function reads and writes
  * the selected portion of \a buffer, so it must be both readable and writable.
- * Values of \a maxLength above 0x18 are treated as 0x18.
+ * Values of \a max_length above 0x18 are treated as 0x18.
  *
  * @param[in,out] buffer - Required profile-name buffer.
- * @param[in] maxLength - Number of bytes available in \a buffer; must be
+ * @param[in] max_length - Number of bytes available in \a buffer; must be
  *                        nonzero.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblQafManagerGetQafNameForUser(char *buffer, SceSize maxLength);
+int sceSblQafManagerGetQafNameForUser(char *buffer, SceSize max_length);
 
 /** @return 1 when QA flag byte 0xD bit 0 is set, otherwise 0. */
 int sceSblQafManagerIsAllowKernelDebugForUser(void);
@@ -71,15 +71,15 @@ int sceSblQafMgrDeleteQafToken2(void);
  * Validate the stored extended QAF token and return its active profile name.
  *
  * The calling process must be a system program. \a buffer must be readable
- * and writable, and \a maxLength must be at least 0x18. Exactly 0x18 bytes
+ * and writable, and \a max_length must be at least 0x18. Exactly 0x18 bytes
  * are transferred.
  *
  * @param[in,out] buffer - Required 0x18-byte profile-name buffer.
- * @param[in] maxLength - Buffer capacity; must be at least 0x18.
+ * @param[in] max_length - Buffer capacity; must be at least 0x18.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblQafMgrGetQafName(char *buffer, SceSize maxLength);
+int sceSblQafMgrGetQafName(char *buffer, SceSize max_length);
 
 /**
  * Retrieve and transform the stored 0x180-byte extended QAF token.

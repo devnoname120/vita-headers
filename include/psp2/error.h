@@ -34,23 +34,23 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceErrorString); // size is from FW 3.60
 int _sceErrorGetExternalString(char *error_string, int error_code);
 
 typedef struct SceErrorDefaultFormat {
-	SceInt32 networkStatus; //!< Default network status; not validated. Settings maps 3..5 to NAT types 1..3.
+	SceInt32 network_status; //!< Default network status; not validated. Settings maps 3..5 to NAT types 1..3.
 	SceInt32 enable; //!< Must be exactly 1. The default remains enabled until SceError is reloaded.
 } SceErrorDefaultFormat;
 VITASDK_BUILD_ASSERT_EQ(8, SceErrorDefaultFormat); // size is from FW 3.60
 
 typedef struct SceErrorHistoryPostInfo {
 	char error_message[0x100]; //!< NUL-terminated diagnostic message. Termination is not validated on FW 3.60.
-	SceUInt32 suggestedActions[15]; //!< Suggested-action IDs used by the Settings UI.
+	SceUInt32 suggested_actions[15]; //!< Suggested-action IDs used by the Settings UI.
 	SceUInt8 reserved0[2]; //!< Reserved; copied into history unchanged.
-	SceUInt8 suggestedActionCount; //!< Number of valid actions; must be <= 15. FW 3.60 does not check it.
+	SceUInt8 suggested_action_count; //!< Number of valid actions; must be <= 15. FW 3.60 does not check it.
 	SceUInt8 reserved1; //!< Reserved; copied into history unchanged.
 	int error_code_hex; //!< Internal error code.
-	SceUInt32 applicationCode; //!< Application error number displayed as XX-XXX-XXX.
+	SceUInt32 application_code; //!< Application error number displayed as XX-XXX-XXX.
 	SceUInt version; //!< Set by SceError from ::SceKernelSystemSwVersion::version; the caller-provided value is ignored.
-	SceInt32 networkStatus; //!< Unchecked unless overridden; Settings maps 3..5 to NAT types 1..3.
+	SceInt32 network_status; //!< Unchecked unless overridden; Settings maps 3..5 to NAT types 1..3.
 	char titleid[0xC]; //!< NUL-terminated title ID; not validated. Duplicate checks use its first 10 bytes.
-	SceUInt32 systemSoftwareVersionUnk24; //!< Set from ::SceKernelSystemSwVersion::unk_24; input is ignored.
+	SceUInt32 system_software_version_unk24; //!< Set from ::SceKernelSystemSwVersion::unk_24; input is ignored.
 	SceUInt8 reserved2[0x20]; //!< Cleared by SceError before the entry is stored.
 } SceErrorHistoryPostInfo;
 VITASDK_BUILD_ASSERT_EQ(0x180, SceErrorHistoryPostInfo); // size is from FW 3.60
@@ -58,7 +58,7 @@ VITASDK_BUILD_ASSERT_EQ(0x180, SceErrorHistoryPostInfo); // size is from FW 3.60
 typedef struct SceErrorHistoryInfo {
 	SceUInt8 reserved0; //!< Zero-initialized for newly posted entries.
 	SceUInt8 flags; //!< Bit 0 is set when Settings opens the entry.
-	SceUInt8 sequenceId; //!< Matched together with \a time when updating the entry.
+	SceUInt8 sequence_id; //!< Matched together with \a time when updating the entry.
 	SceUInt8 reserved1; //!< Zero-initialized for newly posted entries.
 	SceUInt32 reserved2; //!< Zero-initialized for newly posted entries.
 	SceInt64 time; //!< Value of type ::SceRtcTick.
@@ -69,7 +69,7 @@ typedef struct SceErrorHistoryInfo {
 VITASDK_BUILD_ASSERT_EQ(0x1B0, SceErrorHistoryInfo); // size is from FW 3.60
 
 typedef struct SceErrorSequenceInfo {
-	SceUInt8 sequenceId; //!< Sequence identifier of the history entry to update.
+	SceUInt8 sequence_id; //!< Sequence identifier of the history entry to update.
 	SceUInt8 flags; //!< Replacement flags for the matching history entry.
 	SceUInt8 reserved0[6]; //!< Ignored by SceError.
 	SceInt64 time; //!< Value of type ::SceRtcTick.
@@ -108,7 +108,7 @@ int _sceErrorHistoryGetError(SceUInt32 error_idx, SceErrorHistoryInfo *info);
  * Post an error-history entry.
  *
  * SceError copies the record before returning. It replaces the system-version
- * fields, conditionally replaces \a networkStatus with the registered default,
+ * fields, conditionally replaces \a network_status with the registered default,
  * clears \a reserved2, assigns the RTC timestamp and sequence ID, and generates
  * the external error string. A prior entry with the same internal error code,
  * application code, and first 10 title-ID bytes is removed. The history is
@@ -136,7 +136,7 @@ int _sceErrorHistorySetDefaultFormat(const SceErrorDefaultFormat *format);
 /**
  * Update the flags of an error-history entry.
  *
- * The entry is matched using both \a sequenceId and \a time.
+ * The entry is matched using both \a sequence_id and \a time.
  *
  * @param[in] info - Sequence information and replacement flags.
  * @param[in] zero - Reserved. Must be 0.

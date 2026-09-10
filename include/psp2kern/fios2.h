@@ -68,80 +68,80 @@ int ksceFiosKernelOverlayResolveSync(SceUID pid, int resolveForWrite, const char
  * Gets an overlay from the calling process's table.
  *
  * @param[in]  id         - Overlay identifier.
- * @param[out] outOverlay - Receives a copy of the complete overlay.
+ * @param[out] out_overlay - Receives a copy of the complete overlay.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceFiosKernelOverlayGetInfo(SceFiosOverlayID id, SceFiosOverlay *outOverlay);
+int ksceFiosKernelOverlayGetInfo(SceFiosOverlayID id, SceFiosOverlay *out_overlay);
 
 /**
  * Gets an overlay from a process's table.
  *
- * Copies the complete 0x258-byte overlay to @p outOverlay. The output buffer
+ * Copies the complete 0x258-byte overlay to @p out_overlay. The output buffer
  * must remain valid until this function returns; it is not used afterwards.
  * Access to another process's table requires the appropriate privileges.
  *
  * @param[in]  pid        - Process whose overlay table is queried.
  * @param[in]  id         - Overlay identifier.
- * @param[out] outOverlay - Receives the overlay information.
+ * @param[out] out_overlay - Receives the overlay information.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceFiosKernelOverlayGetInfoForProcess(SceUID pid, SceFiosOverlayID id, SceFiosOverlay *outOverlay);
+int ksceFiosKernelOverlayGetInfoForProcess(SceUID pid, SceFiosOverlayID id, SceFiosOverlay *out_overlay);
 
 /**
- * Gets the IDs of overlays whose order is from @p minOrder through @p maxOrder,
+ * Gets the IDs of overlays whose order is from @p min_order through @p max_order,
  * inclusive.
  *
  * @param[in]  pid           - Process whose overlays are enumerated.
- * @param[in]  minOrder      - Minimum value of an overlay's order field to include.
- * @param[in]  maxOrder      - Maximum value of an overlay's order field to include.
- * @param[out] outIDs        - Overlay ID output buffer, or NULL when @p maxIDs is zero.
- * @param[in]  maxIDs        - Maximum number of overlay IDs to write.
- * @param[out] actualIDs     - Optional pointer receiving the total number of matching overlays, including those beyond @p maxIDs.
+ * @param[in]  min_order      - Minimum value of an overlay's order field to include.
+ * @param[in]  max_order      - Maximum value of an overlay's order field to include.
+ * @param[out] out_ids        - Overlay ID output buffer, or NULL when @p max_ids is zero.
+ * @param[in]  max_ids        - Maximum number of overlay IDs to write.
+ * @param[out] actual_ids     - Optional pointer receiving the total number of matching overlays, including those beyond @p max_ids.
  *
  * @return 0 on success, or an error code.
  */
-int ksceFiosKernelOverlayGetList(SceUID pid, SceUInt8 minOrder, SceUInt8 maxOrder, SceFiosOverlayID *outIDs, SceSize maxIDs, SceSize *actualIDs);
+int ksceFiosKernelOverlayGetList(SceUID pid, SceUInt8 min_order, SceUInt8 max_order, SceFiosOverlayID *out_ids, SceSize max_ids, SceSize *actual_ids);
 
 /**
  * Gets the recommended scheduler index for a partially resolved path.
  *
- * @param[in] schedulerCount        - Number of available schedulers.
- * @param[in] partiallyResolvedPath - Optional partially resolved path.
+ * @param[in] scheduler_count        - Number of available schedulers.
+ * @param[in] partially_resolved_path - Optional partially resolved path.
  *
- * @return 1 for a host[0-9]: path when schedulerCount is greater than 1,
+ * @return 1 for a host[0-9]: path when scheduler_count is greater than 1,
  *         otherwise 0.
  */
-int ksceFiosKernelOverlayGetRecommendedScheduler(int schedulerCount, const char *partiallyResolvedPath);
+int ksceFiosKernelOverlayGetRecommendedScheduler(int scheduler_count, const char *partially_resolved_path);
 
 /**
  * Replaces an overlay in the calling process's table.
  *
- * Validates and copies @p newValue before returning. Keeps the process and
+ * Validates and copies @p new_value before returning. Keeps the process and
  * overlay IDs and recalculates both path lengths.
  *
  * @param[in] id       - Overlay identifier.
- * @param[in] newValue - Replacement overlay configuration.
+ * @param[in] new_value - Replacement overlay configuration.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceFiosKernelOverlayModify(SceFiosOverlayID id, const SceFiosOverlay *newValue);
+int ksceFiosKernelOverlayModify(SceFiosOverlayID id, const SceFiosOverlay *new_value);
 
 /**
  * Replaces an overlay in a process's table.
  *
- * Copies @p newValue before returning. Keep it valid until this function
+ * Copies @p new_value before returning. Keep it valid until this function
  * returns; it is not used afterwards. Access to another process's table
  * requires the appropriate privileges.
  *
  * @param[in] pid      - Process whose overlay is replaced.
  * @param[in] id       - Overlay identifier.
- * @param[in] newValue - Replacement overlay configuration.
+ * @param[in] new_value - Replacement overlay configuration.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceFiosKernelOverlayModifyForProcess(SceUID pid, SceFiosOverlayID id, const SceFiosOverlay *newValue);
+int ksceFiosKernelOverlayModifyForProcess(SceUID pid, SceFiosOverlayID id, const SceFiosOverlay *new_value);
 
 /**
  * Removes an overlay synchronously from the calling process's table.
@@ -151,25 +151,25 @@ int ksceFiosKernelOverlayModifyForProcess(SceUID pid, SceFiosOverlayID id, const
 int ksceFiosKernelOverlayRemove(SceFiosOverlayID id);
 
 /**
- * Resolves a path through overlays whose order is from @p minOrder through
- * @p maxOrder, inclusive.
+ * Resolves a path through overlays whose order is from @p min_order through
+ * @p max_order, inclusive.
  *
- * @p maxPath must be from 1 through 0x400, inclusive. The input's NUL terminator
- * must fall within that many bytes, and @p outPath must provide at least
- * @p maxPath bytes. If application overlays are disabled for the current
- * thread, the supplied @p minOrder is replaced with 0x80.
+ * @p max_path must be from 1 through 0x400, inclusive. The input's NUL terminator
+ * must fall within that many bytes, and @p out_path must provide at least
+ * @p max_path bytes. If application overlays are disabled for the current
+ * thread, the supplied @p min_order is replaced with 0x80.
  *
  * @param[in]  pid             - Process whose overlays are used.
- * @param[in]  resolveForWrite - Must be 0 for read resolution or 1 for write resolution.
- * @param[in]  inPath          - Path to resolve.
- * @param[out] outPath         - Resolved path output buffer.
- * @param[in]  maxPath         - Output buffer size.
- * @param[in]  minOrder        - Minimum value of an overlay's order field to include.
- * @param[in]  maxOrder        - Maximum value of an overlay's order field to include.
+ * @param[in]  resolve_for_write - Must be 0 for read resolution or 1 for write resolution.
+ * @param[in]  in_path          - Path to resolve.
+ * @param[out] out_path         - Resolved path output buffer.
+ * @param[in]  max_path         - Output buffer size.
+ * @param[in]  min_order        - Minimum value of an overlay's order field to include.
+ * @param[in]  max_order        - Maximum value of an overlay's order field to include.
  *
  * @return 0 on success, or an error code.
  */
-int ksceFiosKernelOverlayResolveWithRangeSync(SceUID pid, int resolveForWrite, const char *inPath, char *outPath, SceSize maxPath, SceUInt8 minOrder, SceUInt8 maxOrder);
+int ksceFiosKernelOverlayResolveWithRangeSync(SceUID pid, int resolve_for_write, const char *in_path, char *out_path, SceSize max_path, SceUInt8 min_order, SceUInt8 max_order);
 
 /**
  * Returns whether application overlays are disabled for the current thread.

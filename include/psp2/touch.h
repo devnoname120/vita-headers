@@ -156,13 +156,13 @@ int sceTouchDisableTouchForce(SceUInt32 port);
  * getter succeeds.
  *
  * @param[in] port_type - One of ::SceTouchPortType.
- * @param[out] pInfo - Receives the complete 0xC-byte device-information record.
+ * @param[out] info - Receives the complete 0xC-byte device-information record.
  *
  * @return 0 on success, ::SCE_TOUCH_ERROR_INVALID_ARG for an invalid \a port_type,
  *         ::SCE_TOUCH_ERROR_PRIV_REQUIRED when the caller is not a system
- *         program, or a kernel user-memory-copy error for an invalid \a pInfo.
+ *         program, or a kernel user-memory-copy error for an invalid \a info.
  */
-int sceTouchGetDeviceInfo(SceUInt32 port_type, SceTouchDeviceInfo *pInfo);
+int sceTouchGetDeviceInfo(SceUInt32 port_type, SceTouchDeviceInfo *info);
 
 #ifdef __cplusplus
 }

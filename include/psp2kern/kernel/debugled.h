@@ -55,15 +55,15 @@ SceUInt32 ksceKernelGetGPI(void);
 /**
  * Atomically update the GPO enable mask.
  *
- * The new mask is `(oldMask & ~clearMask) | setMask` and takes effect on the
+ * The new mask is `(oldMask & ~clear_mask) | set_mask` and takes effect on the
  * next GPO write or when GPO state is restored on resume.
  *
- * @param[in] clearMask - Bits to clear from the current mask.
- * @param[in] setMask - Bits to set in the current mask.
+ * @param[in] clear_mask - Bits to clear from the current mask.
+ * @param[in] set_mask - Bits to set in the current mask.
  *
  * @return 0.
  */
-int ksceKernelSetGPOMask(SceUInt32 clearMask, SceUInt32 setMask);
+int ksceKernelSetGPOMask(SceUInt32 clear_mask, SceUInt32 set_mask);
 
 /**
  * Register or clear debug LED handler 0.

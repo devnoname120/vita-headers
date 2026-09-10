@@ -16,12 +16,12 @@ extern "C" {
 /**
  * Get a thread backtrace.
  *
- * @param[in] threadId Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
- * @param[out] pCallFrameBuffer Buffer that receives call frames, or NULL when
- * numBytesBuffer is 0.
- * @param[in] numBytesBuffer Size of the call-frame buffer in bytes. A non-NULL
+ * @param[in] thread_id Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
+ * @param[out] call_frame_buffer Buffer that receives call frames, or NULL when
+ * num_bytes_buffer is 0.
+ * @param[in] num_bytes_buffer Size of the call-frame buffer in bytes. A non-NULL
  * buffer must have room for at least one frame.
- * @param[out] pNumReturn Receives the number of frames written to the output
+ * @param[out] num_frames Receives the number of frames written to the output
  * buffer. May be NULL.
  * @param[in] mode Bitwise OR of ::SceKernelBacktraceMode values.
  *
@@ -32,7 +32,7 @@ extern "C" {
  * @note On FW 3.60 this function requires development mode. Kernel-mode
  * unwinding also requires the corresponding QAF permission.
  */
-int ksceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, SceUInt32 *pNumReturn, SceInt32 mode);
+int ksceKernelBacktrace(SceUID thread_id, SceKernelCallFrame *call_frame_buffer, SceSize num_bytes_buffer, SceUInt32 *num_frames, SceInt32 mode);
 
 #ifdef __cplusplus
 }

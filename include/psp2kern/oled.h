@@ -63,8 +63,8 @@ SceUInt32 ksceOledGetBrightness(void);
  * Initialization reads five bytes with MIPI DSI command 0xA1. Either output
  * pointer may be NULL.
  *
- * @param[out] pSupplierId - Receives the first 16-bit DDB value when non-NULL.
- * @param[out] pSupplierElectiveData - Receives the second 16-bit DDB value when
+ * @param[out] supplier_id - Receives the first 16-bit DDB value when non-NULL.
+ * @param[out] supplier_elective_data - Receives the second 16-bit DDB value when
  *                                     non-NULL. Its low byte selects the panel
  *                                     calibration table on FW 3.60.
  *
@@ -72,7 +72,7 @@ SceUInt32 ksceOledGetBrightness(void);
  *         pending, or ::SCE_OLED_ERROR_INITIALIZATION_FAILED after a failed
  *         panel probe.
  */
-int ksceOledGetDDB(SceUInt16 *pSupplierId, SceUInt16 *pSupplierElectiveData);
+int ksceOledGetDDB(SceUInt16 *supplier_id, SceUInt16 *supplier_elective_data);
 
 /** Get the cached OLED color-space mode. */
 SceOledColorSpaceMode ksceOledGetDisplayColorSpaceMode(void);

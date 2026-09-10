@@ -272,10 +272,10 @@ int ksceSysconGetControlsInfo(SceUInt32 *ctrl);
 
 /** Touch-panel vendor IDs and firmware revisions returned by ::ksceSysconGetTouchpanelDeviceInfo. */
 typedef struct SceKernelTouchpanelDeviceInfo {
-	SceUInt16 frontVendorID;      //!< Front touch-panel vendor ID.
-	SceUInt16 frontFirmwareRev;   //!< Front touch-panel firmware revision.
-	SceUInt16 rearVendorID;       //!< Rear touch-panel vendor ID.
-	SceUInt16 rearFirmwareRev;    //!< Rear touch-panel firmware revision.
+	SceUInt16 front_vendor_id;      //!< Front touch-panel vendor ID.
+	SceUInt16 front_firmware_rev;   //!< Front touch-panel firmware revision.
+	SceUInt16 rear_vendor_id;       //!< Rear touch-panel vendor ID.
+	SceUInt16 rear_firmware_rev;    //!< Rear touch-panel firmware revision.
 } SceKernelTouchpanelDeviceInfo;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceKernelTouchpanelDeviceInfo); // size is from FW 3.60
 
@@ -286,11 +286,11 @@ VITASDK_BUILD_ASSERT_EQ(0x8, SceKernelTouchpanelDeviceInfo); // size is from FW 
  * it uses the legacy command 0x08B3. SceSblUpdateMgr numbers script records
  * starting at 1 and uses each record's number as the command context.
  *
- * @param[in] commandContext Battery-bootloader command context.
+ * @param[in] command_context Battery-bootloader command context.
  *
  * @return 0 on success, or a negative Syscon error.
  */
-int ksceSysconBatteryExecBLCommand(SceUInt16 commandContext);
+int ksceSysconBatteryExecBLCommand(SceUInt16 command_context);
 
 /**
  * Read data from a battery-bootloader command response.
@@ -299,7 +299,7 @@ int ksceSysconBatteryExecBLCommand(SceUInt16 commandContext);
  * versions through 0x00070503. The two request bytes are transmitted
  * independently and unmodified; their individual purposes are unknown.
  *
- * @param[in] commandContext Battery-bootloader command context.
+ * @param[in] command_context Battery-bootloader command context.
  * @param[in] request0 First raw request byte.
  * @param[in] request1 Second raw request byte.
  * @param[out] dst Required buffer that receives \a size bytes.
@@ -309,7 +309,7 @@ int ksceSysconBatteryExecBLCommand(SceUInt16 commandContext);
  * @return 0 on success, 0x80250001 for an invalid size, or a negative Syscon
  *         error.
  */
-int ksceSysconBatteryReadBLCommand(SceUInt16 commandContext, SceUInt8 request0, SceUInt8 request1, void *dst, SceUInt8 size);
+int ksceSysconBatteryReadBLCommand(SceUInt16 command_context, SceUInt8 request0, SceUInt8 request1, void *dst, SceUInt8 size);
 
 /**
  * Request a battery-controller software reset.
@@ -328,7 +328,7 @@ int ksceSysconBatterySWReset(void);
  * versions through 0x00070503. SceSblUpdateMgr uses \a offset as the byte
  * offset of this chunk within the current script record.
  *
- * @param[in] commandContext Battery-bootloader command context.
+ * @param[in] command_context Battery-bootloader command context.
  * @param[in] offset Byte offset of the chunk within the command data.
  * @param[in] src Required source buffer.
  * @param[in] size Number of bytes to write, from 1 through
@@ -337,7 +337,7 @@ int ksceSysconBatterySWReset(void);
  * @return 0 on success, 0x80250001 for an invalid size, or a negative Syscon
  *         error.
  */
-int ksceSysconBatterySetBLCommand(SceUInt16 commandContext, SceUInt8 offset, const void *src, SceUInt8 size);
+int ksceSysconBatterySetBLCommand(SceUInt16 command_context, SceUInt8 offset, const void *src, SceUInt8 size);
 
 /**
  * Enter battery-bootloader mode.
@@ -416,13 +416,13 @@ int ksceSysconCtrlHostOutputViaDongle(SceBool enable);
  * It uses command 0x0980, or legacy command 0x0882 on Baryon versions through
  * 0x00070503.
  *
- * @param[out] hardwareVersion Battery hardware version, or NULL.
- * @param[out] firmwareVersion Battery firmware version, or NULL.
- * @param[out] dataFlashVersion Battery data-flash version, or NULL.
+ * @param[out] hardware_version Battery hardware version, or NULL.
+ * @param[out] firmware_version Battery firmware version, or NULL.
+ * @param[out] data_flash_version Battery data-flash version, or NULL.
  *
  * @return 0 on success, or a negative Syscon error.
  */
-int ksceSysconGetBatteryVersion(SceUInt32 *hardwareVersion, SceUInt32 *firmwareVersion, SceUInt32 *dataFlashVersion);
+int ksceSysconGetBatteryVersion(SceUInt32 *hardware_version, SceUInt32 *firmware_version, SceUInt32 *data_flash_version);
 
 /**
  * Get the cached raw Micro-USB connector information.
@@ -564,13 +564,13 @@ int ksceSysconSetMultiCnPort(int port);
  * 2^32 and writes the bitwise complement of the sum to \a checksum.
  *
  * @param[in] segment Segment data. Must not be NULL.
- * @param[in] segmentSize Number of bytes. Must not be zero.
+ * @param[in] segment_size Number of bytes. Must not be zero.
  * @param[out] checksum Receives the complemented 32-bit byte sum. Must not be
  *                      NULL.
  *
  * @return 0 on success, or 0x80250001 for an invalid pointer or size.
  */
-int ksceSysconUpdaterCalcChecksum(const void *segment, SceSize segmentSize, SceUInt32 *checksum);
+int ksceSysconUpdaterCalcChecksum(const void *segment, SceSize segment_size, SceUInt32 *checksum);
 
 /**
  * Finalize Syscon firmware programming.
@@ -616,14 +616,14 @@ int ksceSysconUpdaterSetRunMode(int mode);
 /**
  * Select a Syscon updater firmware segment.
  *
- * Syscon command 0x1180 receives only the low eight bits of \a segmentNo;
+ * Syscon command 0x1180 receives only the low eight bits of \a segment_no;
  * the value is not range-checked.
  *
- * @param[in] segmentNo Segment number.
+ * @param[in] segment_no Segment number.
  *
  * @return 0 on success, or a negative Syscon error.
  */
-int ksceSysconUpdaterSetSegment(SceUInt32 segmentNo);
+int ksceSysconUpdaterSetSegment(SceUInt32 segment_no);
 
 #ifdef __cplusplus
 }

@@ -153,11 +153,11 @@ int sceAudioOutSetCompress(int port, SceBool enable);
 /**
  * Select the BGM seven-band graphic-equalizer preset for the calling process.
  *
- * @param[in] effectType - Equalizer preset.
+ * @param[in] effect_type - Equalizer preset.
  *
  * @return 0 on success, or a negative error.
  */
-int sceAudioOutSetEffectType(SceAudioOutEffectType effectType);
+int sceAudioOutSetEffectType(SceAudioOutEffectType effect_type);
 
 /**
  * Select whether newly opened BGM and voice-profile ports are adopted
@@ -175,14 +175,14 @@ int sceAudioOutSetAdoptMode(SceAudioOutAdoptMode mode);
  *
  * @param[in] type - MAIN, BGM, or voice port selector.
  * @param[in] adopt - ::SCE_TRUE to adopt the port, or ::SCE_FALSE to release it.
- * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ * @param[in] ramp_length - Gain-transition duration in milliseconds, clamped to
  *                         1..4096 on FW 3.60.
- * @param[in] waitForCompletion - When releasing adoption, wait for the
+ * @param[in] wait_for_completion - When releasing adoption, wait for the
  *                                transition to finish if nonzero.
  *
  * @return 0 on success, or a negative error.
  */
-int sceAudioOutSetAdopt_forUser(SceAudioOutPortType type, SceBool adopt, int rampLength, SceBool waitForCompletion);
+int sceAudioOutSetAdopt_forUser(SceAudioOutPortType type, SceBool adopt, int ramp_length, SceBool wait_for_completion);
 
 /**
  * Apply a private gain ramp to selected output profiles of the calling process.
@@ -191,14 +191,14 @@ int sceAudioOutSetAdopt_forUser(SceAudioOutPortType type, SceBool adopt, int ram
  * ::sceAudioOutSetVolume. A zero mask does nothing, and FW 3.60 ignores mask
  * bits not defined by ::SceAudioOutPortMask.
  *
- * @param[in] portMask - Bitwise OR of ::SceAudioOutPortMask values.
+ * @param[in] port_mask - Bitwise OR of ::SceAudioOutPortMask values.
  * @param[in] volume - Target gain from 0 through 256.
- * @param[in] rampLength - Gain-transition duration in milliseconds, clamped to
+ * @param[in] ramp_length - Gain-transition duration in milliseconds, clamped to
  *                         1..4096 on FW 3.60.
  *
  * @return 0 on success, or a negative error.
  */
-int sceAudioOutSetPortVolume_forUser(int portMask, SceUInt32 volume, int rampLength);
+int sceAudioOutSetPortVolume_forUser(int port_mask, SceUInt32 volume, int ramp_length);
 
 /**
  * Get a private output-profile gain for the calling process.

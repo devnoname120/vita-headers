@@ -436,13 +436,13 @@ int ksceSdifInitializeSdDevice(SceSdifDeviceIndex device_index, SceSdifContextPa
  * @param[in]  ctx      - MMC device context.
  * @param[in]  sector   - First logical sector to read.
  * @param[out] buffer   - Destination buffer.
- * @param[in]  sectorCount - Number of sectors to read. Must not be 0.
+ * @param[in]  sector_count - Number of sectors to read. Must not be 0.
  *
  * @return 0 on success, 0x8032000E for an invalid pointer, zero count, or
  *         invalid partition range, 0x80320011 when no command object is
  *         available, or another negative SceSdif error code.
  */
-int ksceSdifReadSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, void *buffer, SceUInt32 sectorCount);
+int ksceSdifReadSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, void *buffer, SceUInt32 sector_count);
 
 /**
  * Read SD sectors.
@@ -454,13 +454,13 @@ int ksceSdifReadSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, void *buffe
  * @param[in]  ctx      - SD device context.
  * @param[in]  sector   - First logical sector to read.
  * @param[out] buffer   - Destination buffer.
- * @param[in]  sectorCount - Number of sectors to read. Must not be 0.
+ * @param[in]  sector_count - Number of sectors to read. Must not be 0.
  *
  * @return 0 on success, 0x8032000E for an invalid pointer or zero count,
  *         0x80320011 when no command object is available, or another
  *         negative SceSdif error code.
  */
-int ksceSdifReadSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, void *buffer, SceUInt32 sectorCount);
+int ksceSdifReadSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, void *buffer, SceUInt32 sector_count);
 
 /**
  * Write MMC sectors.
@@ -471,13 +471,13 @@ int ksceSdifReadSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, void *buffer
  * @param[in] ctx      - MMC device context.
  * @param[in] sector   - First logical sector to write.
  * @param[in] buffer   - Source buffer.
- * @param[in] sectorCount - Number of sectors to write. Must not be 0.
+ * @param[in] sector_count - Number of sectors to write. Must not be 0.
  *
  * @return 0 on success, 0x8032000E for an invalid pointer, zero count, or
  *         invalid partition range, 0x80320011 when no command object is
  *         available, or another negative SceSdif error code.
  */
-int ksceSdifWriteSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, const void *buffer, SceUInt32 sectorCount);
+int ksceSdifWriteSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, const void *buffer, SceUInt32 sector_count);
 
 /**
  * Write SD sectors.
@@ -489,12 +489,12 @@ int ksceSdifWriteSectorMmc(SceSdifContextPart *ctx, SceUInt32 sector, const void
  * @param[in] ctx      - SD device context.
  * @param[in] sector   - First logical sector to write.
  * @param[in] buffer   - Source buffer.
- * @param[in] sectorCount - Number of sectors to write. Must not be 0.
+ * @param[in] sector_count - Number of sectors to write. Must not be 0.
  *
  * @return 0 on success, 0x8032001C when the SD context reports write
  *         protection, or another negative error code.
  */
-int ksceSdifWriteSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, const void *buffer, SceUInt32 sectorCount);
+int ksceSdifWriteSectorSd(SceSdifContextPart *ctx, SceUInt32 sector, const void *buffer, SceUInt32 sector_count);
 
 /**
  * Enable slow-mode delays for controller 1 MMC transfers.

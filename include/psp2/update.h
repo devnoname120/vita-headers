@@ -95,7 +95,7 @@ typedef enum SceSblUsSpackageRequestType {
 } SceSblUsSpackageRequestType;
 VITASDK_BUILD_ASSERT_EQ(1, SceSblUsSpackageRequestType);
 
-/** Values reported through ::SceKernelSpackageArgs::requestState. */
+/** Values reported through ::SceKernelSpackageArgs::request_state. */
 typedef enum SceSblUsSpackageRequestState {
 	SCE_SBL_US_SPACKAGE_STATE_ACCEPTED   = 1,
 	SCE_SBL_US_SPACKAGE_STATE_VALIDATING = 2,
@@ -136,15 +136,15 @@ VITASDK_BUILD_ASSERT_EQ(1, SceSblUsPowerControlMode);
 
 typedef struct SceKernelSpackageArgs {
 	SceSize size; //!< Initialize to sizeof(SceKernelSpackageArgs); copied but not validated on FW 3.60.
-	SceUInt32 packageType; //!< One of ::SceSblUsSpackageType; the function uses its packageType argument instead on FW 3.60.
+	SceUInt32 package_type; //!< One of ::SceSblUsSpackageType; the function uses its package_type argument instead on FW 3.60.
 	void *buffer; //!< Process-owned buffer returned by ::sceSblUsAllocateBuffer.
-	SceSize bufferSize; //!< Must equal the size passed to ::sceSblUsAllocateBuffer for this buffer.
+	SceSize buffer_size; //!< Must equal the size passed to ::sceSblUsAllocateBuffer for this buffer.
 	SceUInt32 flags; //!< One of ::SceSblUsSpackageFlags.
 	SceUInt32 reserved[2]; //!< Preserved by ::sceSblUsGetExtractSpackage and ignored by SceSblUpdateMgr.
-	SceUInt32 *sequenceNumber; //!< Receives a counter incremented each time the request state changes.
-	SceInt32 *requestResult; //!< Receives the operation result; valid when the request is completed.
-	SceUInt32 *requestState; //!< Receives one of ::SceSblUsSpackageRequestState.
-	SceUInt32 *writtenRate; //!< Receives the write-rate value; applicable update paths report 100 when finished.
+	SceUInt32 *sequence_number; //!< Receives a counter incremented each time the request state changes.
+	SceInt32 *request_result; //!< Receives the operation result; valid when the request is completed.
+	SceUInt32 *request_state; //!< Receives one of ::SceSblUsSpackageRequestState.
+	SceUInt32 *written_rate; //!< Receives the write-rate value; applicable update paths report 100 when finished.
 } SceKernelSpackageArgs;
 VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelSpackageArgs); // size is from FW 0.931
 
@@ -181,11 +181,11 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceSblUsApplicableVersionInfo); // size is from FW
  * slots shared by all processes.
  *
  * @param[in] size - Nonzero buffer size.
- * @param[out] userBuffer - Receives the user-space mapping.
+ * @param[out] user_buffer - Receives the user-space mapping.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsAllocateBuffer(SceSize size, void **userBuffer);
+int sceSblUsAllocateBuffer(SceSize size, void **user_buffer);
 
 /**
  * Check system integrity.
@@ -204,14 +204,14 @@ SceInt32 sceSblUsCheckSystemIntegrity(void);
  * The buffer must have been allocated by ::sceSblUsAllocateBuffer for the
  * calling process.
  *
- * @param[in] packageType - One of ::SceSblUsSpackageType.
+ * @param[in] package_type - One of ::SceSblUsSpackageType.
  * @param[in] args - Update buffer, size, and flags.
- * @param[out] requestId - Request identifier used by
+ * @param[out] request_id - Request identifier used by
  * ::sceSblUsGetStatus and ::sceSblUsGetExtractSpackage.
  *
  * @return 0 if the request was submitted, < 0 on error.
  */
-int sceSblUsExtractSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
+int sceSblUsExtractSpackage(int package_type, const SceKernelSpackageArgs *args, int *request_id);
 
 /**
  * Get an applicable package version.
@@ -220,12 +220,12 @@ int sceSblUsExtractSpackage(int packageType, const SceKernelSpackageArgs *args, 
  * CEX systems, raises it to at least the installed version. Other package
  * types return success with a zeroed result.
  *
- * @param[in] packageType - One of ::SceSblUsSpackageType.
- * @param[out] versionInfo - Receives the applicable-version information.
+ * @param[in] package_type - One of ::SceSblUsSpackageType.
+ * @param[out] version_info - Receives the applicable-version information.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsGetApplicableVersion(int packageType, SceSblUsApplicableVersionInfo *versionInfo);
+int sceSblUsGetApplicableVersion(int package_type, SceSblUsApplicableVersionInfo *version_info);
 
 /**
  * Return a request buffer's user-space mapping.
@@ -235,13 +235,13 @@ int sceSblUsGetApplicableVersion(int packageType, SceSblUsApplicableVersionInfo 
  * request. Only ::SceKernelSpackageArgs::buffer is replaced; every other
  * byte of the caller's structure is preserved.
  *
- * @param[in] requestType - One of ::SceSblUsSpackageRequestType.
- * @param[in] requestId - Request identifier.
+ * @param[in] request_type - One of ::SceSblUsSpackageRequestType.
+ * @param[in] request_id - Request identifier.
  * @param[in,out] args - Receives the mapped user-space buffer.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsGetExtractSpackage(int requestType, int requestId, SceKernelSpackageArgs *args);
+int sceSblUsGetExtractSpackage(int request_type, int request_id, SceKernelSpackageArgs *args);
 
 /**
  * Get information about an installed package.
@@ -249,27 +249,27 @@ int sceSblUsGetExtractSpackage(int requestType, int requestId, SceKernelSpackage
  * The function writes the complete 0x10-byte output structure; its
  * ::SceSblUsSpkgInfo::size member is not an input.
  *
- * @param[in] packageType - One of ::SceSblUsSpackageType.
+ * @param[in] package_type - One of ::SceSblUsSpackageType.
  * @param[out] info - Package information.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsGetSpkgInfo(int packageType, SceSblUsSpkgInfo *info);
+int sceSblUsGetSpkgInfo(int package_type, SceSblUsSpkgInfo *info);
 
 /**
  * Get the state of an asynchronous package request.
  *
  * All four output pointers in \a args must be non-NULL. A nonzero request ID
- * must match the current request for \a requestType. Request ID zero selects
+ * must match the current request for \a request_type. Request ID zero selects
  * the module's legacy fallback-result path.
  *
- * @param[in] requestType - One of ::SceSblUsSpackageRequestType.
- * @param[in] requestId - Request identifier.
+ * @param[in] request_type - One of ::SceSblUsSpackageRequestType.
+ * @param[in] request_id - Request identifier.
  * @param[in] args - Contains the four user-space output pointers.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsGetStatus(int requestType, int requestId, const SceKernelSpackageArgs *args);
+int sceSblUsGetStatus(int request_type, int request_id, const SceKernelSpackageArgs *args);
 
 /**
  * Inform the system that an update has finished.
@@ -280,11 +280,11 @@ int sceSblUsGetStatus(int requestType, int requestId, const SceKernelSpackageArg
  *
  * @param[in] task - Update task value.
  * @param[in] message - Message buffer.
- * @param[in] messageLength - Number of bytes to copy, from 1 through 64.
+ * @param[in] message_length - Number of bytes to copy, from 1 through 64.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsInformUpdateFinished(SceUInt32 task, const char *message, SceSize messageLength);
+int sceSblUsInformUpdateFinished(SceUInt32 task, const char *message, SceSize message_length);
 
 /**
  * Inform the system that an update is ongoing.
@@ -310,11 +310,11 @@ int sceSblUsInformUpdateOngoing(SceUInt32 task, SceUInt32 percentage);
  * @param[in] task - Update task value.
  * @param[in] value - Callback value whose purpose is unknown.
  * @param[in] message - Message buffer.
- * @param[in] messageLength - Number of bytes to copy, from 1 through 64.
+ * @param[in] message_length - Number of bytes to copy, from 1 through 64.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsInformUpdateStarted(SceUInt32 task, SceUInt32 value, const char *message, SceSize messageLength);
+int sceSblUsInformUpdateStarted(SceUInt32 task, SceUInt32 value, const char *message, SceSize message_length);
 
 /**
  * Submit an asynchronous package-inspection request.
@@ -322,13 +322,13 @@ int sceSblUsInformUpdateStarted(SceUInt32 task, SceUInt32 value, const char *mes
  * The operation performs the same package authentication, platform checks,
  * and version checks as an update request, but does not install the package.
  *
- * @param[in] packageType - One of ::SceSblUsSpackageType.
+ * @param[in] package_type - One of ::SceSblUsSpackageType.
  * @param[in] args - Update buffer, size, and flags.
- * @param[out] requestId - Request identifier used by ::sceSblUsGetStatus.
+ * @param[out] request_id - Request identifier used by ::sceSblUsGetStatus.
  *
  * @return 0 if the request was submitted, < 0 on error.
  */
-int sceSblUsInspectSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
+int sceSblUsInspectSpackage(int package_type, const SceKernelSpackageArgs *args, int *request_id);
 
 /**
  * Perform an update-related power-control operation.
@@ -353,11 +353,11 @@ int sceSblUsPowerControl(int mode, SceUInt32 flags);
  * caller's mapping. FW 3.60 frees the underlying memory only after the request
  * stops using it.
  *
- * @param[in] userBuffer - User-space update buffer.
+ * @param[in] user_buffer - User-space update buffer.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsReleaseBuffer(void *userBuffer);
+int sceSblUsReleaseBuffer(void *user_buffer);
 
 /**
  * Set a binary software-information value.
@@ -367,13 +367,13 @@ int sceSblUsReleaseBuffer(void *userBuffer);
  * and copying the inputs.
  *
  * @param[in] name - Name buffer.
- * @param[in] nameLength - Number of name bytes to copy, from 1 through 31.
+ * @param[in] name_length - Number of name bytes to copy, from 1 through 31.
  * @param[in] value - Binary value buffer.
- * @param[in] valueLength - Number of value bytes to copy, from 1 through 127.
+ * @param[in] value_length - Number of value bytes to copy, from 1 through 127.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsSetSwInfoBin(const char *name, SceSize nameLength, const void *value, SceSize valueLength);
+int sceSblUsSetSwInfoBin(const char *name, SceSize name_length, const void *value, SceSize value_length);
 
 /**
  * Set an integer software-information value.
@@ -382,12 +382,12 @@ int sceSblUsSetSwInfoBin(const char *name, SceSize nameLength, const void *value
  * and copying the name.
  *
  * @param[in] name - Name buffer.
- * @param[in] nameLength - Number of name bytes to copy, from 1 through 31.
+ * @param[in] name_length - Number of name bytes to copy, from 1 through 31.
  * @param[in] value - Integer value.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsSetSwInfoInt(const char *name, SceSize nameLength, SceUInt32 value);
+int sceSblUsSetSwInfoInt(const char *name, SceSize name_length, SceUInt32 value);
 
 /**
  * Set a string software-information value.
@@ -397,13 +397,13 @@ int sceSblUsSetSwInfoInt(const char *name, SceSize nameLength, SceUInt32 value);
  * and copying the inputs.
  *
  * @param[in] name - Name buffer.
- * @param[in] nameLength - Number of name bytes to copy, from 1 through 31.
+ * @param[in] name_length - Number of name bytes to copy, from 1 through 31.
  * @param[in] value - String value buffer.
- * @param[in] valueLength - Number of value bytes to copy, from 1 through 127.
+ * @param[in] value_length - Number of value bytes to copy, from 1 through 127.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsSetSwInfoStr(const char *name, SceSize nameLength, const char *value, SceSize valueLength);
+int sceSblUsSetSwInfoStr(const char *name, SceSize name_length, const char *value, SceSize value_length);
 
 /**
  * Submit an asynchronous package-update request.
@@ -411,13 +411,13 @@ int sceSblUsSetSwInfoStr(const char *name, SceSize nameLength, const char *value
  * The operation authenticates the package, checks target compatibility and
  * version policy, and installs the package-specific payload.
  *
- * @param[in] packageType - One of ::SceSblUsSpackageType.
+ * @param[in] package_type - One of ::SceSblUsSpackageType.
  * @param[in] args - Update buffer, size, and flags.
- * @param[out] requestId - Request identifier used by ::sceSblUsGetStatus.
+ * @param[out] request_id - Request identifier used by ::sceSblUsGetStatus.
  *
  * @return 0 if the request was submitted, < 0 on error.
  */
-int sceSblUsUpdateSpackage(int packageType, const SceKernelSpackageArgs *args, int *requestId);
+int sceSblUsUpdateSpackage(int package_type, const SceKernelSpackageArgs *args, int *request_id);
 
 /**
  * Verify an additional PUP signature.
@@ -441,21 +441,21 @@ int sceSblUsVerifyPupHeader(const char *path);
  * Verify a PUP segment by index.
  *
  * @param[in] path - NUL-terminated PUP path, at most 0x3FF characters.
- * @param[in] segmentIndex - 64-bit segment index.
+ * @param[in] segment_index - 64-bit segment index.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsVerifyPupSegment(const char *path, SceUInt64 segmentIndex);
+int sceSblUsVerifyPupSegment(const char *path, SceUInt64 segment_index);
 
 /**
  * Verify a PUP segment by ID.
  *
  * @param[in] path - NUL-terminated PUP path, at most 0x3FF characters.
- * @param[in] segmentId - 64-bit segment ID.
+ * @param[in] segment_id - 64-bit segment ID.
  *
  * @return 0 on success, < 0 on error.
  */
-int sceSblUsVerifyPupSegmentById(const char *path, SceUInt64 segmentId);
+int sceSblUsVerifyPupSegmentById(const char *path, SceUInt64 segment_id);
 
 /**
  * Verify a PUP watermark.

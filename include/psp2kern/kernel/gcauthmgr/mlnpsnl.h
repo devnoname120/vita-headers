@@ -23,16 +23,16 @@ extern "C" {
  * pointer after returning. Do not use either output unless the function succeeds.
  *
  * @param[in] request - Complete 0x20-byte phase-one request.
- * @param[in] secureTick - Complete current secure tick.
+ * @param[in] secure_tick - Complete current secure tick.
  * @param[out] response - Generated 0x80-byte client authentication packet.
- * @param[out] sessionData - Generated 0x40-byte state to retain unchanged for phase two.
+ * @param[out] session_data - Generated 0x40-byte state to retain unchanged for phase two.
  *
  * @return 0 on success; 0x808A0200 for a NULL pointer; 0x808A0202 through
  *         0x808A0205 for random/cryptographic failures; 0x808A0206 for a
  *         semaphore failure; or 0x808A0300 for an internal permission or
  *         console-identity failure.
  */
-int ksceSblGcAuthMgrMlnpsnlAuth1(const SceSblGcAuthMgrMlnpsnlAuth1Request *request, const SceRtcTick *secureTick, SceSblGcAuthMgrMlnpsnlAuth1Response *response, SceSblGcAuthMgrMlnpsnlSessionData *sessionData);
+int ksceSblGcAuthMgrMlnpsnlAuth1(const SceSblGcAuthMgrMlnpsnlAuth1Request *request, const SceRtcTick *secure_tick, SceSblGcAuthMgrMlnpsnlAuth1Response *response, SceSblGcAuthMgrMlnpsnlSessionData *session_data);
 
 #ifdef __cplusplus
 }

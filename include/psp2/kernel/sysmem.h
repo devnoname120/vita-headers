@@ -173,8 +173,8 @@ int sceKernelIsPSVitaTV(void);
 
 typedef struct SceKernelSubbudgetInfo {
 	SceSize size; //!< Must be set to `sizeof(SceKernelSubbudgetInfo)`.
-	SceSize totalSize; //!< Total size of the subbudget in bytes.
-	SceSize freeSize; //!< Free space in the subbudget in bytes.
+	SceSize total_size; //!< Total size of the subbudget in bytes.
+	SceSize free_size; //!< Free space in the subbudget in bytes.
 } SceKernelSubbudgetInfo;
 VITASDK_BUILD_ASSERT_EQ(0xC, SceKernelSubbudgetInfo); // size is from FW 3.60
 
@@ -204,12 +204,12 @@ SceUID sceKernelAllocUnmapMemBlock(const char *name, SceSize size);
  * rejects operation when it is present. The purpose of index 7 is unknown;
  * no caller in the FW 3.60 dumps uses it.
  *
- * @param[in] capabilityIndex Capability bit index.
+ * @param[in] capability_index Capability bit index.
  *
  * @return 1 if the capability is present, 0 if it is absent,
  * ::SCE_KERNEL_ERROR_INVALID_ARGUMENT if the index is unsupported.
  */
-int sceKernelCheckModelCapability(int capabilityIndex);
+int sceKernelCheckModelCapability(int capability_index);
 
 /**
  * Frees a VM memblock tracked by the calling process.
@@ -225,13 +225,13 @@ int sceKernelFreeMemBlockForVM(SceUID uid);
  *
  * @param[in] subbudget ::SCE_KERNEL_SUBBUDGET_ID_MAIN or
  * ::SCE_KERNEL_SUBBUDGET_ID_CDLG.
- * @param[in,out] pInfo Pointer to a ::SceKernelSubbudgetInfo structure.
+ * @param[in,out] info Pointer to a ::SceKernelSubbudgetInfo structure.
  *
  * @return 0 on success, < 0 on error.
  *
  * @note FW 3.60 requires DIP switch 159 to be enabled.
  */
-int sceKernelGetSubbudgetInfo(SceKernelSubbudgetId subbudget, SceKernelSubbudgetInfo *pInfo);
+int sceKernelGetSubbudgetInfo(SceKernelSubbudgetId subbudget, SceKernelSubbudgetInfo *info);
 
 #ifdef __cplusplus
 }

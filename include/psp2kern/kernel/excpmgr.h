@@ -93,9 +93,9 @@ typedef enum SceArmWaypointEventType {
 } SceArmWaypointEventType;
 
 typedef struct SceArmWaypoint {
-	SceUInt32 rawData; //!< Printed and forwarded without interpretation on FW 3.60.
+	SceUInt32 raw_data; //!< Printed and forwarded without interpretation on FW 3.60.
 	SceUIntPtr pc; //!< Recorded source PC.
-	SceUIntPtr targetPc; //!< Recorded target PC.
+	SceUIntPtr target_pc; //!< Recorded target PC.
 	SceUInt32 event; //!< Bit 31 marks a valid entry; bits 0-2 are one of ::SceArmWaypointEventType;
 	                 //!< for exception events, bits 4-7 select the subtype; bit 8 marks a link,
 	                 //!< bit 9 selects a 32-bit instruction, bit 10 marks a taken branch,
@@ -156,11 +156,11 @@ typedef struct SceExcpmgrExceptionContext {
 	uint32_t PMXEVCNTR4;
 	uint32_t PMXEVTYPER5;
 	uint32_t PMXEVCNTR5;
-	uint32_t reservedD0; //!< Not written or read on FW 3.60; contains indeterminate exception-stack data.
-	uint32_t waypointControl; //!< Bit 0 is set during initialization and after exception processing;
+	uint32_t reserved_D0; //!< Not written or read on FW 3.60; contains indeterminate exception-stack data.
+	uint32_t waypoint_control; //!< Bit 0 is set during initialization and after exception processing;
 	                          //!< bits 8-12 contain the current index in the waypoint ring buffer.
 	uint32_t DBGSCRext;
-	uint32_t reservedDC[9]; //!< Not written or read on FW 3.60; contents are indeterminate exception-stack data.
+	uint32_t reserved_DC[9]; //!< Not written or read on FW 3.60; contents are indeterminate exception-stack data.
 	uint64_t VFP_registers[32]; //!< Content of floating-point registers D0-D31.
 	SceArmWaypoint waypoints[32]; //!< Circular ARM waypoint trace history.
 } SceExcpmgrExceptionContext;
@@ -178,7 +178,7 @@ typedef void(SceExcpmgrExceptionHandler)(SceExcpmgrExceptionContext *context, Sc
 typedef struct SceExcpmgrExceptionHandlerContext {
 	struct SceExcpmgrExceptionHandlerContext *next; //!< Pointer to the next handler record;
 	                                                //!< bit 0 preserves Thumb state.
-	SceUInt32 mustBeZero; //!< Must be zero when registering during cold boot; otherwise unused on FW 3.60.
+	SceUInt32 must_be_zero; //!< Must be zero when registering during cold boot; otherwise unused on FW 3.60.
 } SceExcpmgrExceptionHandlerContext;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceExcpmgrExceptionHandlerContext); // size is from FW 3.60
 

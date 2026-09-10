@@ -356,23 +356,23 @@ typedef enum SceKernelHeapMemoryMappingAction {
  * Options and mapping results for heap allocation.
  *
  * Set \a alignment to request an allocation alignment. The allocator writes
- * \a mappingAction, \a mappedBase, and \a mappedSize to describe any backing
+ * \a mapping_action, \a mapped_base, and \a mapped_size to describe any backing
  * memory range it mapped or unmapped during the allocation.
  */
 typedef struct SceKernelHeapMemoryOpt {
 	SceSize size; //!< Must be set to `sizeof(SceKernelHeapMemoryOpt)`.
-	SceUInt32 mappingAction; //!< One of ::SceKernelHeapMemoryMappingAction.
+	SceUInt32 mapping_action; //!< One of ::SceKernelHeapMemoryMappingAction.
 	SceSize alignment; //!< Requested allocation alignment, or zero for the heap default.
-	void *mappedBase; //!< Base of the mapped or unmapped backing range.
-	SceSize mappedSize; //!< Size of the mapped or unmapped backing range.
+	void *mapped_base; //!< Base of the mapped or unmapped backing range.
+	SceSize mapped_size; //!< Size of the mapped or unmapped backing range.
 } SceKernelHeapMemoryOpt;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceKernelHeapMemoryOpt); // size is from FW 0.990-3.60
 
 typedef struct SceKernelAllocMemBlockInfo {
 	SceSize size; //!< Must be set to `sizeof(SceKernelAllocMemBlockInfo)`.
-	void *mappedBase; //!< Mapped base address.
-	SceSize mappedSize; //!< Mapped size.
-	SceKernelMemoryType memoryType; //!< Memory type derived from the selected memblock type.
+	void *mapped_base; //!< Mapped base address.
+	SceSize mapped_size; //!< Mapped size.
+	SceKernelMemoryType memory_type; //!< Memory type derived from the selected memblock type.
 	SceUInt32 access; //!< Bitwise OR of ::SceKernelMemoryAccessType values.
 } SceKernelAllocMemBlockInfo;
 VITASDK_BUILD_ASSERT_EQ(0x14, SceKernelAllocMemBlockInfo); // size is from FW 3.60
@@ -384,24 +384,24 @@ typedef struct SceKernelMemBlockInfoCore {
 	SceKernelMemBlockType type; //!< Memblock type.
 	SceUID guid; //!< Global memblock UID, or zero when it is hidden at the requested visibility level.
 	const char *name; //!< Read-only memblock name.
-	void *mappedBase; //!< Virtual mapping base.
-	SceSize mappedSize; //!< Requested mapping size.
-	SceSize allocMapSize; //!< Size of the mapping actually allocated.
-	SceSize extraLow; //!< Low-end mapping padding.
-	SceSize extraHigh; //!< High-end mapping padding.
-	SceUInt32 pagingType; //!< Internal paging type; observed values include 4 and 8.
-	SceUID partitionGuid; //!< Physical-memory partition UID, or -1 when unavailable.
-	SceUIDPhyMemPartObject *pPhyMemPart; //!< Physical-memory partition object.
+	void *mapped_base; //!< Virtual mapping base.
+	SceSize mapped_size; //!< Requested mapping size.
+	SceSize alloc_map_size; //!< Size of the mapping actually allocated.
+	SceSize extra_low; //!< Low-end mapping padding.
+	SceSize extra_high; //!< High-end mapping padding.
+	SceUInt32 paging_type; //!< Internal paging type; observed values include 4 and 8.
+	SceUID partition_guid; //!< Physical-memory partition UID, or -1 when unavailable.
+	SceUIDPhyMemPartObject *phy_mem_part; //!< Physical-memory partition object.
 } SceKernelMemBlockInfoCore;
 VITASDK_BUILD_ASSERT_EQ(0x2C, SceKernelMemBlockInfoCore); // size is from FW 3.60
 
 typedef struct SceKernelMemBlockInfoEx {
 	SceSize size; //!< Must be set to `sizeof(SceKernelMemBlockInfoEx)`.
-	SceKernelMemBlockInfoCore coreInfo;
-	SceSize physicalRangeCount; //!< Total number of physical ranges.
-	SceSize physicalRangeCountWritten; //!< Number of entries written to the arrays below, at most 16.
-	void *physicalAddresses[16]; //!< Physical base of each reported range.
-	SceSize physicalSizes[16]; //!< Size of each reported range.
+	SceKernelMemBlockInfoCore core_info;
+	SceSize physical_range_count; //!< Total number of physical ranges.
+	SceSize physical_range_count_written; //!< Number of entries written to the arrays below, at most 16.
+	void *physical_addresses[16]; //!< Physical base of each reported range.
+	SceSize physical_sizes[16]; //!< Size of each reported range.
 } SceKernelMemBlockInfoEx;
 VITASDK_BUILD_ASSERT_EQ(0xB8, SceKernelMemBlockInfoEx); // size is from FW 3.60
 
@@ -409,15 +409,15 @@ VITASDK_BUILD_ASSERT_EQ(0xB8, SceKernelMemBlockInfoEx); // size is from FW 3.60
 typedef struct SceKernelObject SceKernelObject;
 
 /**
- * Creates a global UID object, optionally relative to \p referenceGuid.
+ * Creates a global UID object, optionally relative to \p reference_guid.
  *
- * \p ppObject receives the newly created class-specific object data. The
+ * \p object receives the newly created class-specific object data. The
  * memory is owned by the UID object and must not be freed by the caller.
  */
-SceUID ksceGUIDCreate(SceClass *pClass, const char *name, SceUID referenceGuid, SceKernelObject **ppObject);
+SceUID ksceGUIDCreate(SceClass *object_class, const char *name, SceUID reference_guid, SceKernelObject **object);
 
 /** Gets the class of a global UID object. */
-int ksceGUIDGetClass(SceUID guid, SceClass **ppClass);
+int ksceGUIDGetClass(SceUID guid, SceClass **object_class);
 
 /**
  * Gets the read-only name owned by a live global UID.
@@ -427,16 +427,16 @@ int ksceGUIDGetClass(SceUID guid, SceClass **ppClass);
  * live UID does not reliably produce a lookup error. The caller must ensure
  * that the UID remains alive.
  */
-int ksceGUIDGetName(SceUID guid, const char **pName);
+int ksceGUIDGetName(SceUID guid, const char **name);
 
 /**
  * Gets the class-specific object data for a global UID without taking a
  * reference. The caller must ensure that the UID remains alive.
  */
-int ksceGUIDGetObject(SceUID guid, SceKernelObject **ppObject);
+int ksceGUIDGetObject(SceUID guid, SceKernelObject **object);
 
 /** Creates a kernel-owned global UID object with the default attributes. */
-SceUID ksceGUIDKernelCreate(SceClass *pClass, const char *name, SceKernelObject **ppObject);
+SceUID ksceGUIDKernelCreate(SceClass *object_class, const char *name, SceKernelObject **object);
 
 /**
  * Returns the read-only name of a live global UID.
@@ -452,46 +452,46 @@ SceUID ksceGUIDOpenByName(const char *name);
 /**
  * Takes a reference to a global UID at visibility level 0 through 7.
  *
- * \p ppObject may be NULL. When it is non-NULL, it receives the class-specific
+ * \p object may be NULL. When it is non-NULL, it receives the class-specific
  * object data. Each successful call must be matched by one later call to
  * ::ksceGUIDReleaseObject with \p guid.
  */
-int ksceGUIDReferObjectWithLevel(SceUID guid, SceUInt32 visibilityLevel, SceKernelObject **ppObject);
+int ksceGUIDReferObjectWithLevel(SceUID guid, SceUInt32 visibility_level, SceKernelObject **object);
 
 /**
- * Takes a reference to a global UID object when its class derives from \p pClass.
+ * Takes a reference to a global UID object when its class derives from \p object_class.
  *
- * \p ppObject may be NULL. When it is non-NULL, it receives the class-specific
+ * \p object may be NULL. When it is non-NULL, it receives the class-specific
  * object data. Each successful call must be matched by one later call to
  * ::ksceGUIDReleaseObject with \p guid.
  */
-int ksceGUIDReferObjectWithSubclass(SceUID guid, SceClass *pClass, SceKernelObject **ppObject);
+int ksceGUIDReferObjectWithSubclass(SceUID guid, SceClass *object_class, SceKernelObject **object);
 
 /** Replaces the name of a global UID object. */
 int ksceGUIDSetName(SceUID guid, const char *name);
 
-/** Allocates from the heap identified by \p heapId. */
-void *ksceKernelAllocHeapMemoryWithOpt(SceUID heapId, SceSize size, SceKernelHeapMemoryOpt *pOpt);
+/** Allocates from the heap identified by \p heap_id. */
+void *ksceKernelAllocHeapMemoryWithOpt(SceUID heap_id, SceSize size, SceKernelHeapMemoryOpt *opt);
 
 /**
  * Allocates a memory block and returns its mapping information.
  *
- * On FW 3.60, a non-NULL \p pInfo must point to a ::SceKernelAllocMemBlockInfo
+ * On FW 3.60, a non-NULL \p info must point to a ::SceKernelAllocMemBlockInfo
  * structure with its \c size field set to 0x14. The function writes exactly
- * those 0x14 bytes. A non-NULL \p pInfo with any other size is ignored.
+ * those 0x14 bytes. A non-NULL \p info with any other size is ignored.
  *
  * @param[in] name Memory-block name.
  * @param[in] type Memory-block type.
  * @param[in] vsize Allocation size.
- * @param[in] pOpt Optional allocation options. FW 3.60 accepts option sizes
+ * @param[in] opt Optional allocation options. FW 3.60 accepts option sizes
  * 0x30 and 0x58.
- * @param[out] pInfo Optional mapping information.
+ * @param[out] info Optional mapping information.
  *
  * @return The memory-block UID on success, < 0 on error.
  */
-SceUID ksceKernelAllocMemBlockWithInfo(const char *name, SceKernelMemBlockType type, SceSize vsize, const SceKernelAllocMemBlockOptKernel *pOpt, SceKernelAllocMemBlockInfo *pInfo);
+SceUID ksceKernelAllocMemBlockWithInfo(const char *name, SceKernelMemBlockType type, SceSize vsize, const SceKernelAllocMemBlockOptKernel *opt, SceKernelAllocMemBlockInfo *info);
 void *ksceKernelAllocUncacheHeapMemory(SceSize size);
-void *ksceKernelAllocUncacheHeapMemoryWithOption(SceSize size, SceKernelHeapMemoryOpt *pOpt);
+void *ksceKernelAllocUncacheHeapMemoryWithOption(SceSize size, SceKernelHeapMemoryOpt *opt);
 
 /**
  * Counts the bytes at the start of a user-memory range in the calling process
@@ -499,11 +499,11 @@ void *ksceKernelAllocUncacheHeapMemoryWithOption(SceSize size, SceKernelHeapMemo
  *
  * @param[in] ptr Input buffer. The function does not modify it.
  * @param[in] value Value to match.
- * @param[in] byteSize - Buffer size in bytes. It must be a multiple of 8.
+ * @param[in] byte_size - Buffer size in bytes. It must be a multiple of 8.
  *
  * @return The number of matching bytes at the start of the range, or < 0 on error.
  */
-int ksceKernelCountFillValue64FromUser(const SceUInt64 *ptr, SceUInt64 value, SceSize byteSize);
+int ksceKernelCountFillValue64FromUser(const SceUInt64 *ptr, SceUInt64 value, SceSize byte_size);
 
 /**
  * Counts the bytes at the start of another process's user-memory range that
@@ -512,11 +512,11 @@ int ksceKernelCountFillValue64FromUser(const SceUInt64 *ptr, SceUInt64 value, Sc
  * @param[in] pid Target process identifier.
  * @param[in] ptr Input buffer. The function does not modify it.
  * @param[in] value Value to match.
- * @param[in] byteSize - Buffer size in bytes. It must be a multiple of 8.
+ * @param[in] byte_size - Buffer size in bytes. It must be a multiple of 8.
  *
  * @return The number of matching bytes at the start of the range, or < 0 on error.
  */
-int ksceKernelCountFillValue64FromUserProc(ScePID pid, const SceUInt64 *ptr, SceUInt64 value, SceSize byteSize);
+int ksceKernelCountFillValue64FromUserProc(ScePID pid, const SceUInt64 *ptr, SceUInt64 value, SceSize byte_size);
 
 /**
  * Counts the bytes at the start of a user-memory range in the calling process
@@ -524,11 +524,11 @@ int ksceKernelCountFillValue64FromUserProc(ScePID pid, const SceUInt64 *ptr, Sce
  *
  * @param[in] ptr Input buffer. The function does not modify it.
  * @param[in] value Value to match.
- * @param[in] byteSize - Buffer size in bytes. It must be a multiple of 4.
+ * @param[in] byte_size - Buffer size in bytes. It must be a multiple of 4.
  *
  * @return The number of matching bytes at the start of the range, or < 0 on error.
  */
-int ksceKernelCountFillValueFromUser(const SceUInt32 *ptr, SceUInt32 value, SceSize byteSize);
+int ksceKernelCountFillValueFromUser(const SceUInt32 *ptr, SceUInt32 value, SceSize byte_size);
 
 /**
  * Counts the bytes at the start of another process's user-memory range that
@@ -537,11 +537,11 @@ int ksceKernelCountFillValueFromUser(const SceUInt32 *ptr, SceUInt32 value, SceS
  * @param[in] pid Target process identifier.
  * @param[in] ptr Input buffer. The function does not modify it.
  * @param[in] value Value to match.
- * @param[in] byteSize - Buffer size in bytes. It must be a multiple of 4.
+ * @param[in] byte_size - Buffer size in bytes. It must be a multiple of 4.
  *
  * @return The number of matching bytes at the start of the range, or < 0 on error.
  */
-int ksceKernelCountFillValueFromUserProc(ScePID pid, const SceUInt32 *ptr, SceUInt32 value, SceSize byteSize);
+int ksceKernelCountFillValueFromUserProc(ScePID pid, const SceUInt32 *ptr, SceUInt32 value, SceSize byte_size);
 
 /** Decrements a memblock's internal range/reference counter. */
 int ksceKernelDecRefCountMemBlock(SceUID uid);
@@ -550,13 +550,13 @@ int ksceKernelFreeUncacheHeapMemory(void *ptr);
 /**
  * Gets extended memblock information at visibility level 0 through 7.
  *
- * Set the \c size field of \p pInfo to 0xB8 before calling. The function writes
+ * Set the \c size field of \p info to 0xB8 before calling. The function writes
  * the information to the same structure.
  */
-int ksceKernelGetMemBlockInfo(SceUID uid, SceUInt32 visibilityLevel, SceKernelMemBlockInfoEx *pInfo);
+int ksceKernelGetMemBlockInfo(SceUID uid, SceUInt32 visibility_level, SceKernelMemBlockInfoEx *info);
 
 /** Gets the currently mapped base of a memblock. */
-int ksceKernelGetMemBlockMappedBase(SceUID uid, void **pBase);
+int ksceKernelGetMemBlockMappedBase(SceUID uid, void **base);
 
 /**
  * Gets the internal memory type for an address.
@@ -571,13 +571,13 @@ int ksceKernelGetMemBlockMappedBase(SceUID uid, void **pBase);
 int ksceKernelGetMemBlockMemtypeByAddr(const void *addr);
 
 /** Gets the single physical range backing a memblock. */
-int ksceKernelGetMemBlockPARange(SceUID uid, SceKernelPARange *pRange);
+int ksceKernelGetMemBlockPARange(SceUID uid, SceKernelPARange *pa_range);
 
 /** Gets the physical-range vector backing a memblock. */
-int ksceKernelGetMemBlockPAVector(SceUID uid, SceKernelPAVector *pPAV);
+int ksceKernelGetMemBlockPAVector(SceUID uid, SceKernelPAVector *pa_vector);
 
 /** Gets the virtual base reserved for a memblock. */
-int ksceKernelGetMemBlockVBase(SceUID uid, void **pBase);
+int ksceKernelGetMemBlockVBase(SceUID uid, void **base);
 
 /**
  * Classifies the physical region containing a virtual address.
@@ -594,34 +594,34 @@ int ksceKernelGetPhysicalMemoryType(const void *vaddr);
 /** Increments a memblock's internal range/reference counter. */
 int ksceKernelIncRefCountMemBlock(SceUID uid);
 /** \p permission is a bitwise OR of ::SceKernelMemoryRefPerm values. */
-int ksceKernelIsAccessibleRange(SceUInt32 permission, const void *pVA, SceSize len);
+int ksceKernelIsAccessibleRange(SceUInt32 permission, const void *va, SceSize len);
 /** \p permission is a bitwise OR of ::SceKernelMemoryRefPerm values. */
-int ksceKernelIsAccessibleRangeProc(ScePID pid, SceUInt32 permission, const void *pVA, SceSize len);
+int ksceKernelIsAccessibleRangeProc(ScePID pid, SceUInt32 permission, const void *va, SceSize len);
 
 /**
  * Checks whether a range has exactly the requested software permissions.
  *
- * On FW 3.60, \p pid is ignored and \p pVA is only read.
+ * On FW 3.60, \p pid is ignored and \p va is only read.
  *
  * @param[in] pid Process identifier. Ignored on FW 3.60.
  * @param[in] permission - Bitwise OR of ::SceKernelMemoryRefPerm values.
- * @param[in] pVA Start of the range.
+ * @param[in] va Start of the range.
  * @param[in] len Range size in bytes. It must be nonzero.
  *
  * @return 0 if every page has exactly the requested permissions, < 0 on
  * error.
  */
-int ksceKernelIsEqualAccessibleRangeProcBySW(ScePID pid, SceUInt32 permission, const void *pVA, SceSize len);
+int ksceKernelIsEqualAccessibleRangeProcBySW(ScePID pid, SceUInt32 permission, const void *va, SceSize len);
 
 /**
  * Gets extended memblock information at visibility level 7.
  *
  * @param[in] uid - Memblock UID.
- * @param[in,out] pInfo - Receives the information. Set its \c size field to 0xB8 before calling.
+ * @param[in,out] info - Receives the information. Set its \c size field to 0xB8 before calling.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceKernelMemBlockGetInfoEx(SceUID uid, SceKernelMemBlockInfoEx *pInfo);
+int ksceKernelMemBlockGetInfoEx(SceUID uid, SceKernelMemBlockInfoEx *info);
 
 /**
  * Gets the internal memory-type class associated with a memblock type.
@@ -642,18 +642,18 @@ int ksceKernelMemBlockTypeGetPrivileges(SceKernelMemBlockType type);
  *
  * @param[in] pid - Target process.
  * @param[in] permission - Bitwise OR of ::SceKernelMemoryRefPerm values.
- * @param[in] pVA - Virtual address.
- * @param[out] pPA - Physical address.
+ * @param[in] va - Virtual address.
+ * @param[out] pa - Physical address.
  */
-int ksceKernelProcModeVAtoPA(ScePID pid, SceUInt32 permission, const void *pVA, void **pPA);
-int ksceKernelVARangeToPARangeByHW(const SceKernelVARange *vRange, SceKernelPARange *pRange);
-int ksceKernelVARangeToPARangeBySW(const SceKernelVARange *vRange, SceKernelPARange *pRange);
-int ksceKernelVARangeToPAVectorByHW(const SceKernelVARange *vRange, SceKernelPAVector *pPAV);
-int ksceKernelVARangeToPAVectorBySW(const SceKernelVARange *vRange, SceKernelPAVector *pPAV);
-int ksceKernelVAtoPABySW(const void *pVA, void **pPA);
+int ksceKernelProcModeVAtoPA(ScePID pid, SceUInt32 permission, const void *va, void **pa);
+int ksceKernelVARangeToPARangeByHW(const SceKernelVARange *v_range, SceKernelPARange *pa_range);
+int ksceKernelVARangeToPARangeBySW(const SceKernelVARange *v_range, SceKernelPARange *pa_range);
+int ksceKernelVARangeToPAVectorByHW(const SceKernelVARange *v_range, SceKernelPAVector *pa_vector);
+int ksceKernelVARangeToPAVectorBySW(const SceKernelVARange *v_range, SceKernelPAVector *pa_vector);
+int ksceKernelVAtoPABySW(const void *va, void **pa);
 
 /** Gets the class of an object in a process-local UID namespace. */
-int kscePUIDGetClass(ScePID pid, SceUID puid, SceClass **ppClass);
+int kscePUIDGetClass(ScePID pid, SceUID puid, SceClass **object_class);
 
 /**
  * Gets the read-only name owned by a process-local UID entry.
@@ -661,13 +661,13 @@ int kscePUIDGetClass(ScePID pid, SceUID puid, SceClass **ppClass);
  * Sysmem owns the name. Renaming or destroying the entry can invalidate the
  * pointer.
  */
-int kscePUIDGetName(ScePID pid, SceUID puid, const char **pName);
+int kscePUIDGetName(ScePID pid, SceUID puid, const char **name);
 
 /**
  * Gets the class-specific object data for a process-local UID without taking a
  * reference. The caller must ensure that the object remains alive.
  */
-int kscePUIDGetObject(ScePID pid, SceUID puid, SceKernelObject **ppObject);
+int kscePUIDGetObject(ScePID pid, SceUID puid, SceKernelObject **object);
 
 /**
  * Opens a global UID in a process-local UID namespace.
@@ -682,13 +682,13 @@ SceUID kscePUIDOpenByGUIDWithFlags(ScePID pid, SceUID guid, SceUInt32 flags);
 SceUID kscePUIDOpenByName(ScePID pid, const char *name);
 
 /** Opens a named object of the required class in a process-local UID namespace. */
-SceUID kscePUIDOpenByNameWithClass(ScePID pid, const char *name, SceClass *pClass);
+SceUID kscePUIDOpenByNameWithClass(ScePID pid, const char *name, SceClass *object_class);
 
 /** Replaces the name of a process-local UID entry. */
 int kscePUIDSetName(ScePID pid, SceUID puid, const char *name);
 
-/** Resolves a process-local UID to its global UID, requiring \p pClass. */
-SceUID kscePUIDtoGUIDWithClass(ScePID pid, SceUID puid, SceClass *pClass);
+/** Resolves a process-local UID to its global UID, requiring \p object_class. */
+SceUID kscePUIDtoGUIDWithClass(ScePID pid, SceUID puid, SceClass *object_class);
 
 #ifdef __cplusplus
 }

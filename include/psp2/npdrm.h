@@ -80,7 +80,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceNpDrmCheckActDataOpt); // size is from FW 3.60
 
 typedef struct SceNpDrmCheckDrmResetOpt {
 	SceUInt64 account_id; //!< Account ID to compare with the current activation data.
-	SceBool *pReset; //!< Optional output set to ::SCE_TRUE if this call reset act.dat.
+	SceBool *reset; //!< Optional output set to ::SCE_TRUE if this call reset act.dat.
 	SceSize input_copy_size; //!< Number of input bytes to copy; set to \a input_size and do not exceed 0x40.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } SceNpDrmCheckDrmResetOpt;
@@ -114,13 +114,13 @@ VITASDK_BUILD_ASSERT_EQ(0x28, SceNpDrmGetRifInfoOpt); // size is from FW 3.60
  * @param[in] input - Required input data. If its first byte is zero, FW 3.60 returns
  *                    success without checking or resetting act.dat.
  * @param[in] input_size - Size of the input data; must be in the range [2, 0x40]
- * @param[in] pOpt - Required structure containing the account ID, optional
+ * @param[in] opt - Required structure containing the account ID, optional
  *                   reset-result pointer, and input copy size. Set
  *                   \a input_copy_size to \a input_size.
  *
  * @return 0 on success, < 0 on error.
  */
-int _sceNpDrmCheckDrmReset(const void *input, SceSize input_size, const SceNpDrmCheckDrmResetOpt *pOpt);
+int _sceNpDrmCheckDrmReset(const void *input, SceSize input_size, const SceNpDrmCheckDrmResetOpt *opt);
 
 /**
  * Get RIF information
@@ -128,11 +128,11 @@ int _sceNpDrmCheckDrmReset(const void *input, SceSize input_size, const SceNpDrm
  * @param[in] license - Required RIF data (0x200 bytes)
  * @param[in] license_size - Size of the RIF data
  * @param[in] check_sign - Set to ::SCE_TRUE to check the RIF signature
- * @param[in] pOpt - Required option structure containing optional output pointers
+ * @param[in] opt - Required option structure containing optional output pointers
  *
  * @return 0 on success, < 0 on error.
  */
-int _sceNpDrmGetRifInfo(const SceNpDrmLicense *license, SceSize license_size, SceBool check_sign, const SceNpDrmGetRifInfoOpt *pOpt);
+int _sceNpDrmGetRifInfo(const SceNpDrmLicense *license, SceSize license_size, SceBool check_sign, const SceNpDrmGetRifInfoOpt *opt);
 
 /**
  * Set the provisional flag in a RIF.

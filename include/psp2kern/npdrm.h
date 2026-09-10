@@ -190,14 +190,14 @@ int ksceNpDrmEbootSigGenMultiDisc(const char *eboot_pbp_path, const void *sce_di
 /**
  * Get a legacy PSP document key
  *
- * @param[in] pRif - RIF data. This is only read when required by the document header.
- * @param[in] pDocEdat - Required document EDAT data with a PSPEDAT header; at least 0x90 bytes
- * @param[in] docEdatSize - Size of the document EDAT data
- * @param[out] pLegacyDocKey - Required legacy document key output buffer (0x10 bytes)
+ * @param[in] rif - RIF data. This is only read when required by the document header.
+ * @param[in] doc_edat - Required document EDAT data with a PSPEDAT header; at least 0x90 bytes
+ * @param[in] doc_edat_size - Size of the document EDAT data
+ * @param[out] legacy_doc_key - Required legacy document key output buffer (0x10 bytes)
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceNpDrmGetLegacyDocKey(const void *pRif, const void *pDocEdat, SceSize docEdatSize, void *pLegacyDocKey);
+int ksceNpDrmGetLegacyDocKey(const void *rif, const void *doc_edat, SceSize doc_edat_size, void *legacy_doc_key);
 
 /**
  * Get a RIF name for installation

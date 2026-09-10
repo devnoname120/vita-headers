@@ -41,7 +41,7 @@ typedef struct SceNgsParamsDescriptor SceNgsParamsDescriptor;
 typedef void (*SceNgsSulphaUpdateCallback)(const SceNgsBufferInfo *info);
 VITASDK_BUILD_ASSERT_EQ(4, SceNgsSulphaUpdateCallback);
 
-typedef void (*SceNgsCallbackFunc)(const SceNgsCallbackInfo *callbackInfo);
+typedef void (*SceNgsCallbackFunc)(const SceNgsCallbackInfo *callback_info);
 
 typedef SceNgsCallbackFunc SceNgsRackReleaseCallbackFunc;
 typedef SceNgsCallbackFunc SceNgsModuleCallbackFunc;
@@ -49,7 +49,7 @@ typedef SceNgsCallbackFunc SceNgsParamsErrorCallbackFunc;
 
 typedef struct SceNgsCallbackListInfo {
 	SceNgsCallbackFunc callback;
-	const SceNgsCallbackInfo *callbackInfo; //!< Event information copied into user memory for an immediate callback.
+	const SceNgsCallbackInfo *callback_info; //!< Event information copied into user memory for an immediate callback.
 } SceNgsCallbackListInfo;
 VITASDK_BUILD_ASSERT_EQ(0x8, SceNgsCallbackListInfo); // size is from FW 3.60
 
@@ -69,7 +69,7 @@ SceInt32 sceNgsRackSetParamErrorCallbackInternal(SceNgsHRack rack_handle, const 
 SceInt32 sceNgsSulphaGetInfoInternal(const SulphaNgsRegistration* obj_reg, SceNgsBufferInfo* info);
 SceInt32 sceNgsSulphaGetModuleListInternal(SceUInt32* module_ids, SceUInt32 in_array_count, SceUInt32* count);
 SceInt32 sceNgsSulphaGetSynthUpdateCallbackInternal(SceNgsHSynSystem handle, SceNgsSulphaUpdateCallback *update_callback, SceNgsBufferInfo *info);
-SceInt32 sceNgsSulphaQueryModuleInternal(SulphaNgsModuleQueryType type, SulphaNgsModuleQuery *query, SceNgsModuleID moduleId, SceUInt32 index);
+SceInt32 sceNgsSulphaQueryModuleInternal(SulphaNgsModuleQueryType type, SulphaNgsModuleQuery *query, SceNgsModuleID module_id, SceUInt32 index);
 SceInt32 sceNgsSulphaSetSynthUpdateCallbackInternal(SceNgsHSynSystem handle, SceNgsSulphaUpdateCallback update_callback, const SceNgsBufferInfo *info);
 SceInt32 sceNgsSystemGetCallbackListInternal(SceNgsHSynSystem handle, SceNgsCallbackListInfo **list);
 SceInt32 sceNgsSystemGetRequiredMemorySizeInternal(const SceNgsSystemInitParams* params, SceUInt32* size);

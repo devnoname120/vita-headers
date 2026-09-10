@@ -27,13 +27,13 @@ typedef enum SceCameraActiveStatusFlag {
  * inactive, not as an error.
  *
  * @param[in] pid - Target process ID.
- * @param[out] pStatus - Receives a bitwise OR of
+ * @param[out] status - Receives a bitwise OR of
  *                       ::SceCameraActiveStatusFlag values. Must not be NULL.
  *
  * @return 1 if either camera is active, 0 if neither camera is active, or
- *         0x802E0000 (::SCE_CAMERA_ERROR_PARAM) if \a pStatus is NULL.
+ *         0x802E0000 (::SCE_CAMERA_ERROR_PARAM) if \a status is NULL.
  */
-int ksceCameraIsActive(ScePID pid, SceUInt32 *pStatus);
+int ksceCameraIsActive(ScePID pid, SceUInt32 *status);
 
 #ifdef __cplusplus
 }

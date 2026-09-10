@@ -331,32 +331,32 @@ int ksceKernelGetTtyInfo(char *buf, SceSize buf_size);
 /**
  * Write an event-log record for the current kernel thread.
  *
- * @param[in] eventId Event identifier. FW 3.60 stores its low 16 bits.
+ * @param[in] event_id Event identifier. FW 3.60 stores its low 16 bits.
  * @param[in] index Event index. FW 3.60 stores its low 16 bits.
  * @param[in] value Event value.
- * @param[in] pBuf Payload buffer. May be NULL only when \p bufSize is zero.
+ * @param[in] buf Payload buffer. May be NULL only when \p buf_size is zero.
  *                 The function does not modify the buffer.
- * @param[in] bufSize Payload size, at most 0x80 bytes.
+ * @param[in] buf_size Payload size, at most 0x80 bytes.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceEventLogPutForCurrentThread(SceUInt16 eventId, SceUInt16 index, SceInt32 value, const void *pBuf, SceSize bufSize);
+int ksceEventLogPutForCurrentThread(SceUInt16 event_id, SceUInt16 index, SceInt32 value, const void *buf, SceSize buf_size);
 
 /**
  * Write an event-log record with the given process and thread IDs.
  *
- * @param[in] sourcePid Process ID; see ::ScePID.
- * @param[in] threadId Thread ID; see ::SceUID.
- * @param[in] eventId Event identifier. FW 3.60 stores its low 16 bits.
+ * @param[in] source_pid Process ID; see ::ScePID.
+ * @param[in] thread_id Thread ID; see ::SceUID.
+ * @param[in] event_id Event identifier. FW 3.60 stores its low 16 bits.
  * @param[in] index Event index. FW 3.60 stores its low 16 bits.
  * @param[in] value Event value.
- * @param[in] pBuf Payload buffer. May be NULL only when \p bufSize is zero.
+ * @param[in] buf Payload buffer. May be NULL only when \p buf_size is zero.
  *                 The function does not modify the buffer.
- * @param[in] bufSize Payload size, at most 0x80 bytes.
+ * @param[in] buf_size Payload size, at most 0x80 bytes.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceEventLogPut(ScePID sourcePid, SceUID threadId, SceUInt16 eventId, SceUInt16 index, SceInt32 value, const void *pBuf, SceSize bufSize);
+int ksceEventLogPut(ScePID source_pid, SceUID thread_id, SceUInt16 event_id, SceUInt16 index, SceInt32 value, const void *buf, SceSize buf_size);
 
 #ifdef __cplusplus
 }

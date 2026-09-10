@@ -70,14 +70,14 @@ int ksceIdStorageWriteLeaf(SceUInt32 key, const void *buf);
  * caller must pass the IdStorage write-access check. The operation holds the
  * IdStorage mutex and suspends interrupts while changing the mapping table.
  *
- * @param[in] keys - Kernel array containing @p numLeaves 16-bit keys.
- * @param[in] numLeaves - Number of keys, from 1 through
+ * @param[in] keys - Kernel array containing @p num_leaves 16-bit keys.
+ * @param[in] num_leaves - Number of keys, from 1 through
  *                        ::SCE_ID_STORAGE_ATOMIC_LEAVES_MAX.
  *
  * @return 0 on success, -1 when IdStorage is read-only, or a negative error
  *         code.
  */
-int ksceIdStorageCreateAtomicLeaves(const SceUInt16 *keys, SceInt32 numLeaves);
+int ksceIdStorageCreateAtomicLeaves(const SceUInt16 *keys, SceInt32 num_leaves);
 
 /**
  * Create one leaf mapping.

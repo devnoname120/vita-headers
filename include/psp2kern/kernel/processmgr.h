@@ -82,18 +82,18 @@ VITASDK_BUILD_ASSERT_EQ(4, SceKernelProcessType);
 
 /** Known option bits used in ::SceKernelProcessOpt2::attr on FW 3.60. */
 typedef enum SceKernelProcessOptAttribute {
-	SCE_KERNEL_PROCESS_OPT_ATTR_CPU_AFFINITY_MASK            = 0x00001000, //!< Use ::SceKernelProcessOpt2::cpuAffinityMask.
-	SCE_KERNEL_PROCESS_OPT_ATTR_BUDGET_ID                    = 0x00004000, //!< Use ::SceKernelProcessOpt2::budgetId.
-	SCE_KERNEL_PROCESS_OPT_ATTR_PARENT_PROCESS_ID            = 0x00010000, //!< Use ::SceKernelProcessOpt2::parentPid.
+	SCE_KERNEL_PROCESS_OPT_ATTR_CPU_AFFINITY_MASK            = 0x00001000, //!< Use ::SceKernelProcessOpt2::cpu_affinity_mask.
+	SCE_KERNEL_PROCESS_OPT_ATTR_BUDGET_ID                    = 0x00004000, //!< Use ::SceKernelProcessOpt2::budget_id.
+	SCE_KERNEL_PROCESS_OPT_ATTR_PARENT_PROCESS_ID            = 0x00010000, //!< Use ::SceKernelProcessOpt2::parent_pid.
 	SCE_KERNEL_PROCESS_OPT_ATTR_PROCESS_EXIT_SPAWN           = 0x00020000, //!< Use the exit-spawn mode and PID.
 	SCE_KERNEL_PROCESS_OPT_ATTR_KLICENSEE                    = 0x00040000, //!< Copy the 16-byte klicensee.
-	SCE_KERNEL_PROCESS_OPT_ATTR_MAX_OPEN_FILES               = 0x00080000, //!< Use ::SceKernelProcessOpt2::maxOpenFiles.
-	SCE_KERNEL_PROCESS_OPT_ATTR_MAX_DIRECTORY_OPEN_LEVEL     = 0x00100000, //!< Use ::SceKernelProcessOpt2::maxDirectoryOpenLevel.
-	SCE_KERNEL_PROCESS_OPT_ATTR_UNIQUE_HEAP_SIZE             = 0x00200000, //!< Use ::SceKernelProcessOpt2::uniqueHeapSize.
-	SCE_KERNEL_PROCESS_OPT_ATTR_DISPLAY_RESOLUTION_FLAGS     = 0x00800000, //!< Use ::SceKernelProcessOpt2::displayResolutionFlags.
-	SCE_KERNEL_PROCESS_OPT_ATTR_POWER_CONFIGURATION_FLAGS    = 0x01000000, //!< Use ::SceKernelProcessOpt2::powerConfigurationFlags.
-	SCE_KERNEL_PROCESS_OPT_ATTR_INITIAL_PRIORITY             = 0x10000000, //!< Use ::SceKernelProcessOpt2::initPriority instead of the process-image value.
-	SCE_KERNEL_PROCESS_OPT_ATTR_STACK_SIZE                   = 0x20000000, //!< Use ::SceKernelProcessOpt2::stackSize instead of the process-image value.
+	SCE_KERNEL_PROCESS_OPT_ATTR_MAX_OPEN_FILES               = 0x00080000, //!< Use ::SceKernelProcessOpt2::max_open_files.
+	SCE_KERNEL_PROCESS_OPT_ATTR_MAX_DIRECTORY_OPEN_LEVEL     = 0x00100000, //!< Use ::SceKernelProcessOpt2::max_directory_open_level.
+	SCE_KERNEL_PROCESS_OPT_ATTR_UNIQUE_HEAP_SIZE             = 0x00200000, //!< Use ::SceKernelProcessOpt2::unique_heap_size.
+	SCE_KERNEL_PROCESS_OPT_ATTR_DISPLAY_RESOLUTION_FLAGS     = 0x00800000, //!< Use ::SceKernelProcessOpt2::display_resolution_flags.
+	SCE_KERNEL_PROCESS_OPT_ATTR_POWER_CONFIGURATION_FLAGS    = 0x01000000, //!< Use ::SceKernelProcessOpt2::power_configuration_flags.
+	SCE_KERNEL_PROCESS_OPT_ATTR_INITIAL_PRIORITY             = 0x10000000, //!< Use ::SceKernelProcessOpt2::init_priority instead of the process-image value.
+	SCE_KERNEL_PROCESS_OPT_ATTR_STACK_SIZE                   = 0x20000000, //!< Use ::SceKernelProcessOpt2::stack_size instead of the process-image value.
 	SCE_KERNEL_PROCESS_OPT_ATTR_REPORT_LOAD_PROGRESS         = 0x40000000, //!< Request process-image load-progress reports.
 	SCE_KERNEL_PROCESS_OPT_ATTR_SUPPRESS_START_NOTIFICATIONS = 0x80000000  //!< Suppress the normal Sysroot process-start notifications.
 } SceKernelProcessOptAttribute;
@@ -108,20 +108,20 @@ typedef enum SceKernelProcessExitSpawnMode {
 typedef struct SceKernelProcessOpt2 {
 	SceSize size; //!< Must be 0x40 on FW 3.60.
 	SceUInt32 attr; //!< Bitwise OR of ::SceKernelProcessOptAttribute values. FW 3.60 does not reject unlisted bits, whose purpose is unknown.
-	SceUInt32 cpuAffinityMask; //!< Four-bit mask in bits 0-3 or bits 16-19; 0 selects the default. Do not combine the two encodings.
-	SceInt32 initPriority; //!< Initial main-thread priority when selected; otherwise the process-image value or 0x10000100 is used.
-	SceSize stackSize; //!< Main-thread stack size when selected; otherwise the process-image value or 0x40000 is used.
+	SceUInt32 cpu_affinity_mask; //!< Four-bit mask in bits 0-3 or bits 16-19; 0 selects the default. Do not combine the two encodings.
+	SceInt32 init_priority; //!< Initial main-thread priority when selected; otherwise the process-image value or 0x10000100 is used.
+	SceSize stack_size; //!< Main-thread stack size when selected; otherwise the process-image value or 0x40000 is used.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
-	SceUID budgetId; //!< Budget selector or process-budget UID; the default selector is ::SCE_KERNEL_PROCESS_FULL_GAME_PROCESS_BUDGET.
-	ScePID parentPid; //!< Parent process ID; the calling process's ID is used when this field is not selected.
-	SceKernelProcessExitSpawnMode processExitSpawnMode; //!< Exit-spawn handling mode when selected.
-	ScePID processExitSpawnPid; //!< Pending exit-spawn PID to reuse in enabled mode; zero allocates a new object.
+	SceUID budget_id; //!< Budget selector or process-budget UID; the default selector is ::SCE_KERNEL_PROCESS_FULL_GAME_PROCESS_BUDGET.
+	ScePID parent_pid; //!< Parent process ID; the calling process's ID is used when this field is not selected.
+	SceKernelProcessExitSpawnMode process_exit_spawn_mode; //!< Exit-spawn handling mode when selected.
+	ScePID process_exit_spawn_pid; //!< Pending exit-spawn PID to reuse in enabled mode; zero allocates a new object.
 	const void *klicensee; //!< Pointer to a 16-byte klicensee when selected.
-	SceSize maxOpenFiles; //!< Maximum open-file count when selected; default is 64.
-	SceSize maxDirectoryOpenLevel; //!< Maximum directory-open nesting level when selected; default is 10.
-	SceSize uniqueHeapSize; //!< Required and nonzero when selected by attr.
-	SceUInt32 displayResolutionFlags; //!< Selected value must use only bit 0 for 1280-wide modes and bit 1 for 1440/1920-wide modes.
-	SceUInt32 powerConfigurationFlags; //!< Selected value must fit in two bits; the default queried by ScePower is 3.
+	SceSize max_open_files; //!< Maximum open-file count when selected; default is 64.
+	SceSize max_directory_open_level; //!< Maximum directory-open nesting level when selected; default is 10.
+	SceSize unique_heap_size; //!< Required and nonzero when selected by attr.
+	SceUInt32 display_resolution_flags; //!< Selected value must use only bit 0 for 1280-wide modes and bit 1 for 1440/1920-wide modes.
+	SceUInt32 power_configuration_flags; //!< Selected value must fit in two bits; the default queried by ScePower is 3.
 } SceKernelProcessOpt2;
 VITASDK_BUILD_ASSERT_EQ(0x40, SceKernelProcessOpt2); // size is from FW 3.60
 
@@ -205,11 +205,11 @@ SceClass *ksceKernelGetUIDProcessClass(void);
 /**
  * Gets the current process's elapsed time in microseconds.
  *
- * @param[out] pTime Non-NULL output for the elapsed time.
+ * @param[out] time Non-NULL output for the elapsed time.
  *
  * @return 0 on success, or < 0 on error.
  */
-int ksceKernelGetProcessTimeCore(SceKernelSysClock *pTime);
+int ksceKernelGetProcessTimeCore(SceKernelSysClock *time);
 
 /** Returns the wrapping low 32 bits of the current process's elapsed time in microseconds. */
 SceUInt32 ksceKernelGetProcessTimeLowCore(void);
@@ -218,11 +218,11 @@ SceUInt32 ksceKernelGetProcessTimeLowCore(void);
  * Gets a process's running elapsed time or stored final time in microseconds.
  *
  * @param[in] pid Process ID, or 0 for the current process.
- * @param[out] pTime Non-NULL output for the elapsed time.
+ * @param[out] time Non-NULL output for the elapsed time.
  *
  * @return 0 on success, or < 0 on error.
  */
-int ksceKernelGetRemoteProcessTime(ScePID pid, SceKernelSysClock *pTime);
+int ksceKernelGetRemoteProcessTime(ScePID pid, SceKernelSysClock *time);
 
 /**
  * Tests whether the current process budget reserves common-dialog memory.
@@ -259,13 +259,13 @@ int ksceKernelKillProcess(ScePID pid, SceInt32 option);
  * @param[in] type Process type, optionally ORed with
  *                 ::SCE_KERNEL_PROCESS_START_FLAG_DEBUG.
  * @param[in] path Non-NULL process-image path.
- * @param[in] argSize Argument-block size.
- * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
- * @param[in] pOpt Optional FW 3.60 process options. NULL uses defaults.
+ * @param[in] arg_size Argument-block size.
+ * @param[in] arg_block Optional argument block; may be NULL when arg_size is 0.
+ * @param[in] opt Optional FW 3.60 process options. NULL uses defaults.
  *
  * @return Process ID on success, or < 0 on error.
  */
-ScePID ksceKernelSpawnProcess(const char *name, SceKernelProcessType type, const char *path, SceSize argSize, const void *pArgBlock, const SceKernelProcessOpt2 *pOpt);
+ScePID ksceKernelSpawnProcess(const char *name, SceKernelProcessType type, const char *path, SceSize arg_size, const void *arg_block, const SceKernelProcessOpt2 *opt);
 
 /**
  * Extended form of ::ksceKernelSpawnProcess.
@@ -274,22 +274,22 @@ ScePID ksceKernelSpawnProcess(const char *name, SceKernelProcessType type, const
  * @param[in] type Process type, optionally ORed with
  *                 ::SCE_KERNEL_PROCESS_START_FLAG_DEBUG.
  * @param[in] path Non-NULL process-image path.
- * @param[in] argSize Argument-block size.
- * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
- * @param[in] pOpt Optional FW 3.60 process options. NULL uses defaults.
- * @param[in] preloadFlags Flags forwarded to the preloading-module loader.
+ * @param[in] arg_size Argument-block size.
+ * @param[in] arg_block Optional argument block; may be NULL when arg_size is 0.
+ * @param[in] opt Optional FW 3.60 process options. NULL uses defaults.
+ * @param[in] preload_flags Flags forwarded to the preloading-module loader.
  *                         AppMgr uses bit 0 when its GXM-debug setting is
  *                         enabled. A debug-suspended start additionally sets
  *                         bit 0x00020000 internally.
  *
  * @return Process ID on success, or < 0 on error.
  */
-ScePID ksceKernelSpawnProcessExt(const char *name, SceKernelProcessType type, const char *path, SceSize argSize, const void *pArgBlock, const SceKernelProcessOpt2 *pOpt, SceUInt32 preloadFlags);
+ScePID ksceKernelSpawnProcessExt(const char *name, SceKernelProcessType type, const char *path, SceSize arg_size, const void *arg_block, const SceKernelProcessOpt2 *opt, SceUInt32 preload_flags);
 
 /**
  * Starts a dormant process.
  *
- * On FW 3.60, only bit 31 of startFlags has an effect: it requests a start
+ * On FW 3.60, only bit 31 of start_flags has an effect: it requests a start
  * suspended for debugging. This form passes zero preloading flags.
  * For a normal start, the argument block must remain valid until this function
  * returns; it is not used afterwards. For a debug-suspended start, the pointer
@@ -297,26 +297,26 @@ ScePID ksceKernelSpawnProcessExt(const char *name, SceKernelProcessType type, co
  * and the main thread is started.
  *
  * @param[in] pid Dormant process ID.
- * @param[in] startFlags Start flags.
- * @param[in] argSize Argument-block size.
- * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
+ * @param[in] start_flags Start flags.
+ * @param[in] arg_size Argument-block size.
+ * @param[in] arg_block Optional argument block; may be NULL when arg_size is 0.
  *
  * @return 0 on success, or < 0 on error.
  */
-int ksceKernelStartProcess(ScePID pid, SceUInt32 startFlags, SceSize argSize, const void *pArgBlock);
+int ksceKernelStartProcess(ScePID pid, SceUInt32 start_flags, SceSize arg_size, const void *arg_block);
 
 /**
  * Extended form of ::ksceKernelStartProcess.
  *
  * @param[in] pid Dormant process ID.
- * @param[in] startFlags Start flags; only bit 31 affects FW 3.60.
- * @param[in] argSize Argument-block size.
- * @param[in] pArgBlock Optional argument block; may be NULL when argSize is 0.
- * @param[in] preloadFlags Flags forwarded to the preloading-module loader.
+ * @param[in] start_flags Start flags; only bit 31 affects FW 3.60.
+ * @param[in] arg_size Argument-block size.
+ * @param[in] arg_block Optional argument block; may be NULL when arg_size is 0.
+ * @param[in] preload_flags Flags forwarded to the preloading-module loader.
  *
  * @return 0 on success, or < 0 on error.
  */
-int ksceKernelStartProcessExt(ScePID pid, SceUInt32 startFlags, SceSize argSize, const void *pArgBlock, SceUInt32 preloadFlags);
+int ksceKernelStartProcessExt(ScePID pid, SceUInt32 start_flags, SceSize arg_size, const void *arg_block, SceUInt32 preload_flags);
 
 #ifdef __cplusplus
 }

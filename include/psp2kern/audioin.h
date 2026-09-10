@@ -16,15 +16,15 @@ extern "C" {
 /**
  * Callback called after an audio-input port is opened or released.
  *
- * @param[in] processId - Owner PID for an opened port, or former owner PID for
+ * @param[in] process_id - Owner PID for an opened port, or former owner PID for
  *                        a released port.
  */
-typedef void (*SceAudioInPortCallback)(ScePID processId);
+typedef void (*SceAudioInPortCallback)(ScePID process_id);
 
 /**
  * Open an audio-input port for the calling process.
  *
- * @param[in] portType - Capture profile. See ::sceAudioInOpenPort.
+ * @param[in] port_type - Capture profile. See ::sceAudioInOpenPort.
  * @param[in] grain - Number of mono samples returned by each input call.
  * @param[in] freq - Sample frequency in Hz.
  * @param[in] param - Must be ::SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO on FW 3.60.
@@ -32,7 +32,7 @@ typedef void (*SceAudioInPortCallback)(ScePID processId);
  * @return A port handle on success, or a negative error code. Most validation
  *         failures use ::SceAudioInErrorCode.
  */
-int ksceAudioInOpenPort(SceAudioInPortType portType, int grain, int freq, SceAudioInParam param);
+int ksceAudioInOpenPort(SceAudioInPortType port_type, int grain, int freq, SceAudioInParam param);
 
 /**
  * Release an audio-input port owned by the calling process.
@@ -47,12 +47,12 @@ int ksceAudioInReleasePort(int port);
  * Capture the configured number of mono signed 16-bit PCM samples.
  *
  * @param[in] port - Port handle returned by ::ksceAudioInOpenPort.
- * @param[out] destPtr - Kernel buffer for the captured samples. Its size must
+ * @param[out] dest_ptr - Kernel buffer for the captured samples. Its size must
  *                       be at least <code>grain * sizeof(SceInt16)</code> bytes.
  *
  * @return 0 on success, or a negative error code.
  */
-int ksceAudioInInput(int port, void *destPtr);
+int ksceAudioInInput(int port, void *dest_ptr);
 
 /**
  * Check whether any process owns an audio-input port.
@@ -64,18 +64,18 @@ SceBool ksceAudioInIsAnyPortOpen(void);
 /**
  * Check whether a process owns an audio-input port.
  *
- * @param[in] processId - Valid nonzero process ID. Passing 0 also matches an
+ * @param[in] process_id - Valid nonzero process ID. Passing 0 also matches an
  *                        unused FW 3.60 port slot.
  *
  * @return SCE_TRUE when the process owns a port, otherwise SCE_FALSE.
  */
-SceBool ksceAudioInIsProcessPortOwner(ScePID processId);
+SceBool ksceAudioInIsProcessPortOwner(ScePID process_id);
 
 /**
  * Select the process whose audio-input port is adopted.
  *
  * On FW 3.60 \a unused1 and \a unused2 are ignored. A nonzero
- * \a transitionDelay temporarily suppresses the selected process's input. The
+ * \a transition_delay temporarily suppresses the selected process's input. The
  * input worker subtracts 16 from this value per processing cycle. If the value
  * reaches exactly zero while route-change reports remain, the worker holds it
  * at 16 until both reports have been returned by input calls. Values that are
@@ -83,14 +83,14 @@ SceBool ksceAudioInIsProcessPortOwner(ScePID processId);
  * without that hold.
  * AppMgr always passes zero on FW 3.60.
  *
- * @param[in] processId - Process to adopt.
+ * @param[in] process_id - Process to adopt.
  * @param[in] unused1 - Ignored on FW 3.60.
  * @param[in] unused2 - Ignored on FW 3.60.
- * @param[in] transitionDelay - Input-suppression countdown, or 0.
+ * @param[in] transition_delay - Input-suppression countdown, or 0.
  *
  * @return 0.
  */
-int ksceAudioInSetAdoptForPid(ScePID processId, int unused1, int unused2, int transitionDelay);
+int ksceAudioInSetAdoptForPid(ScePID process_id, int unused1, int unused2, int transition_delay);
 
 /**
  * Register or clear the port-open callback.
@@ -128,12 +128,12 @@ int ksceAudioInSetPortReleaseCallback(SceAudioInPortCallback callback);
  * value as the current route but does not explicitly select an input source
  * for it.
  *
- * @param[in] inputMode - Input route.
+ * @param[in] input_mode - Input route.
  *
  * @return 0 when the route is already selected, otherwise the result of the
  *         FW 3.60 input-worker notification.
  */
-int ksceAudioInSelectInput(SceAudioInInputMode inputMode);
+int ksceAudioInSelectInput(SceAudioInInputMode input_mode);
 
 /**
  * Submit Bluetooth microphone PCM to AudioIn.
@@ -147,13 +147,13 @@ int ksceAudioInSelectInput(SceAudioInInputMode inputMode);
  * midpoint interpolation.
  *
  * @param[in] samples - Kernel-resident mono signed 16-bit PCM samples. This may
- *                      be NULL only when \a sampleCount is zero.
- * @param[in] sampleCount - Number of 16-bit samples, not bytes.
+ *                      be NULL only when \a sample_count is zero.
+ * @param[in] sample_count - Number of 16-bit samples, not bytes.
  *
  * @return The input-worker notification result on success, -1 when the
  *         Bluetooth input is not active, or a negative mutex error.
  */
-int ksceAudioInSubmitBluetoothPcm(const SceInt16 *samples, SceSize sampleCount);
+int ksceAudioInSubmitBluetoothPcm(const SceInt16 *samples, SceSize sample_count);
 
 #ifdef __cplusplus
 }

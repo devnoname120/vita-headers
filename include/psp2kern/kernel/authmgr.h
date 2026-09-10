@@ -167,16 +167,16 @@ int ksceSblAuthMgrLoadBlock(int handle, void *buffer, SceSize buffer_size);
  * Open a SELF authentication session.
  *
  * FW 3.60 supports one session for the whole system. A successful call starts
- * the Auth secure module, writes handle 1 to \a pHandle, and holds a suspend
+ * the Auth secure module, writes handle 1 to \a handle, and holds a suspend
  * lock until the matching ::ksceSblAuthMgrClose call.
  *
- * @param[out] pHandle Non-NULL pointer that receives handle 1.
+ * @param[out] handle Non-NULL pointer that receives handle 1.
  *
  * @return 0 on success, 0x800F0501 when a session is already open,
  *         0x800F0516 for an invalid pointer or internal session state, or a
  *         negative synchronization or secure-module scheduler error.
  */
-int ksceSblAuthMgrOpen(int *pHandle);
+int ksceSblAuthMgrOpen(int *handle);
 
 /**
  * Select and initialize a SELF segment for authentication.

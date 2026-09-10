@@ -55,29 +55,29 @@ SceBool ksceMsifGetSlowCardModeState(void);
  * Read sectors from the Memory Stick medium.
  *
  * @param[in] sector - First logical sector to read.
- * @param[out] buffer - Destination for \a sectorCount *
+ * @param[out] buffer - Destination for \a sector_count *
  *                      ::SCE_MSIF_SECTOR_SIZE bytes. Must be aligned to 4
  *                      bytes.
- * @param[in] sectorCount - Number of sectors to read. Must not be 0.
+ * @param[in] sector_count - Number of sectors to read. Must not be 0.
  *
  * @return 0 on success, a negative ::SceMsifErrorCode value, a mapped medium
  *         error, or a fast-mutex error.
  */
-int ksceMsifReadSector(SceUInt32 sector, void *buffer, SceUInt32 sectorCount);
+int ksceMsifReadSector(SceUInt32 sector, void *buffer, SceUInt32 sector_count);
 
 /**
  * Write sectors to the Memory Stick medium.
  *
  * @param[in] sector - First logical sector to write.
- * @param[in] buffer - Source containing \a sectorCount *
+ * @param[in] buffer - Source containing \a sector_count *
  *                     ::SCE_MSIF_SECTOR_SIZE bytes. Must be aligned to 4
  *                     bytes.
- * @param[in] sectorCount - Number of sectors to write. Must not be 0.
+ * @param[in] sector_count - Number of sectors to write. Must not be 0.
  *
  * @return 0 on success, a negative ::SceMsifErrorCode value, a mapped medium
  *         error, or a fast-mutex error.
  */
-int ksceMsifWriteSector(SceUInt32 sector, const void *buffer, SceUInt32 sectorCount);
+int ksceMsifWriteSector(SceUInt32 sector, const void *buffer, SceUInt32 sector_count);
 
 #ifdef __cplusplus
 }

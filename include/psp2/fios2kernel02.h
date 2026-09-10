@@ -19,10 +19,10 @@ int sceFiosKernelOverlayAddForProcess02(SceUID pid, SceFiosOverlay *overlay, Sce
 
 
 typedef struct sceFiosKernelOverlayGetList02_opt {
-	SceFiosOverlayID *outIDs; //!< Output buffer for overlay IDs; may be NULL only when maxIDs is zero.
-	SceSize maxIDs; //!< Maximum number of overlay IDs to write; must not exceed 128 on FW 3.60.
-	SceSize *actualIDs; //!< Optional pointer receiving the total number of matching overlays, including those beyond maxIDs.
-	SceSize outIDsBufferSize; //!< Number of bytes copied to outIDs; must not exceed 0x200 on FW 3.60.
+	SceFiosOverlayID *out_ids; //!< Output buffer for overlay IDs; may be NULL only when max_ids is zero.
+	SceSize max_ids; //!< Maximum number of overlay IDs to write; must not exceed 128 on FW 3.60.
+	SceSize *actual_ids; //!< Optional pointer receiving the total number of matching overlays, including those beyond max_ids.
+	SceSize out_ids_buffer_size; //!< Number of bytes copied to out_ids; must not exceed 0x200 on FW 3.60.
 	SceUInt32 reserved[2]; //!< Ignored on FW 3.60.
 } sceFiosKernelOverlayGetList02_opt;
 VITASDK_BUILD_ASSERT_EQ(0x18, sceFiosKernelOverlayGetList02_opt); // size is from FW 3.60
@@ -33,22 +33,22 @@ typedef struct sceFiosKernelOverlayGetRecommendedScheduler02_opt {
 VITASDK_BUILD_ASSERT_EQ(0x8, sceFiosKernelOverlayGetRecommendedScheduler02_opt); // size is from FW 3.60
 
 typedef struct sceFiosKernelOverlayResolveSync02_opt {
-	char *outPath; //!< Resolved path output buffer.
-	SceSize maxPath; //!< Maximum path length used by the resolver; must be from 1 through 0x400, inclusive.
+	char *out_path; //!< Resolved path output buffer.
+	SceSize max_path; //!< Maximum path length used by the resolver; must be from 1 through 0x400, inclusive.
 	SceUInt32 reserved0; //!< Ignored on FW 3.60.
-	SceSize outPathBufferSize; //!< Number of bytes copied to outPath; must not exceed 0x400 on FW 3.60.
+	SceSize out_path_buffer_size; //!< Number of bytes copied to out_path; must not exceed 0x400 on FW 3.60.
 	SceUInt32 reserved1[2]; //!< Ignored on FW 3.60.
 } sceFiosKernelOverlayResolveSync02_opt;
 VITASDK_BUILD_ASSERT_EQ(0x18, sceFiosKernelOverlayResolveSync02_opt); // size is from FW 3.60
 
 typedef struct sceFiosKernelOverlayResolveWithRangeSync02_opt {
-	char *outPath; //!< Resolved path output buffer.
-	SceSize maxPath; //!< Maximum path length used by the resolver; must be from 1 through 0x400, inclusive.
-	SceUInt8 minOrder; //!< Minimum overlay order to include.
-	SceUInt8 maxOrder; //!< Maximum overlay order to include.
+	char *out_path; //!< Resolved path output buffer.
+	SceSize max_path; //!< Maximum path length used by the resolver; must be from 1 through 0x400, inclusive.
+	SceUInt8 min_order; //!< Minimum overlay order to include.
+	SceUInt8 max_order; //!< Maximum overlay order to include.
 	SceUInt8 reserved0[2]; //!< Ignored on FW 3.60.
 	SceUInt32 reserved1; //!< Ignored on FW 3.60.
-	SceSize outPathBufferSize; //!< Number of bytes copied to outPath; must not exceed 0x400 on FW 3.60.
+	SceSize out_path_buffer_size; //!< Number of bytes copied to out_path; must not exceed 0x400 on FW 3.60.
 	SceUInt32 reserved2[2]; //!< Ignored on FW 3.60.
 } sceFiosKernelOverlayResolveWithRangeSync02_opt;
 VITASDK_BUILD_ASSERT_EQ(0x1C, sceFiosKernelOverlayResolveWithRangeSync02_opt); // size is from FW 3.60
@@ -56,67 +56,67 @@ VITASDK_BUILD_ASSERT_EQ(0x1C, sceFiosKernelOverlayResolveWithRangeSync02_opt); /
 /**
  * Gets information about an overlay in a process's table.
  *
- * Copies the complete ::SceFiosOverlay to @p outOverlay. The output buffer must
+ * Copies the complete ::SceFiosOverlay to @p out_overlay. The output buffer must
  * remain valid until this function returns; it is not used afterwards.
  *
  * @param[in]  pid        - Process whose overlay table is queried.
  * @param[in]  id         - Overlay identifier.
- * @param[out] outOverlay - Receives the overlay information.
+ * @param[out] out_overlay - Receives the overlay information.
  *
  * @return 0 on success, or a negative error code.
  */
-int sceFiosKernelOverlayGetInfoForProcess02(SceUID pid, SceFiosOverlayID id, SceFiosOverlay *outOverlay);
+int sceFiosKernelOverlayGetInfoForProcess02(SceUID pid, SceFiosOverlayID id, SceFiosOverlay *out_overlay);
 
 /**
- * Gets the IDs of overlays whose order is from @p minOrder through @p maxOrder,
+ * Gets the IDs of overlays whose order is from @p min_order through @p max_order,
  * inclusive.
  *
- * @p opt must be non-NULL. When \c opt->outIDs is non-NULL, \c opt->maxIDs must not
- * exceed 128 on FW 3.60. \c opt->actualIDs may be NULL; when supplied it
+ * @p opt must be non-NULL. When \c opt->out_ids is non-NULL, \c opt->max_ids must not
+ * exceed 128 on FW 3.60. \c opt->actual_ids may be NULL; when supplied it
  * receives the total number of matching overlays, including those beyond
- * \c opt->maxIDs.
+ * \c opt->max_ids.
  * The reserved fields are ignored on FW 3.60.
  *
  * @param[in] pid      - Process whose overlays are enumerated.
- * @param[in] minOrder - Minimum overlay order to include.
- * @param[in] maxOrder - Maximum overlay order to include.
+ * @param[in] min_order - Minimum overlay order to include.
+ * @param[in] max_order - Maximum overlay order to include.
  * @param[in] opt      - Enumeration options and output pointers.
  *
  * @return 0 on success, or an error code.
  */
-int sceFiosKernelOverlayGetList02(SceUID pid, SceUInt8 minOrder, SceUInt8 maxOrder, const sceFiosKernelOverlayGetList02_opt *opt);
+int sceFiosKernelOverlayGetList02(SceUID pid, SceUInt8 min_order, SceUInt8 max_order, const sceFiosKernelOverlayGetList02_opt *opt);
 
 /**
  * Gets the recommended scheduler index for a partially resolved path.
  *
  * @p opt must be non-NULL. FW 3.60 copies all eight bytes from user memory but
- * does not use their contents. @p partiallyResolvedPath may be NULL; a
+ * does not use their contents. @p partially_resolved_path may be NULL; a
  * non-NULL path must terminate within 0x400 bytes.
  *
- * @param[in] schedulerCount        - Number of available schedulers.
- * @param[in] partiallyResolvedPath - Optional partially resolved path.
+ * @param[in] scheduler_count        - Number of available schedulers.
+ * @param[in] partially_resolved_path - Optional partially resolved path.
  * @param[in] opt                   - Non-NULL pointer to an 8-byte option block.
  *
- * @return 1 for a host[0-9]: path when schedulerCount is greater than 1,
+ * @return 1 for a host[0-9]: path when scheduler_count is greater than 1,
  *         otherwise 0, or a negative error code when a user-memory copy fails.
  */
-int sceFiosKernelOverlayGetRecommendedScheduler02(int schedulerCount, const char *partiallyResolvedPath, const sceFiosKernelOverlayGetRecommendedScheduler02_opt *opt);
+int sceFiosKernelOverlayGetRecommendedScheduler02(int scheduler_count, const char *partially_resolved_path, const sceFiosKernelOverlayGetRecommendedScheduler02_opt *opt);
 
 /**
  * Replaces an overlay in a process's table.
  *
- * Validates and copies @p newValue before returning. Keeps the process and
+ * Validates and copies @p new_value before returning. Keeps the process and
  * overlay IDs, recalculates both path lengths, and moves the entry to its new
- * position in the table if its order changes. @p newValue must remain valid
+ * position in the table if its order changes. @p new_value must remain valid
  * until this function returns; it is not used afterwards.
  *
  * @param[in] pid      - Process whose overlay is replaced.
  * @param[in] id       - Overlay identifier.
- * @param[in] newValue - Replacement overlay configuration.
+ * @param[in] new_value - Replacement overlay configuration.
  *
  * @return 0 on success, or a negative error code.
  */
-int sceFiosKernelOverlayModifyForProcess02(SceUID pid, SceFiosOverlayID id, const SceFiosOverlay *newValue);
+int sceFiosKernelOverlayModifyForProcess02(SceUID pid, SceFiosOverlayID id, const SceFiosOverlay *new_value);
 
 /**
  * Removes an overlay synchronously from a process's table.
@@ -128,38 +128,38 @@ int sceFiosKernelOverlayRemoveForProcess02(SceUID pid, SceFiosOverlayID id);
 /**
  * Resolves a path synchronously through a process's overlays.
  *
- * @p resolveForWrite must be 0 for a read or 1 for a write. @p opt must be non-NULL.
- * Its maxPath field controls path validation and resolution, while
- * outPathBufferSize independently controls the final copy to user memory.
+ * @p resolve_for_write must be 0 for a read or 1 for a write. @p opt must be non-NULL.
+ * Its max_path field controls path validation and resolution, while
+ * out_path_buffer_size independently controls the final copy to user memory.
  * The reserved fields are ignored on FW 3.60.
  *
  * @param[in] pid             - Process whose overlays are used.
- * @param[in] resolveForWrite - Must be 0 for read resolution or 1 for write resolution.
- * @param[in] inPath          - Path to resolve.
+ * @param[in] resolve_for_write - Must be 0 for read resolution or 1 for write resolution.
+ * @param[in] in_path          - Path to resolve.
  * @param[in] opt             - Resolution options and output buffer.
  *
  * @return 0 on success, or a negative error code.
  */
-int sceFiosKernelOverlayResolveSync02(SceUID pid, int resolveForWrite, const char *inPath, const sceFiosKernelOverlayResolveSync02_opt *opt);
+int sceFiosKernelOverlayResolveSync02(SceUID pid, int resolve_for_write, const char *in_path, const sceFiosKernelOverlayResolveSync02_opt *opt);
 
 /**
- * Resolves a path through overlays whose order is between \c minOrder and
- * \c maxOrder, inclusive.
+ * Resolves a path through overlays whose order is between \c min_order and
+ * \c max_order, inclusive.
  *
- * @p opt must be non-NULL. minOrder and maxOrder are unsigned, and minOrder must
- * not exceed maxOrder. maxPath controls path validation and resolution;
- * outPathBufferSize independently controls the final copy to user memory.
+ * @p opt must be non-NULL. min_order and max_order are unsigned, and min_order must
+ * not exceed max_order. max_path controls path validation and resolution;
+ * out_path_buffer_size independently controls the final copy to user memory.
  * The reserved fields are ignored on FW 3.60. If application overlays are
- * disabled for the current thread, the supplied minOrder is replaced with 0x80.
+ * disabled for the current thread, the supplied min_order is replaced with 0x80.
  *
  * @param[in]  pid             - Process whose overlays are used.
- * @param[in]  resolveForWrite - Must be 0 for read resolution or 1 for write resolution.
- * @param[in]  inPath          - Path to resolve.
+ * @param[in]  resolve_for_write - Must be 0 for read resolution or 1 for write resolution.
+ * @param[in]  in_path          - Path to resolve.
  * @param[in]  opt             - Resolution options and output buffer.
  *
  * @return 0 on success, or an error code.
  */
-int sceFiosKernelOverlayResolveWithRangeSync02(SceUID pid, int resolveForWrite, const char *inPath, const sceFiosKernelOverlayResolveWithRangeSync02_opt *opt);
+int sceFiosKernelOverlayResolveWithRangeSync02(SceUID pid, int resolve_for_write, const char *in_path, const sceFiosKernelOverlayResolveWithRangeSync02_opt *opt);
 
 /**
  * Returns whether application overlays are disabled for the current thread.

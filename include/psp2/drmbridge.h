@@ -16,11 +16,11 @@ extern "C" {
 #endif
 
 typedef struct SceDrmBridgeMlnpsnlAuth1Opt {
-	SceSblGcAuthMgrMlnpsnlSessionData *sessionData; //!< Destination for the phase-one session data.
-	SceSize requestSize; //!< Must be 0x20; smaller copies leave some authentication input bytes uninitialized.
-	SceSize secureTickSize; //!< Must be 8; smaller copies leave some authentication input bytes uninitialized.
-	SceSize responseSize; //!< Number of response bytes to copy, at most 0x80.
-	SceSize sessionDataSize; //!< Number of session-data bytes to copy, at most 0x40.
+	SceSblGcAuthMgrMlnpsnlSessionData *session_data; //!< Destination for the phase-one session data.
+	SceSize request_size; //!< Must be 0x20; smaller copies leave some authentication input bytes uninitialized.
+	SceSize secure_tick_size; //!< Must be 8; smaller copies leave some authentication input bytes uninitialized.
+	SceSize response_size; //!< Number of response bytes to copy, at most 0x80.
+	SceSize session_data_size; //!< Number of session-data bytes to copy, at most 0x40.
 	SceUInt32 reserved; //!< Ignored on FW 3.60.
 } SceDrmBridgeMlnpsnlAuth1Opt;
 VITASDK_BUILD_ASSERT_EQ(0x18, SceDrmBridgeMlnpsnlAuth1Opt); // size is from FW 3.60
@@ -44,9 +44,9 @@ SceBool _sceDrmBridgeIsAllowRemotePlayDebug(void);
  * copied back even when authentication reports an error. This function does
  * not use any caller buffer after it returns.
  *
- * @param[in] request - Phase-one request. Set \c opt->requestSize to exactly 0x20.
- * @param[in] secureTick - Secure tick. Set \c opt->secureTickSize to exactly 8.
- * @param[out] response - Receives the phase-one response. \c opt->responseSize
+ * @param[in] request - Phase-one request. Set \c opt->request_size to exactly 0x20.
+ * @param[in] secure_tick - Secure tick. Set \c opt->secure_tick_size to exactly 8.
+ * @param[out] response - Receives the phase-one response. \c opt->response_size
  * must be at most 0x80; the system wrapper requests the complete structure.
  * @param[in] opt - Copy sizes and session-data destination.
  *
@@ -55,7 +55,7 @@ SceBool _sceDrmBridgeIsAllowRemotePlayDebug(void);
  * @return 0 on success; 0x808A0200 when an authentication buffer is NULL; or
  *         another negative copy, authorization, size, or authentication error.
  */
-int _sceDrmBridgeMlnpsnlAuth1(const SceSblGcAuthMgrMlnpsnlAuth1Request *request, const SceRtcTick *secureTick, SceSblGcAuthMgrMlnpsnlAuth1Response *response, const SceDrmBridgeMlnpsnlAuth1Opt *opt);
+int _sceDrmBridgeMlnpsnlAuth1(const SceSblGcAuthMgrMlnpsnlAuth1Request *request, const SceRtcTick *secure_tick, SceSblGcAuthMgrMlnpsnlAuth1Response *response, const SceDrmBridgeMlnpsnlAuth1Opt *opt);
 
 #ifdef __cplusplus
 }

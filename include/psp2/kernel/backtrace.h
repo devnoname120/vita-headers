@@ -23,12 +23,12 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceBacktraceArgs); // size is from FW 3.60
 /**
  * Get a thread backtrace.
  *
- * @param[in] threadId Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
- * @param[out] pCallFrameBuffer Buffer that receives call frames, or NULL when
- * numBytesBuffer is 0.
- * @param[in] numBytesBuffer Size of the call-frame buffer in bytes. A non-NULL
+ * @param[in] thread_id Thread ID, or ::SCE_KERNEL_BACKTRACE_CONTEXT_CURRENT.
+ * @param[out] call_frame_buffer Buffer that receives call frames, or NULL when
+ * num_bytes_buffer is 0.
+ * @param[in] num_bytes_buffer Size of the call-frame buffer in bytes. A non-NULL
  * buffer must have room for at least one frame.
- * @param[in] pArgs Backtrace parameters. Must be non-NULL.
+ * @param[in] args Backtrace parameters. Must be non-NULL.
  *
  * @return On success, 0 with ::SCE_KERNEL_BACKTRACE_MODE_DONT_EXCEED set;
  * otherwise, the total number of frames in the call stack, including frames
@@ -37,7 +37,7 @@ VITASDK_BUILD_ASSERT_EQ(0x10, SceBacktraceArgs); // size is from FW 3.60
  * @note On FW 3.60 this function requires development mode. Kernel-mode
  * unwinding also requires the corresponding QAF permission.
  */
-SceInt32 _sceKernelBacktrace(SceUID threadId, SceKernelCallFrame *pCallFrameBuffer, SceSize numBytesBuffer, const SceBacktraceArgs *pArgs);
+SceInt32 _sceKernelBacktrace(SceUID thread_id, SceKernelCallFrame *call_frame_buffer, SceSize num_bytes_buffer, const SceBacktraceArgs *args);
 
 #ifdef __cplusplus
 }

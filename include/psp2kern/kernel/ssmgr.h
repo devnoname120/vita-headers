@@ -34,20 +34,20 @@ int ksceSblSsDecryptWithPortability(SceUInt32 key_type, const void *iv, const Sc
  * The four 16-bit fields are returned in host byte order. This operation is
  * available only when the product-mode check allows it.
  *
- * @param[out] pPsCode - Required eight-byte output.
+ * @param[out] ps_code - Required eight-byte output.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblAimgrGetPscode2(ScePsCode *pPsCode);
+int ksceSblAimgrGetPscode2(ScePsCode *ps_code);
 
 /**
  * Retrieve the 32-byte visible identifier from aimgr_sm.
  *
- * @param[out] pVisibleId - Required output buffer.
+ * @param[out] visible_id - Required output buffer.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblAimgrGetVisibleId(SceVisibleId *pVisibleId);
+int ksceSblAimgrGetVisibleId(SceVisibleId *visible_id);
 
 /**
  * Decrypt data using AES-CBC and an AuthMgr-derived key.
@@ -196,13 +196,13 @@ int ksceSblDmac5DesEcbEncWithKeyslot(const void *src, void *dst, SceSize size, S
 /**
  * @brief Generate random bytes using DMAC5.
  *
- * @param[out] pOutputBuffer - Output buffer; required when \a size is nonzero.
+ * @param[out] output_buffer - Output buffer; required when \a size is nonzero.
  * @param[in] size - Number of bytes to generate. Must be at most 0x40.
  * @param[in] mask_enable - Nonzero to apply the DMAC access mask.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblDmac5Rnd(void *pOutputBuffer, SceSize size, SceBool mask_enable);
+int ksceSblDmac5Rnd(void *output_buffer, SceSize size, SceBool mask_enable);
 
 /**
  * Compute or continue a SHA-1 digest.
@@ -334,12 +334,12 @@ int ksceSblRngGenuineRandomNumber(void *dest);
  * the current secure tick into the secure-module request. It does not inspect
  * ::SceSblSsCreatePassPhraseParam::size.
  *
- * @param[in] pParam - Required 0x18-byte input parameters.
- * @param[out] pPassPhrase - Required 0x200-byte output buffer.
+ * @param[in] param - Required 0x18-byte input parameters.
+ * @param[out] pass_phrase - Required 0x200-byte output buffer.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *pParam, void *pPassPhrase);
+int ksceSblSsCreatePassPhrase(const SceSblSsCreatePassPhraseParam *param, void *pass_phrase);
 
 /**
  * Encrypt a portability message.
@@ -368,12 +368,12 @@ SceInt32 ksceSblSsEncryptWithPortability(SceUInt32 key_type, const void *iv, con
  * value's size. Only that value's bytes are copied.
  *
  * @param[in] type - NVS value to read.
- * @param[out] pData - Required output buffer.
+ * @param[out] data - Required output buffer.
  * @param[in] size - Caller buffer size, subject to the limits above.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblSsGetNvsData(SceSblSsNvsDataType type, void *pData, SceSize size);
+int ksceSblSsGetNvsData(SceSblSsNvsDataType type, void *data, SceSize size);
 
 /**
  * Fill a memory range and return \a dest.
@@ -409,12 +409,12 @@ int ksceSblSsMgrExecuteDmac5HashCommand(const void *src, void *dst, SceSize size
  * Only the selected value's bytes are written.
  *
  * @param[in] type - NVS value to write.
- * @param[in] pData - Required source buffer.
+ * @param[in] data - Required source buffer.
  * @param[in] size - Caller buffer size, subject to the limits above.
  *
  * @return 0 on success, < 0 on error.
  */
-int ksceSblSsSetNvsData(SceSblSsNvsDataType type, const void *pData, SceSize size);
+int ksceSblSsSetNvsData(SceSblSsNvsDataType type, const void *data, SceSize size);
 
 #ifdef __cplusplus
 }

@@ -66,8 +66,8 @@ SceUInt32 ksceLcdGetBrightness(void);
  * reply only when the fifth byte is 0xFF and the first 16-bit value is zero.
  * Either output pointer may be NULL.
  *
- * @param[out] pSupplierId - Receives the first 16-bit DDB value when non-NULL.
- * @param[out] pSupplierElectiveData - Receives the second 16-bit DDB value when
+ * @param[out] supplier_id - Receives the first 16-bit DDB value when non-NULL.
+ * @param[out] supplier_elective_data - Receives the second 16-bit DDB value when
  *                                     non-NULL. This value selects a panel
  *                                     display-on command sequence on FW 3.60.
  *
@@ -75,7 +75,7 @@ SceUInt32 ksceLcdGetBrightness(void);
  *         pending, or ::SCE_LCD_ERROR_INITIALIZATION_FAILED after a failed
  *         panel probe.
  */
-int ksceLcdGetDDB(SceUInt16 *pSupplierId, SceUInt16 *pSupplierElectiveData);
+int ksceLcdGetDDB(SceUInt16 *supplier_id, SceUInt16 *supplier_elective_data);
 
 /** Get the cached LCD color-space mode. */
 SceLcdColorSpaceMode ksceLcdGetDisplayColorSpaceMode(void);

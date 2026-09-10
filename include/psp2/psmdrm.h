@@ -56,12 +56,12 @@ int scePsmDrmGetRifKey(const ScePsmDrmLicense *license_buf, ScePsmDrmKeySet *key
  * @param[out] act_type - Optional activation type output
  * @param[out] version_flag - Optional activation version flag output
  * @param[out] account_id - Optional activated account ID output
- * @param[in] pOpt - Required structure containing optional activation start
+ * @param[in] opt - Required structure containing optional activation start
  *                   and expiration time output pointers
  *
  * @return 0 on success, < 0 on error.
  */
-int scePsmDrmGetActInfo(SceUInt32 *act_type, SceUInt32 *version_flag, SceUInt64 *account_id, const ScePsmDrmGetActInfoOpt *pOpt);
+int scePsmDrmGetActInfo(SceUInt32 *act_type, SceUInt32 *version_flag, SceUInt64 *account_id, const ScePsmDrmGetActInfoOpt *opt);
 
 /**
  * Get PSM RIF information.
@@ -69,12 +69,12 @@ int scePsmDrmGetActInfo(SceUInt32 *act_type, SceUInt32 *version_flag, SceUInt64 
  * @param[in] license - Required PSM RIF data (0x400 bytes)
  * @param[out] content_id - Optional content ID buffer (0x30 bytes)
  * @param[out] account_id - Optional license account ID output
- * @param[in] pOpt - Required structure containing optional license start and
+ * @param[in] opt - Required structure containing optional license start and
  *                   expiration time output pointers
  *
  * @return 0 on success, < 0 on error.
  */
-int scePsmDrmGetRifInfo(const ScePsmDrmLicense *license, char *content_id, SceUInt64 *account_id, const ScePsmDrmGetRifInfoOpt *pOpt);
+int scePsmDrmGetRifInfo(const ScePsmDrmLicense *license, char *content_id, SceUInt64 *account_id, const ScePsmDrmGetRifInfoOpt *opt);
 
 /**
  * Get the fixed PSM RIF name.
